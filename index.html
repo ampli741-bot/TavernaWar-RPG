@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War RPG - Universal</title>
+    <title>Taverna War RPG - Final Mobile</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; width: 100vw; overflow: hidden; }
-        canvas { touch-action: none; }
+        body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { touch-action: none; border: 2px solid #b48c46; }
     </style>
 </head>
 <body>
     <div id="game-container"></div>
     <script>
     const isMobile = window.innerWidth < 600;
+    const GAME_WIDTH = 1000;
+    const GAME_HEIGHT = isMobile ? 1600 : 900;
 
     const config = {
         type: Phaser.AUTO,
@@ -21,9 +23,8 @@
         scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
-            // Используем стандартное разрешение, но Phaser сам его впишет в экран
-            width: 1200, 
-            height: isMobile ? 1600 : 900 
+            width: GAME_WIDTH,
+            height: GAME_HEIGHT
         },
         scene: { preload: preload, create: create }
     };
@@ -31,56 +32,64 @@
     const game = new Phaser.Game(config);
 
     function preload() {
+        // Герои
         this.load.image('hero_Воин', 'assets/hero_warrior.png');
         this.load.image('hero_Маг', 'assets/hero_mage.png');
         this.load.image('hero_Лучник', 'assets/archer.png');
         this.load.image('hero_Ассасин', 'assets/assasin.png');
+        // Руны
         const runes = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
         runes.forEach(r => this.load.image(`tile_${r}`, `assets/rune_${r.toLowerCase()}.png`));
     }
 
     function create() {
-        const cx = config.scale.width / 2;
-        const cy = config.scale.height / 2;
-
+        const cx = GAME_WIDTH / 2;
+        
         if (isMobile) {
-            // ВЕРТИКАЛЬНАЯ ВЕРСТКА (ТЕЛЕФОН)
-            this.add.text(cx, 100, "TAVERNA WAR", { fontSize: '64px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+            // --- МОБИЛЬНАЯ ВЕРСТКА ---
+            this.add.text(cx, 80, "TAVERNA WAR", { fontSize: '70px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
             
-            // Интерфейс игрока сверху
-            let panel = this.add.graphics().fillStyle(0x191614, 1).fillRoundedRect(50, 200, 1100, 300, 30);
-            this.add.image(200, 350, 'hero_Воин').setScale(1.2);
-            this.add.text(400, 250, "ВОИН LVL 1", { fontSize: '48px', fill: '#fff' });
+            // Панель героя
+            let panel = this.add.graphics().fillStyle(0x191614, 1).fillRoundedRect(50, 150, 900, 350, 30);
+            this.add.image(220, 320, 'hero_Воин').setDisplaySize(250, 250); // ПРИНУДИТЕЛЬНЫЙ РАЗМЕР
+            this.add.text(400, 220, "ВОИН LVL 1", { fontSize: '50px', fill: '#fff', fontStyle: 'bold' });
             
-            // Поле (Сетка) снизу
-            const gridStartY = 650;
+            // Здоровье и Мана (бары)
+            this.add.graphics().fillStyle(0x3c0000).fillRect(400, 300, 500, 40).fillStyle(0xdc2828).fillRect(400, 300, 450, 40);
+            
+            // СЕТКА РУН (уменьшена, чтобы не вылезала)
+            const startY = 600;
+            const tileSize = 110; 
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const types = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
                     let t = Phaser.Utils.Array.GetRandom(types);
-                    let tile = this.add.image(180 + c * 120, gridStartY + r * 120, `tile_${t}`).setInteractive().setScale(1.1);
+                    // setDisplaySize гарантирует, что руна не будет огромной
+                    let tile = this.add.image(115 + c * (tileSize + 10), startY + r * (tileSize + 10), `tile_${t}`)
+                                   .setInteractive()
+                                   .setDisplaySize(tileSize, tileSize);
+                    
                     tile.on('pointerdown', () => {
-                        this.tweens.add({ targets: tile, scale: 0.8, duration: 50, yoyo: true });
+                        this.tweens.add({ targets: tile, scale: 0.1, duration: 50, yoyo: true });
                     });
                 }
             }
             
-            // Кнопка Ульты большая для пальца
-            let ult = this.add.rectangle(cx, 1550, 800, 100, 0x4a0e0e).setInteractive();
-            this.add.text(cx, 1550, "ИСПОЛЬЗОВАТЬ УЛЬТУ", { fontSize: '40px', fill: '#fff' }).setOrigin(0.5);
+            // Кнопка Ульты снизу
+            let ultBtn = this.add.rectangle(cx, 1500, 800, 120, 0x4a0e0e).setInteractive();
+            this.add.text(cx, 1500, "ИСПОЛЬЗОВАТЬ УЛЬТУ", { fontSize: '45px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
 
         } else {
-            // ГОРИЗОНТАЛЬНАЯ ВЕРСТКА (ПК)
+            // --- ПК ВЕРСТКА (как и была) ---
             this.add.graphics().fillStyle(0x191614, 1).fillRoundedRect(20, 20, 310, 860, 20);
-            this.add.image(175, 450, 'hero_Воин').setScale(0.8);
+            this.add.image(175, 400, 'hero_Воин').setDisplaySize(280, 280);
             this.add.text(40, 50, "ВОИН LVL 1", { fontSize: '32px', fill: '#fff' });
 
-            const gridStartX = 450;
             for (let r = 0; r < 8; r++) {
                 for (let c = 0; c < 8; c++) {
                     const types = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
                     let t = Phaser.Utils.Array.GetRandom(types);
-                    this.add.image(gridStartX + c * 85, 150 + r * 85, `tile_${t}`).setInteractive().setScale(0.8);
+                    this.add.image(450 + c * 75, 150 + r * 75, `tile_${t}`).setInteractive().setDisplaySize(65, 65);
                 }
             }
         }
