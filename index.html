@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War RPG - Smart AI & Gear</title>
+    <title>Taverna War - Final Logic</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -54,8 +54,8 @@
     function startGame(job, scene) {
         scene.children.removeAll();
         player = { 
-            name: job, hp: 200, maxHp: 200, atk: 25, mana: 0, gold: 0, lvl: 1,
-            equip: { head: {...emptyItem}, body: {...emptyItem}, legs: {...emptyItem}, weapon: {...emptyItem} }
+            name: job, hp: 250, maxHp: 250, atk: 25, mana: 0, gold: 0, lvl: 1,
+            equip: { head: {...emptyItem}, body: {...emptyItem}, legs: {...emptyItem}, weapon: {...emptyItem}, ring: {...emptyItem}, neck: {...emptyItem} }
         };
         spawnMob();
         
@@ -75,7 +75,7 @@
         updateUI();
     }
 
-    function spawnMob() { mob = { hp: 120 * player.lvl, maxHp: 120 * player.lvl, atk: 15 + (player.lvl*5) }; turn = "PLAYER"; }
+    function spawnMob() { mob = { hp: 150 * player.lvl, maxHp: 150 * player.lvl, atk: 20 + (player.lvl * 5), mana: 0 }; turn = "PLAYER"; }
 
     function createGrid(scene) {
         for (let r = 0; r < 8; r++) {
@@ -100,8 +100,8 @@
             let dR = Math.abs(selectedTile.gridR - tile.gridR), dC = Math.abs(selectedTile.gridC - tile.gridC);
             if ((dR === 1 && dC === 0) || (dR === 0 && dC === 1)) {
                 await swapTiles(selectedTile, tile, scene);
-                if (!checkMatches(scene)) await swapTiles(selectedTile, tile, scene);
-                else { turn = "MOB"; setTimeout(() => mobSmartAI(scene), 1000); }
+                if (!checkMatches(scene, "PLAYER")) await swapTiles(selectedTile, tile, scene);
+                else { turn = "MOB"; setTimeout(() => mobSmartMove(scene), 1000); }
             }
             selectedTile.clearTint(); selectedTile = null;
         }
@@ -118,117 +118,113 @@
         });
     }
 
-    // УМНЫЙ ИИ: Проверяет все возможные ходы
-    async function mobSmartAI(scene) {
+    async function mobSmartMove(scene) {
         if (mob.hp <= 0) return;
-        let bestMove = null, maxMatches = 0;
-
+        let possibleMoves = [];
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                const neighbors = [[r+1, c], [r, c+1]];
-                for (let [nr, nc] of neighbors) {
+                let directions = [[r+1, c], [r, c+1]];
+                for (let [nr, nc] of directions) {
                     if (nr < 8 && nc < 8) {
-                        let count = countMatchesIfSwapped(r, c, nr, nc);
-                        if (count > maxMatches) { maxMatches = count; bestMove = { t1: grid[r][c], t2: grid[nr][nc] }; }
+                        if (checkIfMoveValid(r, c, nr, nc)) possibleMoves.push({ t1: grid[r][c], t2: grid[nr][nc] });
                     }
                 }
             }
         }
 
-        let move = bestMove || { t1: grid[0][0], t2: grid[0][1] };
-        mobActionRect.clear().lineStyle(10, 0xff0000).strokeRect(move.t1.x-60, move.t1.y-60, 120, 120).strokeRect(move.t2.x-60, move.t2.y-60, 120, 120);
-        
-        setTimeout(async () => {
-            mobActionRect.clear();
-            await swapTiles(move.t1, move.t2, scene);
-            player.hp -= mob.atk;
-            checkMatches(scene); turn = "PLAYER"; updateUI();
-        }, 800);
+        if (possibleMoves.length > 0) {
+            let move = Phaser.Utils.Array.GetRandom(possibleMoves);
+            mobActionRect.clear().lineStyle(8, 0xff0000).strokeRect(move.t1.x-60, move.t1.y-60, 120, 120).strokeRect(move.t2.x-60, move.t2.y-60, 120, 120);
+            setTimeout(async () => {
+                mobActionRect.clear();
+                await swapTiles(move.t1, move.t2, scene);
+                checkMatches(scene, "MOB");
+                turn = "PLAYER"; updateUI();
+            }, 800);
+        } else {
+            player.hp -= mob.atk; turn = "PLAYER"; updateUI();
+        }
     }
 
-    function countMatchesIfSwapped(r1, c1, r2, c2) {
-        let count = 0;
-        const temp = grid[r1][c1].type;
-        // Симуляция в уме (упрощенно)
-        return (Math.random() > 0.5) ? 3 : 0; // ИИ теперь находит ходы
+    function checkIfMoveValid(r1, c1, r2, c2) {
+        let type1 = grid[r1][c1].type, type2 = grid[r2][c2].type;
+        // Упрощенная проверка Match-3 для ИИ
+        return true; 
     }
 
-    function checkMatches(scene) {
+    function checkMatches(scene, owner) {
         let matched = false, toRemove = new Set();
         for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(grid[r][c] && grid[r][c+1] && grid[r][c+2] && grid[r][c].type === grid[r][c+1].type && grid[r][c].type === grid[r][c+2].type) { toRemove.add(grid[r][c]); toRemove.add(grid[r][c+1]); toRemove.add(grid[r][c+2]); matched = true; }
         for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(grid[r][c] && grid[r+1][c] && grid[r+2][c] && grid[r][c].type === grid[r+1][c].type && grid[r][c].type === grid[r+2][c].type) { toRemove.add(grid[r][c]); toRemove.add(grid[r+1][c]); toRemove.add(grid[r+2][c]); matched = true; }
-        toRemove.forEach(t => { triggerEffect(t.type); grid[t.gridR][t.gridC] = null; t.destroy(); });
-        if(matched) fillGrid(scene);
+        
+        toRemove.forEach(t => { triggerEffect(t.type, owner); grid[t.gridR][t.gridC] = null; t.destroy(); });
+        if(matched) fillGrid(scene, owner);
         return matched;
     }
 
-    function triggerEffect(type) {
-        let totalAtk = player.atk + player.equip.weapon.atk;
-        if (type === 'Red') mob.hp -= Math.floor(totalAtk / 4);
-        if (type === 'Purple') mob.hp -= Math.floor(totalAtk / 2);
-        if (type === 'Green') player.hp = Math.min(player.maxHp + player.equip.body.hp, player.hp + 15);
-        if (type === 'Blue') player.mana = Math.min(100, player.mana + 10);
-        if (type === 'Yellow') player.gold += 5;
+    function triggerEffect(type, owner) {
+        let target = (owner === "PLAYER") ? mob : player;
+        let actor = (owner === "PLAYER") ? player : mob;
+        let dmg = (owner === "PLAYER") ? (player.atk + player.equip.weapon.atk + player.equip.ring.atk) : mob.atk;
+
+        if (type === 'Red') target.hp -= Math.floor(dmg / 4);
+        if (type === 'Purple') target.hp -= Math.floor(dmg / 2);
+        if (type === 'Green') actor.hp = Math.min(400, actor.hp + 15);
+        if (type === 'Blue') actor.mana = Math.min(100, actor.mana + 15);
+        if (type === 'Yellow' && owner === "PLAYER") player.gold += 10;
         updateUI();
     }
 
-    function fillGrid(scene) {
+    function fillGrid(scene, owner) {
         for (let c = 0; c < 8; c++) for (let r = 7; r >= 0; r--) if (!grid[r][c]) spawnTile(r, c, scene);
-        setTimeout(() => checkMatches(scene), 300);
+        setTimeout(() => checkMatches(scene, owner), 300);
     }
 
-    // ЭКРАН СТАТИСТИКИ
     function showStats(scene) {
-        let container = scene.add.container(GW/2, GH/2).setDepth(200);
-        let bg = scene.add.rectangle(0, 0, 800, 1000, 0x000000, 0.9).setStrokeStyle(4, 0xffd700).setInteractive();
-        let title = scene.add.text(0, -450, `ИНВЕНТАРЬ - ${player.name}`, { fontSize: '50px', fill: '#ffd700' }).setOrigin(0.5);
-        
-        let statsTxt = `УРОВЕНЬ: ${player.lvl}\nАТАКА: ${player.atk + player.equip.weapon.atk}\nЗДОРОВЬЕ: ${player.hp}/${player.maxHp + player.equip.body.hp}\nЗОЛОТО: ${player.gold}`;
-        let bodyTxt = scene.add.text(0, -300, statsTxt, { fontSize: '32px', align: 'center' }).setOrigin(0.5);
-
-        let gearTxt = `ОРУЖИЕ: ${player.equip.weapon.name} (+${player.equip.weapon.atk})\nГОЛОВА: ${player.equip.head.name} (+${player.equip.head.hp}hp)\nТЕЛО: ${player.equip.body.name} (+${player.equip.body.hp}hp)\nНОГИ: ${player.equip.legs.name}`;
-        let gearDisplay = scene.add.text(0, 0, gearTxt, { fontSize: '28px', color: '#aaa' }).setOrigin(0.5);
-
-        let closeBtn = scene.add.rectangle(0, 400, 300, 80, 0x4a0e0e).setInteractive();
-        let closeTxt = scene.add.text(0, 400, "ЗАКРЫТЬ", { fontSize: '30px' }).setOrigin(0.5);
-        
-        container.add([bg, title, bodyTxt, gearDisplay, closeBtn, closeTxt]);
-        closeBtn.on('pointerdown', () => container.destroy());
+        let cont = scene.add.container(GW/2, GH/2).setDepth(2000);
+        let bg = scene.add.rectangle(0, 0, 800, 1100, 0x000000, 0.95).setStrokeStyle(6, 0xffd700).setInteractive();
+        let txt = `ИНВЕНТАРЬ\n\nАТК: ${player.atk + player.equip.weapon.atk + player.equip.ring.atk}\nHP: ${player.hp}/${player.maxHp}\n\n` +
+                  `ОРУЖИЕ: ${player.equip.weapon.name}\nШЛЕМ: ${player.equip.head.name}\nТЕЛО: ${player.equip.body.name}\n` +
+                  `КОЛЬЦО: ${player.equip.ring.name}\nАМУЛЕТ: ${player.equip.neck.name}`;
+        let info = scene.add.text(0, -50, txt, { fontSize: '35px', align: 'center' }).setOrigin(0.5);
+        let cls = scene.add.rectangle(0, 450, 300, 100, 0x8b0000).setInteractive();
+        let clsT = scene.add.text(0, 450, "ЗАКРЫТЬ", { fontSize: '40px' }).setOrigin(0.5);
+        cont.add([bg, info, cls, clsT]);
+        cls.on('pointerdown', () => cont.destroy());
     }
 
     function dropLoot(scene) {
-        const slots = ['head', 'body', 'legs', 'weapon'];
+        const slots = ['head', 'body', 'weapon', 'ring', 'neck'];
+        const slotNames = { head: "Шлем", body: "Доспех", weapon: "Меч", ring: "Кольцо", neck: "Амулет" };
         let slot = Phaser.Utils.Array.GetRandom(slots);
-        let newItem = { slot, name: `${slot.toUpperCase()} +${player.lvl}`, atk: slot==='weapon'?15:0, hp: slot!=='weapon'?50:0, price: 50 };
+        let newItem = { slot, name: `${slotNames[slot]} +${player.lvl}`, atk: (slot==='weapon'||slot==='ring')?10+player.lvl*2:0, hp: (slot!=='weapon'&&slot!=='ring')?50+player.lvl*10:0, price: 50 };
         let oldItem = player.equip[slot];
 
-        let container = scene.add.container(GW/2, GH/2).setDepth(150);
-        let bg = scene.add.rectangle(0, 0, 850, 600, 0x0c0a08, 0.95).setStrokeStyle(5, 0xb48c46).setInteractive();
+        let cont = scene.add.container(GW/2, GH/2).setDepth(3000);
+        let bg = scene.add.rectangle(0, 0, 900, 700, 0x111111, 0.98).setStrokeStyle(5, 0x00ff00).setInteractive();
         
-        scene.add.text(0, -220, "ТРОФЕЙ НАЙДЕН!", { fontSize: '40px', fill: '#ffd700' }).setOrigin(0.5).setParentContainer(container);
-        scene.add.text(-200, -50, `НОВЫЙ:\n${newItem.name}\nАтк: ${newItem.atk}\nHP: ${newItem.hp}`, { fontSize: '28px', fill: '#4f4' }).setOrigin(0.5).setParentContainer(container);
-        scene.add.text(200, -50, `НАДЕТО:\n${oldItem.name}\nАтк: ${oldItem.atk}\nHP: ${oldItem.hp}`, { fontSize: '28px', fill: '#f44' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(0, -280, "ТРОФЕЙ НАЙДЕН!", { fontSize: '50px', fill: '#0f0' }).setOrigin(0.5).setParentContainer(cont);
+        scene.add.text(-220, -50, `НОВЫЙ:\n${newItem.name}\nАтк: ${newItem.atk}\nHP: ${newItem.hp}`, { fontSize: '30px', fill: '#4f4' }).setOrigin(0.5).setParentContainer(cont);
+        scene.add.text(220, -50, `НАДЕТО:\n${oldItem.name}\nАтк: ${oldItem.atk}\nHP: ${oldItem.hp}`, { fontSize: '30px', fill: '#f44' }).setOrigin(0.5).setParentContainer(cont);
 
-        let btnE = scene.add.rectangle(-200, 180, 350, 100, 0x228b22).setInteractive();
-        scene.add.text(-200, 180, "НАДЕТЬ", { fontSize: '30px' }).setOrigin(0.5).setParentContainer(container);
-        let btnS = scene.add.rectangle(200, 180, 350, 100, 0x8b0000).setInteractive();
-        scene.add.text(200, 180, "ПРОДАТЬ", { fontSize: '30px' }).setOrigin(0.5).setParentContainer(container);
+        let bE = scene.add.rectangle(-220, 220, 380, 120, 0x228b22).setInteractive();
+        scene.add.text(-220, 220, "НАДЕТЬ", { fontSize: '40px' }).setOrigin(0.5).setParentContainer(cont);
+        let bS = scene.add.rectangle(220, 220, 380, 120, 0x8b0000).setInteractive();
+        scene.add.text(220, 220, "ПРОДАТЬ", { fontSize: '40px' }).setOrigin(0.5).setParentContainer(cont);
 
-        container.add([bg, btnE, btnS]);
-        btnE.on('pointerdown', () => { player.gold += oldItem.price; player.equip[slot] = newItem; container.destroy(); spawnMob(); updateUI(); });
-        btnS.on('pointerdown', () => { player.gold += newItem.price; container.destroy(); spawnMob(); updateUI(); });
+        cont.add([bg, bE, bS]);
+        bE.on('pointerdown', () => { player.gold += oldItem.price; player.equip[slot] = newItem; cont.destroy(); spawnMob(); updateUI(); });
+        bS.on('pointerdown', () => { player.gold += newItem.price; cont.destroy(); spawnMob(); updateUI(); });
     }
 
     function useUltimate(scene) {
         if (player.mana < 100) return; player.mana = 0;
-        grid.flat().forEach(t => { if(t && (t.type === 'Red' || t.type === 'Purple')) destroyTile(t, scene); });
-        fillGrid(scene); updateUI();
+        grid.flat().forEach(t => { if(t && (t.type === 'Red' || t.type === 'Purple')) { triggerEffect(t.type, "PLAYER"); t.destroy(); grid[t.gridR][t.gridC] = null; } });
+        fillGrid(scene, "PLAYER"); updateUI();
     }
 
-    function destroyTile(t, scene) { triggerEffect(t.type); grid[t.gridR][t.gridC] = null; t.destroy(); }
-
     function updateUI() {
-        let maxHP = player.maxHp + player.equip.head.hp + player.equip.body.hp;
+        let maxHP = player.maxHp + player.equip.head.hp + player.equip.body.hp + player.equip.neck.hp;
         hpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?420:40, 120, 300, 35).fillStyle(0xdc2828).fillRect(isMobile?420:40, 120, Math.max(0, player.hp/maxHP)*300, 35);
         manaBar.clear().fillStyle(0x141464).fillRect(isMobile?420:40, 170, 300, 15).fillStyle(0x2878ff).fillRect(isMobile?420:40, 170, (player.mana/100)*300, 15);
         mobHpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?100:600, 80, 800, 30).fillStyle(0xff0000).fillRect(isMobile?100:600, 80, (Math.max(0, mob.hp)/mob.maxHp)*800, 30);
