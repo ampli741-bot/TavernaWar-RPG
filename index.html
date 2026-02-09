@@ -1,293 +1,143 @@
-import pygame
-import random
-import sys
-import os
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Taverna War RPG - Web Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <style>
+        body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Verdana', sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    <script>
+    const config = {
+        type: Phaser.AUTO,
+        width: 1200,
+        height: 900,
+        parent: 'game-container',
+        scene: { preload: preload, create: create, update: update }
+    };
 
-# --- НАСТРОЙКИ ---
-pygame.init()
-WIDTH, HEIGHT = 1200, 900
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Taverna War RPG: Gold & Skills")
+    const game = new Phaser.Game(config);
 
-# Шрифты
-font = pygame.font.SysFont("Verdana", 16)
-header_font = pygame.font.SysFont("Verdana", 24, bold=True)
-small_font = pygame.font.SysFont("Verdana", 14)
-log_font = pygame.font.SysFont("Consolas", 15)
+    // Данные игрока (согласно твоим механикам)
+    let player = {
+        job: 'Воин',
+        hp: 300, maxHp: 300,
+        gold: 0, mana: 0,
+        level: 1, atk: 25, exp: 0,
+        skillName: "Ярость: Взрыв Крови"
+    };
 
-# --- ПАЛИТРА ---
-WHITE, GOLD, BRIGHT_GREEN = (240, 240, 240), (255, 215, 0), (80, 255, 80)
-BG_COLOR, PANEL_BG, BORDER_GOLD = (12, 10, 8), (25, 22, 20), (180, 140, 70)
+    let mob = { name: "Орк-Тиран", hp: 150, maxHp: 150, atk: 18 };
+    let gameLog = ["Соберите 100 маны для Ульты!"];
 
-# Данные рун (сопоставляем цвета с твоими файлами)
-COLORS_DATA = {
-    "Red":    {"file": "rune_red.png",    "symbol": "ATK", "desc": "Урон"},
-    "Blue":   {"file": "rune_blue.png",   "symbol": "MP",  "desc": "Мана"},
-    "Green":  {"file": "rune_green.png",  "symbol": "HP",  "desc": "Лечение"},
-    "Purple": {"file": "rune_purple.png", "symbol": "MAG", "desc": "Маг. урон"},
-    "Yellow": {"file": "rune_yellow.png", "symbol": "$$$", "desc": "Золото"}
-}
+    function preload() {
+        // Загрузка твоих ассетов (пути проверены по твоим скриншотам)
+        this.load.image('hero_Воин', 'assets/hero_warrior.png');
+        this.load.image('hero_Маг', 'assets/hero_mage.png');
+        this.load.image('hero_Лучник', 'assets/archer.png');
+        this.load.image('hero_Ассасин', 'assets/assasin.png');
 
-# --- ЗАГРУЗКА АССЕТОВ ---
-IMAGES = {}
-def load_assets():
-    try:
-        # Загрузка героев
-        IMAGES['Воин'] = pygame.transform.scale(pygame.image.load("assets/hero_warrior.png"), (200, 200))
-        IMAGES['Маг'] = pygame.transform.scale(pygame.image.load("assets/hero_mage.png"), (200, 200))
-        IMAGES['Лучник'] = pygame.transform.scale(pygame.image.load("assets/archer.png"), (200, 200))
-        IMAGES['Ассасин'] = pygame.transform.scale(pygame.image.load("assets/assasin.png"), (200, 200))
+        this.load.image('tile_Red', 'assets/rune_red.png');
+        this.load.image('tile_Blue', 'assets/rune_blue.png');
+        this.load.image('tile_Green', 'assets/rune_green.png');
+        this.load.image('tile_Purple', 'assets/rune_purple.png');
+        this.load.image('tile_Yellow', 'assets/rune_yellow.png');
+    }
+
+    function create() {
+        // Фоновая панель
+        let panel = this.add.graphics();
+        panel.fillStyle(0x191614, 1);
+        panel.fillRoundedRect(20, 20, 310, 860, 20);
+        panel.lineStyle(2, 0xb48c46, 1);
+        panel.strokeRoundedRect(20, 20, 310, 860, 20);
+
+        // Тексты интерфейса
+        this.jobText = this.add.text(40, 40, `${player.job} LVL ${player.level}`, { fontSize: '24px', color: '#fff', foneStyle: 'bold' });
+        this.goldText = this.add.text(40, 80, `Золото: ${player.gold}`, { fontSize: '18px', color: '#ffd700' });
         
-        # Загрузка рун
-        for color, data in COLORS_DATA.items():
-            img = pygame.image.load(f"assets/{data['file']}")
-            IMAGES[color] = pygame.transform.scale(img, (60, 60))
-    except Exception as e:
-        print(f"Ошибка загрузки картинок: {e}. Проверь папку assets!")
+        // Отрисовка HP и Mana баров
+        this.hpBar = this.add.graphics();
+        this.manaBar = this.add.graphics();
 
-load_assets()
+        // Картинка героя
+        this.heroSprite = this.add.image(175, 450, 'hero_Воин').setScale(0.8);
 
-RARITY_COLORS = {
-    "Обычное": (200, 200, 200), "Редкое": (30, 144, 255),
-    "Эпическое": (163, 53, 238), "Легендарное": (255, 128, 0)
-}
-
-class Player:
-    def __init__(self, job):
-        stats = {
-            "Воин":   {"hp": 300, "atk": 25, "skill": "Ярость: Взрыв Крови"},
-            "Маг":    {"hp": 150, "atk": 45, "skill": "Инферно: Фиолетовый шторм"},
-            "Лучник": {"hp": 180, "atk": 35, "skill": "Снайпер: Сквозной выстрел"},
-            "Ассасин":{"hp": 160, "atk": 42, "skill": "Тень: Веер клинков"}
+        // Игровое поле
+        const types = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
+        this.tiles = [];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                let type = Phaser.Utils.Array.GetRandom(types);
+                let tile = this.add.image(400 + c * 68, 150 + r * 68, `tile_${type}`).setInteractive();
+                tile.setDisplaySize(60, 60);
+                tile.tileType = type;
+                tile.on('pointerdown', () => handleTileClick(tile, this));
+            }
         }
-        d = stats[job]
-        self.job, self.max_hp, self.hp, self.atk = job, d["hp"], d["hp"], d["atk"]
-        self.skill_name = d["skill"]
-        self.level, self.exp, self.mana, self.gold = 1, 0, 0, 0
-        self.equipment = {"Шлем": None, "Грудь": None, "Перчатки": None, "Ноги": None, 
-                          "Оружие": {"name": "Старый меч", "stat": 10, "type": "Оружие", "rarity": "Обычное", "desc": "Урон: +10"}}
 
-    def get_atk(self): return self.atk + (self.equipment["Оружие"]["stat"] if self.equipment["Оружие"] else 0)
-    def get_def(self): return sum(it["stat"] for it in self.equipment.values() if it and it["type"] != "Оружие")
+        // Лог
+        this.logDisplay = this.add.text(400, 750, gameLog.join('\n'), { fontSize: '16px', color: '#b4aa96', fontFamily: 'Courier' });
 
-class Game:
-    def __init__(self):
-        self.state = "MENU"
-        self.grid = [[random.choice(list(COLORS_DATA.keys())) for _ in range(8)] for _ in range(8)]
-        self.selected, self.is_animating, self.turn = None, False, "PLAYER"
-        self.pending_item, self.is_waiting_for_loot = None, False
-        self.log = ["Соберите 100 маны и нажмите [S] для Ульты!"]
+        // Моб
+        this.mobNameText = this.add.text(950, 40, mob.name, { fontSize: '22px', color: '#ff4444' });
+        this.mobHpBar = this.add.graphics();
 
-    def add_log(self, text):
-        self.log.append(text)
-        if len(self.log) > 6: self.log.pop(0)
+        updateUI(this);
+    }
 
-    def spawn_mob(self):
-        lvl = self.player.level
-        self.mob = {"name": random.choice(["Орк-Тиран", "Древний Лич", "Падший Рыцарь"]), "hp": 150*lvl, "max_hp": 150*lvl, "atk": 18*lvl}
-        self.turn = "PLAYER"
+    function handleTileClick(tile, scene) {
+        // Механика рун
+        if (tile.tileType === 'Red') mob.hp -= Math.floor(player.atk / 2);
+        if (tile.tileType === 'Blue') player.mana = Math.min(100, player.mana + 15);
+        if (tile.tileType === 'Green') player.hp = Math.min(player.maxHp, player.hp + 20);
+        if (tile.tileType === 'Yellow') player.gold += 10;
+        if (tile.tileType === 'Purple') mob.hp -= player.atk;
 
-    def use_ultimate(self):
-        if self.player.mana < 100 or self.is_animating: return
-        self.player.mana = 0
-        self.add_log(f"АКТИВАЦИЯ: {self.player.skill_name}")
-        
-        if self.player.job == "Воин":
-            for r in range(8):
-                for c in range(8):
-                    if self.grid[r][c] == "Red": self.trigger_tile(r, c)
-            self.player.hp = min(self.player.max_hp, self.player.hp + 50)
-        elif self.player.job == "Маг":
-            for _ in range(12):
-                rr, cc = random.randint(0,7), random.randint(0,7)
-                self.grid[rr][cc] = "Purple"; self.trigger_tile(rr, cc)
-        elif self.player.job == "Лучник":
-            row, col = random.randint(0,7), random.randint(0,7)
-            for i in range(8): 
-                self.trigger_tile(row, i); self.trigger_tile(i, col)
-        elif self.player.job == "Ассасин":
-            r, c = random.randint(1,6), random.randint(1,6)
-            for dr in [-1, 0, 1]:
-                for dc in [-1, 0, 1]: self.trigger_tile(r+dr, c+dc)
-        
-        self.apply_gravity(); self.process_turn()
+        addLog(`Собрана руна: ${tile.tileType}`, scene);
 
-    def trigger_tile(self, r, c):
-        color = self.grid[r][c]
-        if not color: return
-        if self.turn == "PLAYER":
-            if color == "Red": self.mob["hp"] -= self.player.get_atk() // 4
-            elif color == "Purple": self.mob["hp"] -= self.player.get_atk() // 2
-            elif color == "Green": self.player.hp = min(self.player.max_hp, self.player.hp + 15)
-            elif color == "Blue": self.player.mana = min(100, self.player.mana + 15)
-            elif color == "Yellow": self.player.gold += random.randint(5, 15)
-        self.grid[r][c] = None
+        // Анимация "удаления" и замены руны
+        scene.tweens.add({
+            targets: tile,
+            scale: 0,
+            duration: 100,
+            onComplete: () => {
+                const types = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
+                tile.tileType = Phaser.Utils.Array.GetRandom(types);
+                tile.setTexture(`tile_${tile.tileType}`);
+                scene.tweens.add({ targets: tile, scale: 0.6, duration: 100 });
+                checkBattleStatus(scene);
+                updateUI(scene);
+            }
+        });
+    }
 
-    def find_matches(self):
-        m = set()
-        for r in range(8):
-            for c in range(6):
-                if self.grid[r][c] == self.grid[r][c+1] == self.grid[r][c+2] and self.grid[r][c]: m.update([(r,c),(r,c+1),(r,c+2)])
-        for c in range(8):
-            for r in range(6):
-                if self.grid[r][c] == self.grid[r+1][c] == self.grid[r+2][c] and self.grid[r][c]: m.update([(r,c),(r+1,c),(r+2,c)])
-        return list(m)
+    function checkBattleStatus(scene) {
+        if (mob.hp <= 0) {
+            addLog("ПОБЕДА! Получено золото.", scene);
+            player.gold += 50;
+            mob.hp = mob.maxHp; // Спавн нового
+        }
+    }
 
-    def apply_gravity(self):
-        for c in range(8):
-            empty = [r for r in range(8) if self.grid[r][c] is None]
-            for r in range(7, -1, -1):
-                if self.grid[r][c] and empty and r < empty[-1]:
-                    t = empty.pop(); self.grid[t][c], self.grid[r][c] = self.grid[r][c], None; empty.insert(0, r)
-            for r in empty: self.grid[r][c] = random.choice(list(COLORS_DATA.keys()))
+    function addLog(msg, scene) {
+        gameLog.push("> " + msg);
+        if (gameLog.length > 5) gameLog.shift();
+        scene.logDisplay.setText(gameLog.join('\n'));
+    }
 
-    def process_turn(self):
-        self.is_animating = True
-        while True:
-            matches = self.find_matches()
-            if not matches: break
-            for r, c in matches: self.trigger_tile(r, c)
-            self.draw(); pygame.display.flip(); pygame.time.delay(300)
-            self.apply_gravity()
-            self.draw(); pygame.display.flip(); pygame.time.delay(200)
-        if self.mob["hp"] <= 0: self.victory()
-        elif self.player.hp <= 0: self.state = "MENU"
-        else:
-            if self.turn == "PLAYER": self.turn = "MOB"; self.mob_move()
-            else: self.turn = "PLAYER"
-        self.is_animating = False
+    function updateUI(scene) {
+        // Обновление баров
+        scene.hpBar.clear().fillStyle(0x3c0000).fillRect(40, 110, 270, 20).fillStyle(0xdc2828).fillRect(40, 110, (player.hp / player.maxHp) * 270, 20);
+        scene.manaBar.clear().fillStyle(0x141464).fillRect(40, 140, 270, 10).fillStyle(0x2878ff).fillRect(40, 140, (player.mana / 100) * 270, 10);
+        scene.mobHpBar.clear().fillStyle(0x3c0000).fillRect(950, 80, 220, 15).fillStyle(0xdc2828).fillRect(950, 80, (Math.max(0, mob.hp) / mob.maxHp) * 220, 15);
+        scene.goldText.setText(`Золото: ${player.gold}`);
+    }
 
-    def mob_move(self):
-        self.draw(); pygame.display.flip(); pygame.time.delay(800)
-        moves = []
-        for r in range(8):
-            for c in range(8):
-                for dr, dc in [(0, 1), (1, 0)]:
-                    nr, nc = r+dr, c+dc
-                    if nr<8 and nc<8:
-                        self.grid[r][c], self.grid[nr][nc] = self.grid[nr][nc], self.grid[r][c]
-                        if self.find_matches(): moves.append(((r,c),(nr,nc)))
-                        self.grid[r][c], self.grid[nr][nc] = self.grid[nr][nc], self.grid[r][c]
-        if moves:
-            (r1,c1),(r2,c2) = random.choice(moves)
-            self.grid[r1][c1], self.grid[r2][c2] = self.grid[r2][c2], self.grid[r1][c1]
-            self.process_turn()
-        else:
-            dmg = max(5, self.mob["atk"] - self.player.get_def() // 2)
-            self.player.hp -= dmg
-            self.add_log(f"{self.mob['name']} бьет на {dmg}!")
-            self.turn = "PLAYER"
-
-    def victory(self):
-        self.player.exp += 50
-        self.add_log("ПОБЕДА! Получено 50 опыта.")
-        if self.player.exp >= 100: 
-            self.player.level += 1; self.player.exp = 0
-            self.player.max_hp += 20; self.player.hp = self.player.max_hp
-            self.add_log(f"УРОВЕНЬ UP! Теперь {self.player.level}")
-        rarity = random.choices(["Обычное", "Редкое", "Эпическое", "Легендарное"], weights=[60, 25, 10, 5])[0]
-        it_type = random.choice(["Оружие", "Шлем", "Грудь", "Перчатки", "Ноги"])
-        stat = int(10 * self.player.level * (2.0 if rarity == "Легендарное" else 1.2))
-        self.pending_item = {"name": f"{rarity} {it_type}", "type": it_type, "stat": stat, "rarity": rarity, "desc": f"Бонус: +{stat}"}
-        self.is_waiting_for_loot = True
-
-    def draw(self):
-        screen.fill(BG_COLOR)
-        if self.state == "MENU":
-            jobs = ["Воин", "Маг", "Лучник", "Ассасин"]
-            for i, name in enumerate(jobs):
-                rect = pygame.Rect(300*i+20, 200, 260, 500)
-                pygame.draw.rect(screen, PANEL_BG, rect, border_radius=15)
-                # Рисуем иконку героя в меню
-                if name in IMAGES:
-                    screen.blit(IMAGES[name], (rect.x + 30, rect.y + 100))
-                screen.blit(header_font.render(name, True, WHITE), (rect.x+80, rect.y+30))
-        else:
-            # Сетка
-            gx, gy = 360, 150
-            pygame.draw.rect(screen, (20, 18, 16), (gx-15, gy-15, 545, 545), border_radius=20)
-            for r in range(8):
-                for c in range(8):
-                    tile_type = self.grid[r][c]
-                    if tile_type:
-                        # Рисуем твою картинку руны
-                        screen.blit(IMAGES[tile_type], (gx+c*66, gy+r*66))
-                        if self.selected == (r,c):
-                            pygame.draw.rect(screen, GOLD, (gx+c*66, gy+r*66, 60, 60), 2, border_radius=10)
-
-            # Панель героя
-            pygame.draw.rect(screen, PANEL_BG, (20, 20, 310, 860), border_radius=20)
-            pygame.draw.rect(screen, BORDER_GOLD, (20, 20, 310, 860), 2, border_radius=20)
-            
-            # Твоя картинка героя в игре
-            if self.player.job in IMAGES:
-                screen.blit(IMAGES[self.player.job], (75, 400))
-
-            screen.blit(header_font.render(f"{self.player.job} {self.player.level}", True, WHITE), (40, 40))
-            screen.blit(small_font.render(f"Золото: {self.player.gold}", True, GOLD), (40, 75))
-            
-            # ХП и Мана
-            pygame.draw.rect(screen, (60, 0, 0), (40, 100, 270, 20))
-            pygame.draw.rect(screen, (220, 40, 40), (40, 100, (self.player.hp/self.player.max_hp)*270, 20))
-            pygame.draw.rect(screen, (20, 20, 100), (40, 130, 270, 10))
-            pygame.draw.rect(screen, (40, 120, 255), (40, 130, (self.player.mana/100)*270, 10))
-            screen.blit(small_font.render(f"МАНА: {self.player.mana}/100 [S] УЛЬТА", True, WHITE), (40, 145))
-            
-            screen.blit(font.render(f"АТК: {self.player.get_atk()}  ЗАЩ: {self.player.get_def()}", True, WHITE), (40, 175))
-
-            # Снаряжение
-            for i, (slot, item) in enumerate(self.player.equipment.items()):
-                col = RARITY_COLORS[item['rarity']] if item else (100,100,100)
-                screen.blit(small_font.render(f"{slot}: {item['name'] if item else '--'}", True, col), (40, 210+i*35))
-
-            # Моб
-            mx = 920
-            pygame.draw.rect(screen, PANEL_BG, (mx, 20, 260, 150), border_radius=20)
-            screen.blit(header_font.render(self.mob["name"], True, (255, 100, 100)), (mx+20, 40))
-            pygame.draw.rect(screen, (200, 40, 40), (mx+20, 80, (max(0, self.mob['hp'])/self.mob['max_hp'])*220, 15))
-
-            # Лог
-            for i, m in enumerate(self.log[-5:]): screen.blit(log_font.render(f"> {m}", True, (180, 170, 150)), (380, 750+i*25))
-
-            if self.is_waiting_for_loot:
-                overlay = pygame.Surface((1200, 900), pygame.SRCALPHA); overlay.fill((0,0,0,220)); screen.blit(overlay, (0,0))
-                pygame.draw.rect(screen, PANEL_BG, (400, 300, 400, 300), border_radius=25)
-                it = self.pending_item
-                screen.blit(header_font.render("ТРОФЕЙ!", True, GOLD), (540, 330))
-                screen.blit(font.render(it["name"], True, RARITY_COLORS[it["rarity"]]), (430, 400))
-                screen.blit(header_font.render(it["desc"], True, BRIGHT_GREEN), (430, 440))
-                screen.blit(font.render("[Y] Взять    [N] Выбросить", True, WHITE), (480, 520))
-
-        pygame.display.flip()
-
-def main():
-    g = Game(); clock = pygame.time.Clock()
-    while True:
-        g.draw()
-        for e in pygame.event.get():
-            if e.type == pygame.QUIT: pygame.quit(); sys.exit()
-            if g.state == "MENU" and e.type == pygame.MOUSEBUTTONDOWN:
-                mx, my = pygame.mouse.get_pos()
-                jobs = ["Воин", "Маг", "Лучник", "Ассасин"]
-                for i, name in enumerate(jobs):
-                    if pygame.Rect(300*i+20, 200, 260, 500).collidepoint(mx, my):
-                        g.player = Player(name); g.spawn_mob(); g.state = "PLAYING"
-            elif g.state == "PLAYING":
-                if g.is_waiting_for_loot:
-                    if e.type == pygame.KEYDOWN:
-                        if e.key == pygame.K_y: g.player.equipment[g.pending_item["type"]] = g.pending_item; g.is_waiting_for_loot = False; g.spawn_mob()
-                        if e.key == pygame.K_n: g.is_waiting_for_loot = False; g.spawn_mob()
-                elif not g.is_animating:
-                    if e.type == pygame.KEYDOWN and e.key == pygame.K_s: g.use_ultimate()
-                    elif g.turn == "PLAYER" and e.type == pygame.MOUSEBUTTONDOWN:
-                        x, y = pygame.mouse.get_pos(); c, r = (x-360)//66, (y-150)//66
-                        if 0<=c<8 and 0<=r<8:
-                            if g.selected:
-                                r1, c1 = g.selected
-                                if abs(r1-r)+abs(c1-c)==1:
-                                    g.grid[r1][c1], g.grid[r][c] = g.grid[r][c], g.grid[r1][c1]; g.process_turn(); g.selected = None
-                                else: g.selected = (r, c)
-                            else: g.selected = (r, c)
-        clock.tick(60)
-
-if __name__ == "__main__": main()
+    function update() {}
+    </script>
+</body>
+</html>
