@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Taverna War RPG</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <style>
+        body { margin: 0; background: #0a0a0a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 2px solid #333; box-shadow: 0 0 20px rgba(0,255,0,0.1); }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+
+    <script>
+    const config = {
+        type: Phaser.AUTO,
+        width: 1000,
+        height: 700,
+        parent: 'game-container',
+        scene: { preload: preload, create: create }
+    };
+
+    const game = new Phaser.Game(config);
+
+    // Текущие механики игры
+    let stats = { gold: 0, hp: 100, mp: 50 };
+
+    function preload() {
+        // Пути к персонажам
+        this.load.image('hero_warrior', 'assets/hero_warrior.png');
+        this.load.image('hero_mage', 'assets/hero_mage.png');
+        this.load.image('hero_archer', 'assets/archer.png');
+        this.load.image('hero_assasin', 'assets/assasin.png');
+
+        // Пути к рунам
+        this.load.image('tile_red', 'assets/rune_red.png');
+        this.load.image('tile_blue', 'assets/rune_blue.png');
+        this.load.image('tile_green', 'assets/rune_green.png');
+        this.load.image('tile_purple', 'assets/rune_purple.png');
+        this.load.image('tile_yellow', 'assets/rune_yellow.png');
+    }
+
+    function create() {
+        this.cameras.main.setBackgroundColor('#121212');
+
+        // Персонаж (Воин)
+        this.add.image(200, 250, 'hero_warrior').setScale(0.8);
+        this.add.text(110, 420, 'WARRIOR', { fontSize: '32px', fill: '#ff4444', fontStyle: 'bold' });
+
+        // Сетка 7x7
+        const types = ['red', 'blue', 'green', 'purple', 'yellow'];
+        for (let r = 0; r < 7; r++) {
+            for (let c = 0; c < 7; c++) {
+                let type = Phaser.Utils.Array.GetRandom(types);
+                let x = 450 + c * 75;
+                let y = 120 + r * 75;
+                
+                let tile = this.add.image(x, y, `tile_${type}`).setInteractive();
+                tile.setScale(0.6);
+                tile.tileType = type;
+
+                // Сбор золота и способностей
+                tile.on('pointerdown', () => {
+                    handleRuneEffect(tile.tileType, this);
+                    this.tweens.add({
+                        targets: tile,
+                        scale: 0,
+                        alpha: 0,
+                        duration: 100,
+                        onComplete: () => tile.destroy()
+                    });
+                });
+            }
+        }
+
+        this.goldText = this.add.text(50, 550, 'GOLD: 0', { fontSize: '24px', fill: '#ffd700' });
+        this.hpText = this.add.text(50, 590, 'HP: 100', { fontSize: '24px', fill: '#44ff44' });
+    }
+
+    function handleRuneEffect(type, scene) {
+        if (type === 'yellow') {
+            stats.gold += 15; // Сбор золота
+            scene.goldText.setText('GOLD: ' + stats.gold);
+        } else if (type === 'green') {
+            stats.hp = Math.min(100, stats.hp + 5);
+            scene.hpText.setText('HP: ' + stats.hp);
+        }
+    }
+    </script>
+</body>
+</html>
