@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War RPG - Full Logic</title>
+    <title>Taverna War RPG - Full Inventory</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -14,86 +14,69 @@
     <div id="game-container"></div>
     <script>
     const isMobile = window.innerWidth < 600;
-    const GW = 1000;
-    const GH = isMobile ? 1600 : 900;
+    const GW = 1000, GH = isMobile ? 1600 : 900;
     const TILE_SIZE = isMobile ? 110 : 80;
-    const OFFSET_X = isMobile ? 115 : 450;
-    const OFFSET_Y = isMobile ? 650 : 150;
+    const OFFSET_X = isMobile ? 115 : 450, OFFSET_Y = isMobile ? 650 : 150;
 
     const config = {
         type: Phaser.AUTO, parent: 'game-container',
         scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, width: GW, height: GH },
-        scene: { preload: preload, create: create, update: update }
+        scene: { preload: preload, create: create }
     };
 
     const game = new Phaser.Game(config);
     let player, mob, grid = [], selectedTile = null, isAnimating = false, turn = "PLAYER";
     let hpBar, manaBar, mobHpBar, goldText, logText, mobActionRect;
 
+    // Стыты по умолчанию для экипировки
+    const emptyItem = { name: "Ничего", atk: 0, hp: 0, price: 0 };
+
     function preload() {
         this.load.image('hero_Воин', 'assets/hero_warrior.png');
         this.load.image('hero_Маг', 'assets/hero_mage.png');
         this.load.image('hero_Лучник', 'assets/archer.png');
         this.load.image('hero_Ассасин', 'assets/assasin.png');
-        const runes = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
-        runes.forEach(r => this.load.image(`tile_${r}`, `assets/rune_${r.toLowerCase()}.png`));
+        ['Red', 'Blue', 'Green', 'Purple', 'Yellow'].forEach(r => this.load.image(`tile_${r}`, `assets/rune_${r.toLowerCase()}.png`));
     }
 
-    function create() {
-        showMenu(this);
-    }
+    function create() { showMenu(this); }
 
     function showMenu(scene) {
         scene.children.removeAll();
-        const cx = GW / 2;
-        scene.add.text(cx, 150, "ВЫБЕРИ ГЕРОЯ", { fontSize: '60px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
-        
-        const jobs = [
-            { name: "Воин", hp: 300, atk: 25, skill: "Ярость: Взрыв Крови" },
-            { name: "Маг", hp: 150, atk: 45, skill: "Инферно: Фиолетовый шторм" },
-            { name: "Лучник", hp: 180, atk: 35, skill: "Снайпер: Сквозной выстрел" },
-            { name: "Ассасин", hp: 160, atk: 42, skill: "Тень: Веер клинков" }
-        ];
-
-        jobs.forEach((job, i) => {
-            let x = isMobile ? cx : 250 * i + 125;
-            let y = isMobile ? 350 + i * 280 : 450;
-            let btn = scene.add.image(x, y, `hero_${job.name}`).setDisplaySize(200, 200).setInteractive();
-            scene.add.text(x, y + 120, job.name, { fontSize: '30px', fill: '#fff' }).setOrigin(0.5);
-            btn.on('pointerdown', () => startGame(job, scene));
+        scene.add.text(GW/2, 150, "ВЫБЕРИ ГЕРОЯ", { fontSize: '70px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+        const jobs = ["Воин", "Маг", "Лучник", "Ассасин"];
+        jobs.forEach((name, i) => {
+            let x = isMobile ? GW/2 : 250 * i + 125, y = isMobile ? 400 + i * 280 : 450;
+            let btn = scene.add.image(x, y, `hero_${name}`).setDisplaySize(220, 220).setInteractive();
+            scene.add.text(x, y + 130, name, { fontSize: '35px', fill: '#fff' }).setOrigin(0.5);
+            btn.on('pointerdown', () => startGame(name, scene));
         });
     }
 
-    function startGame(data, scene) {
+    function startGame(job, scene) {
         scene.children.removeAll();
-        player = { ...data, maxHp: data.hp, mana: 0, gold: 0, lvl: 1 };
+        player = { 
+            name: job, hp: 200, maxHp: 200, atk: 20, mana: 0, gold: 0, lvl: 1,
+            equip: { head: {...emptyItem}, body: {...emptyItem}, legs: {...emptyItem}, weapon: {...emptyItem} }
+        };
         spawnMob();
         
-        // UI
-        scene.add.graphics().fillStyle(0x191614, 1).fillRoundedRect(isMobile ? 50 : 20, 20, isMobile ? 900 : 310, isMobile ? 500 : 860, 20);
-        scene.add.image(isMobile ? 220 : 175, isMobile ? 250 : 450, `hero_${player.name}`).setDisplaySize(200, 200);
-        goldText = scene.add.text(isMobile ? 400 : 40, 50, `Золото: 0`, { fontSize: '32px', fill: '#ffd700' });
-        logText = scene.add.text(isMobile ? 100 : 380, isMobile ? 560 : 820, "Твой ход!", { fontSize: '24px', fill: '#b4aa96' });
+        scene.add.graphics().fillStyle(0x191614, 1).fillRoundedRect(isMobile ? 50 : 20, 20, isMobile ? 900 : 310, isMobile ? 520 : 860, 25);
+        scene.heroSprite = scene.add.image(isMobile ? 220 : 175, isMobile ? 260 : 450, `hero_${player.name}`).setDisplaySize(200, 200);
+        
+        goldText = scene.add.text(isMobile ? 420 : 40, 50, `Золото: 0`, { fontSize: '36px', fill: '#ffd700', fontStyle: 'bold' });
+        logText = scene.add.text(isMobile ? 100 : 380, isMobile ? 570 : 820, "Твой ход!", { fontSize: '28px', fill: '#b4aa96' });
 
-        hpBar = scene.add.graphics();
-        manaBar = scene.add.graphics();
-        mobHpBar = scene.add.graphics();
-        mobActionRect = scene.add.graphics(); // Для подсветки хода моба
-
+        hpBar = scene.add.graphics(); manaBar = scene.add.graphics(); mobHpBar = scene.add.graphics(); mobActionRect = scene.add.graphics();
         createGrid(scene);
         
-        let uBtn = scene.add.rectangle(isMobile ? 500 : 175, isMobile ? 450 : 800, isMobile ? 300 : 250, 80, 0x4a0e0e).setInteractive();
-        scene.add.text(uBtn.x, uBtn.y, "УЛЬТА", { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
+        let uBtn = scene.add.rectangle(isMobile ? 500 : 175, isMobile ? 450 : 800, isMobile ? 350 : 250, 90, 0x4a0e0e).setInteractive();
+        scene.add.text(uBtn.x, uBtn.y, "УЛЬТА", { fontSize: '36px', fill: '#fff' }).setOrigin(0.5);
         uBtn.on('pointerdown', () => useUltimate(scene));
-        scene.input.keyboard.on('keydown-S', () => useUltimate(scene));
-
         updateUI();
     }
 
-    function spawnMob() {
-        mob = { name: "Враг", hp: 150 * (player.lvl || 1), maxHp: 150 * (player.lvl || 1), atk: 18 };
-        turn = "PLAYER";
-    }
+    function spawnMob() { mob = { hp: 120 * player.lvl, maxHp: 120 * player.lvl, atk: 15 + (player.lvl*5) }; turn = "PLAYER"; }
 
     function createGrid(scene) {
         for (let r = 0; r < 8; r++) {
@@ -105,9 +88,7 @@
     function spawnTile(r, c, scene) {
         const types = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
         let type = Phaser.Utils.Array.GetRandom(types);
-        let x = OFFSET_X + c * (TILE_SIZE + 5);
-        let y = OFFSET_Y + r * (TILE_SIZE + 5);
-        let tile = scene.add.image(x, y, `tile_${type}`).setInteractive().setDisplaySize(TILE_SIZE, TILE_SIZE);
+        let tile = scene.add.image(OFFSET_X + c * (TILE_SIZE + 5), OFFSET_Y + r * (TILE_SIZE + 5), `tile_${type}`).setInteractive().setDisplaySize(TILE_SIZE, TILE_SIZE);
         tile.gridR = r; tile.gridC = c; tile.type = type;
         tile.on('pointerdown', () => handleTileClick(tile, scene));
         grid[r][c] = tile;
@@ -115,19 +96,13 @@
 
     async function handleTileClick(tile, scene) {
         if (isAnimating || turn !== "PLAYER") return;
-        if (!selectedTile) {
-            selectedTile = tile; tile.setTint(0xffff00);
-        } else {
-            let dR = Math.abs(selectedTile.gridR - tile.gridR);
-            let dC = Math.abs(selectedTile.gridC - tile.gridC);
+        if (!selectedTile) { selectedTile = tile; tile.setTint(0xffff00); }
+        else {
+            let dR = Math.abs(selectedTile.gridR - tile.gridR), dC = Math.abs(selectedTile.gridC - tile.gridC);
             if ((dR === 1 && dC === 0) || (dR === 0 && dC === 1)) {
                 await swapTiles(selectedTile, tile, scene);
-                if (!checkMatches(scene)) {
-                    await swapTiles(selectedTile, tile, scene);
-                } else {
-                    turn = "MOB";
-                    setTimeout(() => mobMove(scene), 1500);
-                }
+                if (!checkMatches(scene)) await swapTiles(selectedTile, tile, scene);
+                else { turn = "MOB"; setTimeout(() => mobSmartMove(scene), 1000); }
             }
             selectedTile.clearTint(); selectedTile = null;
         }
@@ -144,118 +119,119 @@
         });
     }
 
+    function mobSmartMove(scene) {
+        if (mob.hp <= 0) return;
+        let r = Math.floor(Math.random()*8), c = Math.floor(Math.random()*7);
+        let t1 = grid[r][c], t2 = grid[r][c+1];
+        mobActionRect.clear().lineStyle(8, 0xff0000).strokeRect(t1.x-60, t1.y-60, 120, 120);
+        setTimeout(async () => {
+            mobActionRect.clear();
+            await swapTiles(t1, t2, scene);
+            player.hp -= mob.atk;
+            checkMatches(scene); turn = "PLAYER"; updateUI();
+        }, 800);
+    }
+
     function checkMatches(scene) {
-        let matched = false;
-        let toRemove = new Set();
-        for(let r=0; r<8; r++) {
-            for(let c=0; c<6; c++) {
-                if(grid[r][c] && grid[r][c+1] && grid[r][c+2] && grid[r][c].type === grid[r][c+1].type && grid[r][c].type === grid[r][c+2].type) {
-                    toRemove.add(grid[r][c]); toRemove.add(grid[r][c+1]); toRemove.add(grid[r][c+2]); matched = true;
-                }
-            }
-        }
-        for(let c=0; c<8; c++) {
-            for(let r=0; r<6; r++) {
-                if(grid[r][c] && grid[r+1][c] && grid[r+2][c] && grid[r][c].type === grid[r+1][c].type && grid[r][c].type === grid[r+2][c].type) {
-                    toRemove.add(grid[r][c]); toRemove.add(grid[r+1][c]); toRemove.add(grid[r+2][c]); matched = true;
-                }
-            }
-        }
+        let matched = false, toRemove = new Set();
+        for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(grid[r][c] && grid[r][c+1] && grid[r][c+2] && grid[r][c].type === grid[r][c+1].type && grid[r][c].type === grid[r][c+2].type) { toRemove.add(grid[r][c]); toRemove.add(grid[r][c+1]); toRemove.add(grid[r][c+2]); matched = true; }
+        for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(grid[r][c] && grid[r+1][c] && grid[r+2][c] && grid[r][c].type === grid[r+1][c].type && grid[r][c].type === grid[r+2][c].type) { toRemove.add(grid[r][c]); toRemove.add(grid[r+1][c]); toRemove.add(grid[r+2][c]); matched = true; }
         toRemove.forEach(t => { triggerEffect(t.type); grid[t.gridR][t.gridC] = null; t.destroy(); });
         if(matched) fillGrid(scene);
         return matched;
     }
 
     function triggerEffect(type) {
-        if (type === 'Red') mob.hp -= Math.floor(player.atk / 4);
-        if (type === 'Purple') mob.hp -= Math.floor(player.atk / 2);
-        if (type === 'Green') player.hp = Math.min(player.maxHp, player.hp + 15);
-        if (type === 'Blue') player.mana = Math.min(100, player.mana + 15);
-        if (type === 'Yellow') player.gold += 10;
+        let totalAtk = player.atk + player.equip.weapon.atk;
+        if (type === 'Red') mob.hp -= Math.floor(totalAtk / 4);
+        if (type === 'Purple') mob.hp -= Math.floor(totalAtk / 2);
+        if (type === 'Green') player.hp = Math.min(player.maxHp + player.equip.body.hp, player.hp + 15);
+        if (type === 'Blue') player.mana = Math.min(100, player.mana + 10);
+        if (type === 'Yellow') player.gold += 5;
         updateUI();
     }
 
     function fillGrid(scene) {
-        for (let c = 0; c < 8; c++) {
-            for (let r = 7; r >= 0; r--) {
-                if (!grid[r][c]) spawnTile(r, c, scene);
-            }
-        }
-        setTimeout(() => checkMatches(scene), 400);
+        for (let c = 0; c < 8; c++) for (let r = 7; r >= 0; r--) if (!grid[r][c]) spawnTile(r, c, scene);
+        setTimeout(() => checkMatches(scene), 300);
     }
 
-    // --- МОБ ХОДИТ ---
-    async function mobMove(scene) {
-        logText.setText("Ход противника...");
-        let move = findRandomMove();
-        if (move) {
-            // Подсветка
-            mobActionRect.clear().lineStyle(6, 0xff0000).strokeRect(move.t1.x - 60, move.t1.y - 60, 120, 120).strokeRect(move.t2.x - 60, move.t2.y - 60, 120, 120);
-            setTimeout(async () => {
-                mobActionRect.clear();
-                await swapTiles(move.t1, move.t2, scene);
-                checkMatches(scene);
-                turn = "PLAYER";
-                logText.setText("Твой ход!");
-            }, 1000);
-        } else {
-            player.hp -= mob.atk;
-            logText.setText("Моб атакует напрямую!");
-            turn = "PLAYER";
-            updateUI();
-        }
-    }
-
-    function findRandomMove() {
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 7; c++) {
-                if (grid[r][c] && grid[r][c+1]) return { t1: grid[r][c], t2: grid[r][c+1] };
-            }
-        }
-        return null;
-    }
-
-    // --- УНИКАЛЬНЫЕ УЛЬТЫ ---
-    function useUltimate(scene) {
-        if (player.mana < 100 || isAnimating) return;
-        player.mana = 0;
-        logText.setText(`УЛЬТА: ${player.skill}`);
+    // --- СИСТЕМА ЛУТА С КУКЛОЙ И СРАВНЕНИЕМ ---
+    function dropLoot(scene) {
+        const slots = ['head', 'body', 'legs', 'weapon'];
+        const names = { head: "Шлем", body: "Доспех", legs: "Поножи", weapon: "Оружие" };
+        let slot = Phaser.Utils.Array.GetRandom(slots);
         
-        if (player.name === "Воин") {
-            grid.flat().forEach(t => { if(t && t.type === 'Red') destroyTile(t, scene); });
-            player.hp = Math.min(player.maxHp, player.hp + 50);
-        } else if (player.name === "Маг") {
-            for(let i=0; i<12; i++) {
-                let r = Math.floor(Math.random()*8), c = Math.floor(Math.random()*8);
-                if(grid[r][c]) { grid[r][c].setTexture('tile_Purple'); destroyTile(grid[r][c], scene); }
-            }
-        } else if (player.name === "Лучник") {
-            let rr = Math.floor(Math.random()*8), cc = Math.floor(Math.random()*8);
-            for(let i=0; i<8; i++) { if(grid[rr][i]) destroyTile(grid[rr][i], scene); if(grid[i][cc]) destroyTile(grid[i][cc], scene); }
-        } else if (player.name === "Ассасин") {
-            let rr = Math.floor(Math.random()*6)+1, cc = Math.floor(Math.random()*6)+1;
-            for(let dr=-1; dr<=1; dr++) for(let dc=-1; dc<=1; dc++) if(grid[rr+dr][cc+dc]) destroyTile(grid[rr+dr][cc+dc], scene);
-        }
-        fillGrid(scene);
-        updateUI();
+        let newItem = {
+            slot: slot,
+            name: `${names[slot]} ${player.name}а`,
+            atk: slot === 'weapon' ? 10 + player.lvl * 2 : player.lvl,
+            hp: slot !== 'weapon' ? 40 + player.lvl * 10 : 0,
+            price: 20 + player.lvl * 5
+        };
+
+        let oldItem = player.equip[slot];
+
+        // Окно сравнения
+        let container = scene.add.container(GW/2, GH/2).setDepth(100);
+        let bg = scene.add.rectangle(0, 0, 700, 600, 0x000000, 0.95).setStrokeStyle(4, 0xb48c46);
+        
+        scene.add.text(0, -250, "НАЙДЕН ПРЕДМЕТ!", { fontSize: '45px', fill: '#ffd700' }).setOrigin(0.5).setParentContainer(container);
+        
+        // Новая вещь
+        scene.add.text(-180, -120, "НОВЫЙ:", { fontSize: '30px', fill: '#44ff44' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(-180, -60, newItem.name, { fontSize: '28px' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(-180, 0, `АТК: +${newItem.atk}\nHP: +${newItem.hp}`, { fontSize: '24px' }).setOrigin(0.5).setParentContainer(container);
+
+        // Текущая вещь
+        scene.add.text(180, -120, "НАДЕТО:", { fontSize: '30px', fill: '#ff4444' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(180, -60, oldItem.name, { fontSize: '28px' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(180, 0, `АТК: +${oldItem.atk}\nHP: +${oldItem.hp}`, { fontSize: '24px' }).setOrigin(0.5).setParentContainer(container);
+
+        // Кнопки
+        let btnEquip = scene.add.rectangle(-180, 180, 300, 80, 0x228b22).setInteractive();
+        scene.add.text(-180, 180, "НАДЕТЬ (+Золото за старое)", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5).setParentContainer(container);
+
+        let btnSell = scene.add.rectangle(180, 180, 300, 80, 0x8b0000).setInteractive();
+        scene.add.text(180, 180, `ПРОДАТЬ (+${newItem.price}г)`, { fontSize: '22px', fill: '#fff' }).setOrigin(0.5).setParentContainer(container);
+
+        container.add([bg, btnEquip, btnSell]);
+
+        btnEquip.on('pointerdown', () => {
+            player.gold += oldItem.price;
+            player.equip[slot] = newItem;
+            container.destroy(); spawnMob(); updateUI();
+        });
+
+        btnSell.on('pointerdown', () => {
+            player.gold += newItem.price;
+            container.destroy(); spawnMob(); updateUI();
+        });
     }
 
-    function destroyTile(t, scene) {
-        triggerEffect(t.type);
-        grid[t.gridR][t.gridC] = null;
-        t.destroy();
+    function useUltimate(scene) {
+        if (player.mana < 100) return; player.mana = 0;
+        if (player.name === "Воин") grid.flat().forEach(t => { if(t && t.type === 'Red') destroyTile(t, scene); });
+        else if (player.name === "Маг") for(let i=0; i<12; i++) { let r=Math.floor(Math.random()*8), c=Math.floor(Math.random()*8); if(grid[r][c]) { grid[r][c].setTexture('tile_Purple'); destroyTile(grid[r][c], scene); } }
+        else if (player.name === "Лучник") { let r=Math.floor(Math.random()*8); for(let i=0; i<8; i++) if(grid[r][i]) destroyTile(grid[r][i], scene); }
+        else if (player.name === "Ассасин") { let r=4, c=4; for(let dr=-1; dr<=1; dc++) for(let dc=-1; dc<=1; dc++) if(grid[r+dr][c+dc]) destroyTile(grid[r+dr][c+dc], scene); }
+        fillGrid(scene); updateUI();
     }
+
+    function destroyTile(t, scene) { triggerEffect(t.type); grid[t.gridR][t.gridC] = null; t.destroy(); }
 
     function updateUI() {
-        hpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?400:40, 120, 300, 30).fillStyle(0xdc2828).fillRect(isMobile?400:40, 120, Math.max(0, player.hp/player.maxHp)*300, 30);
-        manaBar.clear().fillStyle(0x141464).fillRect(isMobile?400:40, 160, 300, 15).fillStyle(0x2878ff).fillRect(isMobile?400:40, 160, (player.mana/100)*300, 15);
+        let totalMaxHp = player.maxHp + player.equip.head.hp + player.equip.body.hp + player.equip.legs.hp;
+        let totalAtk = player.atk + player.equip.weapon.atk;
+        
+        hpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?420:40, 120, 300, 35).fillStyle(0xdc2828).fillRect(isMobile?420:40, 120, Math.max(0, player.hp/totalMaxHp)*300, 35);
+        manaBar.clear().fillStyle(0x141464).fillRect(isMobile?420:40, 170, 300, 15).fillStyle(0x2878ff).fillRect(isMobile?420:40, 170, (player.mana/100)*300, 15);
         mobHpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?100:600, 80, 800, 30).fillStyle(0xff0000).fillRect(isMobile?100:600, 80, (Math.max(0, mob.hp)/mob.maxHp)*800, 30);
-        goldText.setText(`Золото: ${player.gold}`);
-        if(mob.hp <= 0) { player.lvl++; spawnMob(); logText.setText("УРОВЕНЬ ПОВЫШЕН!"); }
-        if(player.hp <= 0) { location.reload(); }
+        goldText.setText(`Золото: ${player.gold} | ATK: ${totalAtk}`);
+        
+        if(mob.hp <= 0 && turn === "PLAYER") { turn = "DROP"; dropLoot(game.scene.scenes[0]); }
+        if(player.hp <= 0) location.reload();
     }
-
-    function update() {}
     </script>
 </body>
 </html>
