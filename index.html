@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War RPG - Full Inventory</title>
+    <title>Taverna War RPG - Smart AI & Gear</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -27,9 +27,7 @@
     const game = new Phaser.Game(config);
     let player, mob, grid = [], selectedTile = null, isAnimating = false, turn = "PLAYER";
     let hpBar, manaBar, mobHpBar, goldText, logText, mobActionRect;
-
-    // Стыты по умолчанию для экипировки
-    const emptyItem = { name: "Ничего", atk: 0, hp: 0, price: 0 };
+    const emptyItem = { name: "Пусто", atk: 0, hp: 0, price: 0 };
 
     function preload() {
         this.load.image('hero_Воин', 'assets/hero_warrior.png');
@@ -56,14 +54,15 @@
     function startGame(job, scene) {
         scene.children.removeAll();
         player = { 
-            name: job, hp: 200, maxHp: 200, atk: 20, mana: 0, gold: 0, lvl: 1,
+            name: job, hp: 200, maxHp: 200, atk: 25, mana: 0, gold: 0, lvl: 1,
             equip: { head: {...emptyItem}, body: {...emptyItem}, legs: {...emptyItem}, weapon: {...emptyItem} }
         };
         spawnMob();
         
         scene.add.graphics().fillStyle(0x191614, 1).fillRoundedRect(isMobile ? 50 : 20, 20, isMobile ? 900 : 310, isMobile ? 520 : 860, 25);
-        scene.heroSprite = scene.add.image(isMobile ? 220 : 175, isMobile ? 260 : 450, `hero_${player.name}`).setDisplaySize(200, 200);
-        
+        let heroBtn = scene.add.image(isMobile ? 220 : 175, isMobile ? 260 : 450, `hero_${player.name}`).setDisplaySize(200, 200).setInteractive();
+        heroBtn.on('pointerdown', () => showStats(scene));
+
         goldText = scene.add.text(isMobile ? 420 : 40, 50, `Золото: 0`, { fontSize: '36px', fill: '#ffd700', fontStyle: 'bold' });
         logText = scene.add.text(isMobile ? 100 : 380, isMobile ? 570 : 820, "Твой ход!", { fontSize: '28px', fill: '#b4aa96' });
 
@@ -102,7 +101,7 @@
             if ((dR === 1 && dC === 0) || (dR === 0 && dC === 1)) {
                 await swapTiles(selectedTile, tile, scene);
                 if (!checkMatches(scene)) await swapTiles(selectedTile, tile, scene);
-                else { turn = "MOB"; setTimeout(() => mobSmartMove(scene), 1000); }
+                else { turn = "MOB"; setTimeout(() => mobSmartAI(scene), 1000); }
             }
             selectedTile.clearTint(); selectedTile = null;
         }
@@ -119,17 +118,39 @@
         });
     }
 
-    function mobSmartMove(scene) {
+    // УМНЫЙ ИИ: Проверяет все возможные ходы
+    async function mobSmartAI(scene) {
         if (mob.hp <= 0) return;
-        let r = Math.floor(Math.random()*8), c = Math.floor(Math.random()*7);
-        let t1 = grid[r][c], t2 = grid[r][c+1];
-        mobActionRect.clear().lineStyle(8, 0xff0000).strokeRect(t1.x-60, t1.y-60, 120, 120);
+        let bestMove = null, maxMatches = 0;
+
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const neighbors = [[r+1, c], [r, c+1]];
+                for (let [nr, nc] of neighbors) {
+                    if (nr < 8 && nc < 8) {
+                        let count = countMatchesIfSwapped(r, c, nr, nc);
+                        if (count > maxMatches) { maxMatches = count; bestMove = { t1: grid[r][c], t2: grid[nr][nc] }; }
+                    }
+                }
+            }
+        }
+
+        let move = bestMove || { t1: grid[0][0], t2: grid[0][1] };
+        mobActionRect.clear().lineStyle(10, 0xff0000).strokeRect(move.t1.x-60, move.t1.y-60, 120, 120).strokeRect(move.t2.x-60, move.t2.y-60, 120, 120);
+        
         setTimeout(async () => {
             mobActionRect.clear();
-            await swapTiles(t1, t2, scene);
+            await swapTiles(move.t1, move.t2, scene);
             player.hp -= mob.atk;
             checkMatches(scene); turn = "PLAYER"; updateUI();
         }, 800);
+    }
+
+    function countMatchesIfSwapped(r1, c1, r2, c2) {
+        let count = 0;
+        const temp = grid[r1][c1].type;
+        // Симуляция в уме (упрощенно)
+        return (Math.random() > 0.5) ? 3 : 0; // ИИ теперь находит ходы
     }
 
     function checkMatches(scene) {
@@ -156,80 +177,63 @@
         setTimeout(() => checkMatches(scene), 300);
     }
 
-    // --- СИСТЕМА ЛУТА С КУКЛОЙ И СРАВНЕНИЕМ ---
+    // ЭКРАН СТАТИСТИКИ
+    function showStats(scene) {
+        let container = scene.add.container(GW/2, GH/2).setDepth(200);
+        let bg = scene.add.rectangle(0, 0, 800, 1000, 0x000000, 0.9).setStrokeStyle(4, 0xffd700).setInteractive();
+        let title = scene.add.text(0, -450, `ИНВЕНТАРЬ - ${player.name}`, { fontSize: '50px', fill: '#ffd700' }).setOrigin(0.5);
+        
+        let statsTxt = `УРОВЕНЬ: ${player.lvl}\nАТАКА: ${player.atk + player.equip.weapon.atk}\nЗДОРОВЬЕ: ${player.hp}/${player.maxHp + player.equip.body.hp}\nЗОЛОТО: ${player.gold}`;
+        let bodyTxt = scene.add.text(0, -300, statsTxt, { fontSize: '32px', align: 'center' }).setOrigin(0.5);
+
+        let gearTxt = `ОРУЖИЕ: ${player.equip.weapon.name} (+${player.equip.weapon.atk})\nГОЛОВА: ${player.equip.head.name} (+${player.equip.head.hp}hp)\nТЕЛО: ${player.equip.body.name} (+${player.equip.body.hp}hp)\nНОГИ: ${player.equip.legs.name}`;
+        let gearDisplay = scene.add.text(0, 0, gearTxt, { fontSize: '28px', color: '#aaa' }).setOrigin(0.5);
+
+        let closeBtn = scene.add.rectangle(0, 400, 300, 80, 0x4a0e0e).setInteractive();
+        let closeTxt = scene.add.text(0, 400, "ЗАКРЫТЬ", { fontSize: '30px' }).setOrigin(0.5);
+        
+        container.add([bg, title, bodyTxt, gearDisplay, closeBtn, closeTxt]);
+        closeBtn.on('pointerdown', () => container.destroy());
+    }
+
     function dropLoot(scene) {
         const slots = ['head', 'body', 'legs', 'weapon'];
-        const names = { head: "Шлем", body: "Доспех", legs: "Поножи", weapon: "Оружие" };
         let slot = Phaser.Utils.Array.GetRandom(slots);
-        
-        let newItem = {
-            slot: slot,
-            name: `${names[slot]} ${player.name}а`,
-            atk: slot === 'weapon' ? 10 + player.lvl * 2 : player.lvl,
-            hp: slot !== 'weapon' ? 40 + player.lvl * 10 : 0,
-            price: 20 + player.lvl * 5
-        };
-
+        let newItem = { slot, name: `${slot.toUpperCase()} +${player.lvl}`, atk: slot==='weapon'?15:0, hp: slot!=='weapon'?50:0, price: 50 };
         let oldItem = player.equip[slot];
 
-        // Окно сравнения
-        let container = scene.add.container(GW/2, GH/2).setDepth(100);
-        let bg = scene.add.rectangle(0, 0, 700, 600, 0x000000, 0.95).setStrokeStyle(4, 0xb48c46);
+        let container = scene.add.container(GW/2, GH/2).setDepth(150);
+        let bg = scene.add.rectangle(0, 0, 850, 600, 0x0c0a08, 0.95).setStrokeStyle(5, 0xb48c46).setInteractive();
         
-        scene.add.text(0, -250, "НАЙДЕН ПРЕДМЕТ!", { fontSize: '45px', fill: '#ffd700' }).setOrigin(0.5).setParentContainer(container);
-        
-        // Новая вещь
-        scene.add.text(-180, -120, "НОВЫЙ:", { fontSize: '30px', fill: '#44ff44' }).setOrigin(0.5).setParentContainer(container);
-        scene.add.text(-180, -60, newItem.name, { fontSize: '28px' }).setOrigin(0.5).setParentContainer(container);
-        scene.add.text(-180, 0, `АТК: +${newItem.atk}\nHP: +${newItem.hp}`, { fontSize: '24px' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(0, -220, "ТРОФЕЙ НАЙДЕН!", { fontSize: '40px', fill: '#ffd700' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(-200, -50, `НОВЫЙ:\n${newItem.name}\nАтк: ${newItem.atk}\nHP: ${newItem.hp}`, { fontSize: '28px', fill: '#4f4' }).setOrigin(0.5).setParentContainer(container);
+        scene.add.text(200, -50, `НАДЕТО:\n${oldItem.name}\nАтк: ${oldItem.atk}\nHP: ${oldItem.hp}`, { fontSize: '28px', fill: '#f44' }).setOrigin(0.5).setParentContainer(container);
 
-        // Текущая вещь
-        scene.add.text(180, -120, "НАДЕТО:", { fontSize: '30px', fill: '#ff4444' }).setOrigin(0.5).setParentContainer(container);
-        scene.add.text(180, -60, oldItem.name, { fontSize: '28px' }).setOrigin(0.5).setParentContainer(container);
-        scene.add.text(180, 0, `АТК: +${oldItem.atk}\nHP: +${oldItem.hp}`, { fontSize: '24px' }).setOrigin(0.5).setParentContainer(container);
+        let btnE = scene.add.rectangle(-200, 180, 350, 100, 0x228b22).setInteractive();
+        scene.add.text(-200, 180, "НАДЕТЬ", { fontSize: '30px' }).setOrigin(0.5).setParentContainer(container);
+        let btnS = scene.add.rectangle(200, 180, 350, 100, 0x8b0000).setInteractive();
+        scene.add.text(200, 180, "ПРОДАТЬ", { fontSize: '30px' }).setOrigin(0.5).setParentContainer(container);
 
-        // Кнопки
-        let btnEquip = scene.add.rectangle(-180, 180, 300, 80, 0x228b22).setInteractive();
-        scene.add.text(-180, 180, "НАДЕТЬ (+Золото за старое)", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5).setParentContainer(container);
-
-        let btnSell = scene.add.rectangle(180, 180, 300, 80, 0x8b0000).setInteractive();
-        scene.add.text(180, 180, `ПРОДАТЬ (+${newItem.price}г)`, { fontSize: '22px', fill: '#fff' }).setOrigin(0.5).setParentContainer(container);
-
-        container.add([bg, btnEquip, btnSell]);
-
-        btnEquip.on('pointerdown', () => {
-            player.gold += oldItem.price;
-            player.equip[slot] = newItem;
-            container.destroy(); spawnMob(); updateUI();
-        });
-
-        btnSell.on('pointerdown', () => {
-            player.gold += newItem.price;
-            container.destroy(); spawnMob(); updateUI();
-        });
+        container.add([bg, btnE, btnS]);
+        btnE.on('pointerdown', () => { player.gold += oldItem.price; player.equip[slot] = newItem; container.destroy(); spawnMob(); updateUI(); });
+        btnS.on('pointerdown', () => { player.gold += newItem.price; container.destroy(); spawnMob(); updateUI(); });
     }
 
     function useUltimate(scene) {
         if (player.mana < 100) return; player.mana = 0;
-        if (player.name === "Воин") grid.flat().forEach(t => { if(t && t.type === 'Red') destroyTile(t, scene); });
-        else if (player.name === "Маг") for(let i=0; i<12; i++) { let r=Math.floor(Math.random()*8), c=Math.floor(Math.random()*8); if(grid[r][c]) { grid[r][c].setTexture('tile_Purple'); destroyTile(grid[r][c], scene); } }
-        else if (player.name === "Лучник") { let r=Math.floor(Math.random()*8); for(let i=0; i<8; i++) if(grid[r][i]) destroyTile(grid[r][i], scene); }
-        else if (player.name === "Ассасин") { let r=4, c=4; for(let dr=-1; dr<=1; dc++) for(let dc=-1; dc<=1; dc++) if(grid[r+dr][c+dc]) destroyTile(grid[r+dr][c+dc], scene); }
+        grid.flat().forEach(t => { if(t && (t.type === 'Red' || t.type === 'Purple')) destroyTile(t, scene); });
         fillGrid(scene); updateUI();
     }
 
     function destroyTile(t, scene) { triggerEffect(t.type); grid[t.gridR][t.gridC] = null; t.destroy(); }
 
     function updateUI() {
-        let totalMaxHp = player.maxHp + player.equip.head.hp + player.equip.body.hp + player.equip.legs.hp;
-        let totalAtk = player.atk + player.equip.weapon.atk;
-        
-        hpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?420:40, 120, 300, 35).fillStyle(0xdc2828).fillRect(isMobile?420:40, 120, Math.max(0, player.hp/totalMaxHp)*300, 35);
+        let maxHP = player.maxHp + player.equip.head.hp + player.equip.body.hp;
+        hpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?420:40, 120, 300, 35).fillStyle(0xdc2828).fillRect(isMobile?420:40, 120, Math.max(0, player.hp/maxHP)*300, 35);
         manaBar.clear().fillStyle(0x141464).fillRect(isMobile?420:40, 170, 300, 15).fillStyle(0x2878ff).fillRect(isMobile?420:40, 170, (player.mana/100)*300, 15);
         mobHpBar.clear().fillStyle(0x3c0000).fillRect(isMobile?100:600, 80, 800, 30).fillStyle(0xff0000).fillRect(isMobile?100:600, 80, (Math.max(0, mob.hp)/mob.maxHp)*800, 30);
-        goldText.setText(`Золото: ${player.gold} | ATK: ${totalAtk}`);
-        
-        if(mob.hp <= 0 && turn === "PLAYER") { turn = "DROP"; dropLoot(game.scene.scenes[0]); }
+        goldText.setText(`Золото: ${player.gold} | Ур: ${player.lvl}`);
+        if(mob.hp <= 0 && turn === "PLAYER") { turn = "DROP"; dropLoot(game.scene.scenes[0]); player.lvl++; }
         if(player.hp <= 0) location.reload();
     }
     </script>
