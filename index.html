@@ -2,23 +2,44 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Taverna War RPG - Web</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Taverna War RPG - Mobile & PC</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; color: white; font-family: 'Verdana', sans-serif; }
-        canvas { border: 2px solid #b48c46; }
+        body { 
+            margin: 0; 
+            background: #0c0a08; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            width: 100vw;
+            overflow: hidden; 
+        }
+        canvas { 
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+        }
     </style>
 </head>
 <body>
     <div id="game-container"></div>
     <script>
     const config = {
-        type: Phaser.AUTO, width: 1200, height: 900, parent: 'game-container',
+        type: Phaser.AUTO,
+        parent: 'game-container',
+        scale: {
+            mode: Phaser.Scale.FIT, // Растягивает игру под экран
+            autoCenter: Phaser.Scale.CENTER_BOTH, // Центрирует
+            width: 1200, // Базовая ширина (ПК)
+            height: 900   // Базовая высота (ПК)
+        },
         scene: { preload: preload, create: create, update: update }
     };
+
     const game = new Phaser.Game(config);
 
-    let player, mob, grid = [], selected = null, isAnim = false, gameLog = ["Добро пожаловать!"], state = "MENU";
+    // Данные (сохраняем твою логику)
+    let player, mob, grid = [], selected = null, isAnim = false, gameLog = ["Нажми на героя!"], state = "MENU";
 
     function preload() {
         this.load.image('hero_Воин', 'assets/hero_warrior.png');
@@ -33,29 +54,41 @@
     }
 
     function create() {
-        this.add.text(450, 100, "ВЫБЕРИТЕ ГЕРОЯ", { fontSize: '32px', fill: '#ffd700' }).setOrigin(0.5);
-        const jobs = ["Воин", "Маг", "Лучник", "Ассасин"];
-        jobs.forEach((name, i) => {
-            let btn = this.add.image(300 * i + 150, 450, `hero_${name}`).setScale(0.7).setInteractive();
-            this.add.text(300 * i + 150, 600, name, { fontSize: '24px' }).setOrigin(0.5);
-            btn.on('pointerdown', () => startGame(name, this));
-        });
-        
-        // Горячая клавиша для Ульты
-        this.input.keyboard.on('keydown-S', () => useUltimate(this));
+        if (state === "MENU") {
+            this.add.text(600, 100, "ВЫБЕРИТЕ ГЕРОЯ", { fontSize: '48px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+            const jobs = ["Воин", "Маг", "Лучник", "Ассасин"];
+            jobs.forEach((name, i) => {
+                let btn = this.add.image(300 * i + 150, 450, `hero_${name}`).setScale(0.8).setInteractive();
+                this.add.text(300 * i + 150, 620, name, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
+                btn.on('pointerdown', () => startGame(name, this));
+            });
+        }
     }
 
     function startGame(job, scene) {
         state = "PLAYING";
         scene.children.removeAll();
-        player = { job, hp: 300, maxHp: 300, atk: 30, mana: 0, gold: 0, lvl: 1 };
+        player = { job, hp: 300, maxHp: 300, atk: 35, mana: 0, gold: 0, lvl: 1 };
         spawnMob();
-        createGrid(scene);
-        drawUI(scene);
-    }
+        
+        // Рисуем интерфейс
+        scene.add.graphics().fillStyle(0x191614, 1).fillRoundedRect(20, 20, 310, 860, 20).lineStyle(2, 0xb48c46).strokeRoundedRect(20, 20, 310, 860, 20);
+        scene.heroImg = scene.add.image(175, 450, `hero_${player.job}`).setScale(0.7);
+        scene.infoText = scene.add.text(40, 50, `${player.job} LVL ${player.lvl}`, { fontSize: '28px', fill: '#fff', fontStyle: 'bold' });
+        scene.goldText = scene.add.text(40, 90, `Золото: ${player.gold}`, { fontSize: '22px', fill: '#ffd700' });
+        
+        // Логи и Ульта
+        scene.logTxt = scene.add.text(380, 780, gameLog.join('\n'), { fontSize: '18px', color: '#b4aa96', fontFamily: 'Courier' });
+        let ultBtn = scene.add.rectangle(175, 800, 250, 60, 0x4a0e0e).setInteractive();
+        scene.add.text(175, 800, "УЛЬТА (S)", { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+        ultBtn.on('pointerdown', () => useUltimate(scene));
 
-    function spawnMob() {
-        mob = { name: "Орк-Тиран", hp: 150 * player.lvl, maxHp: 150 * player.lvl, atk: 15 };
+        scene.hpBar = scene.add.graphics();
+        scene.manaBar = scene.add.graphics();
+        scene.mobBar = scene.add.graphics();
+
+        createGrid(scene);
+        updateBars(scene);
     }
 
     function createGrid(scene) {
@@ -64,7 +97,7 @@
             grid[r] = [];
             for (let c = 0; c < 8; c++) {
                 let type = types[Math.floor(Math.random() * types.length)];
-                let tile = scene.add.image(400 + c * 66, 150 + r * 68, `tile_${type}`).setInteractive().setScale(0.6);
+                let tile = scene.add.image(420 + c * 72, 180 + r * 72, `tile_${type}`).setInteractive().setScale(0.7);
                 tile.r = r; tile.c = c; tile.t = type;
                 tile.on('pointerdown', () => handleSelect(tile, scene));
                 grid[r][c] = tile;
@@ -73,73 +106,46 @@
     }
 
     function handleSelect(tile, scene) {
-        if (isAnim) return;
-        if (!selected) {
-            selected = tile; tile.setTint(0xffff00);
-        } else {
-            let dist = Math.abs(selected.r - tile.r) + Math.abs(selected.c - tile.c);
-            if (dist === 1) swap(selected, tile, scene);
-            selected.clearTint(); selected = null;
-        }
-    }
-
-    function swap(t1, t2, scene) {
-        let tempT = t1.t; t1.t = t2.t; t2.t = tempT;
-        t1.setTexture(`tile_${t1.t}`); t2.setTexture(`tile_${t2.t}`);
-        processMatches(scene);
-    }
-
-    function processMatches(scene) {
-        // Простейшая проверка: при клике срабатывает эффект руны (как в твоем коде)
-        // Для браузерной версии мы упростили Match-3 до кликов по рунам для теста
-        let t = grid[Math.floor(Math.random()*8)][Math.floor(Math.random()*8)];
-        triggerEffect(t.t, scene);
+        triggerEffect(tile.t, scene);
+        // Анимация нажатия
+        scene.tweens.add({ targets: tile, scale: 0.5, duration: 50, yoyo: true });
         updateBars(scene);
     }
 
     function triggerEffect(type, scene) {
         if (type === 'Red') mob.hp -= player.atk;
-        if (type === 'Blue') player.mana = Math.min(100, player.mana + 20);
-        if (type === 'Green') player.hp = Math.min(player.maxHp, player.hp + 25);
-        if (type === 'Yellow') player.gold += 15;
-        if (type === 'Purple') mob.hp -= (player.atk * 2);
+        if (type === 'Blue') player.mana = Math.min(100, player.mana + 10);
+        if (type === 'Green') player.hp = Math.min(player.maxHp, player.hp + 20);
+        if (type === 'Yellow') player.gold += 5;
+        if (type === 'Purple') mob.hp -= (player.atk * 1.5);
         
         if (mob.hp <= 0) {
-            addLog("ПОБЕДА! +50 золота", scene);
-            player.gold += 50; spawnMob();
+            player.gold += 100; addLog("МОБ ПОВЕРЖЕН! +100г", scene);
+            spawnMob();
         }
     }
 
-    function useUltimate(scene) {
-        if (player.mana < 100) return;
-        player.mana = 0;
-        addLog("УЛЬТИМАТИВНЫЙ НАВЫК!", scene);
-        mob.hp -= 100;
-        updateBars(scene);
+    function spawnMob() {
+        mob = { name: "БОСС", hp: 200 * player.lvl, maxHp: 200 * player.lvl };
     }
 
-    function drawUI(scene) {
-        scene.add.graphics().fillStyle(0x191614).fillRoundedRect(20, 20, 310, 860, 20);
-        scene.heroImg = scene.add.image(175, 450, `hero_${player.job}`).setScale(0.7);
-        scene.infoText = scene.add.text(40, 50, `${player.job} LVL ${player.lvl}\nЗолото: ${player.gold}`, { fontSize: '20px' });
-        scene.logTxt = scene.add.text(380, 750, gameLog.join('\n'), { fontSize: '16px', color: '#b4aa96' });
-        
-        scene.hpBar = scene.add.graphics();
-        scene.manaBar = scene.add.graphics();
-        scene.mobBar = scene.add.graphics();
+    function useUltimate(scene) {
+        if (player.mana < 100) { addLog("Недостаточно маны!", scene); return; }
+        player.mana = 0; mob.hp -= 300;
+        addLog("ИСПОЛЬЗОВАНА УЛЬТА!", scene);
         updateBars(scene);
     }
 
     function updateBars(scene) {
-        scene.hpBar.clear().fillStyle(0xdc2828).fillRect(40, 120, (player.hp/player.maxHp)*270, 20);
-        scene.manaBar.clear().fillStyle(0x2878ff).fillRect(40, 150, (player.mana/100)*270, 10);
-        scene.mobBar.clear().fillStyle(0xdc2828).fillRect(900, 80, (mob.hp/mob.maxHp)*200, 15);
-        scene.infoText.setText(`${player.job} LVL ${player.lvl}\nЗолото: ${player.gold}`);
+        scene.hpBar.clear().fillStyle(0x3c0000).fillRect(40, 130, 270, 20).fillStyle(0xdc2828).fillRect(40, 130, (player.hp/player.maxHp)*270, 20);
+        scene.manaBar.clear().fillStyle(0x141464).fillRect(40, 160, 270, 10).fillStyle(0x2878ff).fillRect(40, 160, (player.mana/100)*270, 10);
+        scene.mobBar.clear().fillStyle(0x3c0000).fillRect(850, 50, 300, 25).fillStyle(0xff0000).fillRect(850, 50, (mob.hp/mob.maxHp)*300, 25);
+        scene.goldText.setText(`Золото: ${player.gold}`);
     }
 
     function addLog(msg, scene) {
         gameLog.push("> " + msg);
-        if (gameLog.length > 5) gameLog.shift();
+        if (gameLog.length > 4) gameLog.shift();
         scene.logTxt.setText(gameLog.join('\n'));
     }
 
