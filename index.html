@@ -212,18 +212,17 @@
             let tile = this.add.image(tx, fromTop ? ty - 500 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive();
             tile.gridR = r; tile.gridC = c; tile.type = type;
             
-            // Исправлено: добавлена остановка всплытия события
-            tile.on('pointerdown', (pointer) => {
-                pointer.stopPropagation();
-                this.handleTileClick(tile);
-            });
+            // Возвращаем стандартный клик без блокировки событий
+            tile.on('pointerdown', () => this.handleTileClick(tile));
 
             this.grid[r][c] = tile;
             if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 500, ease: 'Bounce.easeOut' });
         }
 
         async handleTileClick(tile) {
-            if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive) return;
+            // Если анимация, ход моба, лут или кликнули НЕ по плитке — выходим
+            if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive || !tile) return;
+            
             if (!this.selectedTile) { 
                 this.selectedTile = tile; 
                 tile.setTint(0xffff00); 
@@ -331,7 +330,7 @@
             }
             await new Promise(res => this.time.delayedCall(450, res));
         }
-
+        
         // ==========================================
         // [БЛОК 5] БОЕВАЯ ЛОГИКА
         // ==========================================
