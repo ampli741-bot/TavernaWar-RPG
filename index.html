@@ -58,13 +58,13 @@
             this.player = {
                 job, maxHp: hps[job], hp: hps[job], arm: 0, mana: 0, gold: 0, level: 1, baseAtk: 25,
                 equip: {
-                    head: { n: "Шлем", atk: 0, arm: 2, color: '#ffffff' },
-                    body: { n: "Броня", atk: 0, arm: 5, color: '#ffffff' },
-                    weapon: { n: "Меч", atk: 12, arm: 0, color: '#ffffff' },
-                    ring: { n: "Кольцо", atk: 2, arm: 0, color: '#ffffff' }
+                    head: { n: "Шлем", atk: 0, arm: 2, rarity: 'Обычный', color: '#ffffff' },
+                    body: { n: "Броня", atk: 0, arm: 5, rarity: 'Обычный', color: '#ffffff' },
+                    weapon: { n: "Меч", atk: 12, arm: 0, rarity: 'Обычный', color: '#ffffff' },
+                    ring: { n: "Кольцо", atk: 2, arm: 0, rarity: 'Обычный', color: '#ffffff' }
                 }
             };
-            this.lootActive = false; // Блокировка хода во время лута
+            this.lootActive = false;
             this.updateStats();
             this.spawnMob();
             this.initGrid();
