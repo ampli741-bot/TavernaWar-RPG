@@ -109,54 +109,75 @@
             let finalVal = baseVal + Phaser.Math.Between(1, 5);
 
             return { 
-                name: item.n, 
-                slot: item.s, 
-                statType: item.st, 
-                label: item.l, // Явно прописываем метку
-                val: finalVal, 
-                rarity: rarity.n, 
-                color: rarity.c, 
-                price: Math.floor(finalVal * 2) 
+                name: item.n, slot: item.s, statType: item.st, label: item.l,
+                val: finalVal, rarity: rarity.n, color: rarity.c, price: Math.floor(finalVal * 2) 
             };
         }
 
         showLootWindow(loot) {
             this.lootActive = true;
+            this.isAnimating = true; // Блокируем ходы пока открыто окно
+
             const current = this.player.equip[loot.slot];
             const currentVal = current[loot.statType] || 0;
             const diff = loot.val - currentVal;
             const statLabel = loot.label || (loot.statType === 'atk' ? 'Атака' : 'Броня');
 
-            this.lootContainer = this.add.container(GW/2, GH/2).setDepth(1000);
-            let bg = this.add.rectangle(0, 0, 500, 500, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46).setInteractive();
+            // 1. Создаем контейнер
+            this.lootContainer = this.add.container(0, 0).setDepth(2000);
+
+            // 2. ФОН-БЛОКИРАТОР (на весь экран), чтобы клики не уходили вниз
+            let blocker = this.add.rectangle(GW/2, GH/2, GW, GH, 0x000000, 0.7).setInteractive();
             
-            let title = this.add.text(0, -200, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
-            let itemName = this.add.text(0, -120, `${loot.rarity} ${loot.name}`, { fontSize: '30px', fill: loot.color, fontStyle: 'bold' }).setOrigin(0.5);
+            // 3. Само окно
+            let winX = GW/2, winY = GH/2;
+            let bg = this.add.rectangle(winX, winY, 500, 500, 0x111111).setStrokeStyle(3, 0xb48c46).setInteractive();
             
-            // Исправленный текст с проверкой на undefined
-            let info = this.add.text(0, 0, 
+            let title = this.add.text(winX, winY - 200, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+            let itemName = this.add.text(winX, winY - 120, `${loot.rarity} ${loot.name}`, { fontSize: '30px', fill: loot.color, fontStyle: 'bold' }).setOrigin(0.5);
+            
+            let info = this.add.text(winX, winY, 
                 `Новый: +${loot.val} ${statLabel}\n` +
                 `Текущий: +${currentVal} ${statLabel}\n` +
                 `Разница: ${diff > 0 ? '+' : ''}${diff}`, 
                 { fontSize: '26px', align: 'center', fill: '#ffffff', fontStyle: 'bold' }
             ).setOrigin(0.5);
 
-            let btnEquip = this.add.rectangle(-120, 180, 200, 60, 0x224422).setInteractive().setStrokeStyle(2, 0x00ff00);
-            let txtEquip = this.add.text(-120, 180, "НАДЕТЬ", { fontSize: '22px', fontStyle: 'bold' }).setOrigin(0.5);
+            // Кнопка НАДЕТЬ
+            let btnEquip = this.add.rectangle(winX - 120, winY + 180, 200, 60, 0x224422).setInteractive({useHandCursor: true}).setStrokeStyle(2, 0x00ff00);
+            let txtEquip = this.add.text(winX - 120, winY + 180, "НАДЕТЬ", { fontSize: '22px', fontStyle: 'bold' }).setOrigin(0.5);
 
-            let btnSell = this.add.rectangle(120, 180, 200, 60, 0x442222).setInteractive().setStrokeStyle(2, 0xff0000);
-            let txtSell = this.add.text(120, 180, `ПРОДАТЬ (${loot.price})`, { fontSize: '20px', fontStyle: 'bold' }).setOrigin(0.5);
+            // Кнопка ПРОДАТЬ
+            let btnSell = this.add.rectangle(winX + 120, winY + 180, 200, 60, 0x442222).setInteractive({useHandCursor: true}).setStrokeStyle(2, 0xff0000);
+            let txtSell = this.add.text(winX + 120, winY + 180, `ПРОДАТЬ (${loot.price})`, { fontSize: '20px', fontStyle: 'bold' }).setOrigin(0.5);
 
-            this.lootContainer.add([bg, title, itemName, info, btnEquip, txtEquip, btnSell, txtSell]);
+            this.lootContainer.add([blocker, bg, title, itemName, info, btnEquip, txtEquip, btnSell, txtSell]);
 
-            btnEquip.on('pointerdown', () => {
+            // Обработчики
+            btnEquip.on('pointerdown', (pointer, x, y, event) => {
+                event.stopPropagation(); // Остановить всплытие события
                 this.player.equip[loot.slot] = { n: loot.name, [loot.statType]: loot.val, color: loot.color };
                 this.closeLoot();
             });
-            btnSell.on('pointerdown', () => {
+
+            btnSell.on('pointerdown', (pointer, x, y, event) => {
+                event.stopPropagation();
                 this.player.gold += loot.price;
                 this.closeLoot();
             });
+        }
+
+        closeLoot() {
+            if(this.lootContainer) {
+                this.lootContainer.destroy();
+                this.lootContainer = null;
+            }
+            this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
+            this.player.level++; 
+            this.spawnMob(); 
+            this.updateUI();
+            this.lootActive = false;
+            this.isAnimating = false; // Разблокируем игру
         }
         // ==========================================
         // [БЛОК 3] СУПЕРСПОСОБНОСТИ (УЛЬТЫ)
