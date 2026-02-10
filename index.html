@@ -52,7 +52,7 @@
                     head: { n: "Пусто", s: 0 },
                     body: { n: "Пусто", s: 0 },
                     legs: { n: "Пусто", s: 0 },
-                    weapon: { n: "Ржавый нож", s: 10 },
+                    weapon: { n: "Ржавый меч", s: 10 },
                     ring: { n: "Пусто", s: 0 },
                     neck: { n: "Пусто", s: 0 }
                 }
@@ -171,7 +171,7 @@
             this.add.text(175, 330, "УЛЬТА [S]", { fontSize: '16px' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
 
-            this.add.text(40, 380, "ЭКИПИРОВКА:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
+            this.add.text(40, 380, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
             this.equipLines = {};
             slots.forEach((s, i) => {
@@ -184,7 +184,7 @@
         }
 
         updateUI() {
-            this.hpText.setText(`HP: ${Math.floor(this.player.hp)}/${this.player.maxHp}`);
+            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)}/${this.player.maxHp}`);
             this.hpBar.clear().fillStyle(0x440000).fillRect(40, 220, 270, 12).fillStyle(0xff0000).fillRect(40, 220, (this.player.hp/this.player.maxHp)*270, 12);
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 260, 270, 8).fillStyle(0x4444ff).fillRect(40, 260, (this.player.mana/100)*270, 8);
@@ -193,7 +193,8 @@
             const loc = { head: "Голова", body: "Тело", legs: "Ноги", weapon: "Оружие", ring: "Кольцо", neck: "Амулет" };
             for(let key in this.equipLines) {
                 let item = this.player.equip[key];
-                this.equipLines[key].setText(`${loc[key]}: ${item.n} (+${item.s})`);
+                // ДОБАВЛЕНО: "УРОН" после цифры
+                this.equipLines[key].setText(`${loc[key]}: ${item.n} (+${item.s} УРОН)`);
             }
 
             this.mobHpText.setText(`${this.mob.name}\n${Math.floor(this.mob.hp)}/${this.mob.maxHp}`);
@@ -211,7 +212,7 @@
         showLoot() {
             this.turn = "LOOT";
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
-            const names = { head: "Шлем", body: "Доспех", legs: "Поножи", weapon: "Оружие", ring: "Кольцо", neck: "Амулет" };
+            const names = { head: "Шлем", body: "Доспех", legs: "Поножи", weapon: "Меч", ring: "Кольцо", neck: "Ожерелье" };
             let slot = Phaser.Utils.Array.GetRandom(slots);
             let newItem = { slot: slot, n: names[slot] + " +" + this.player.level, s: 5 + this.player.level * 5, price: 50 + this.player.level * 20 };
             let oldItem = this.player.equip[slot];
@@ -219,9 +220,9 @@
             let overlay = this.add.container(GW/2, GH/2).setDepth(9999);
             let bg = this.add.rectangle(0, 0, 550, 400, 0x000000).setAlpha(0.9).setStrokeStyle(4, 0xffd700).setInteractive();
             
-            let title = this.add.text(0, -130, "ТРОФЕЙ НАЙДЕН!", { fontSize: '36px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+            let title = this.add.text(0, -130, "ДОБЫЧА!", { fontSize: '36px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
             let desc = this.add.text(0, -10, 
-                `НАЙДЕНО: ${newItem.n}\nБонус: +${newItem.s} к атаке\n\n` +
+                `НАЙДЕНО: ${newItem.n}\nБонус: +${newItem.s} к УРОНУ\n\n` +
                 `СЕЙЧАС ОДЕТО: ${oldItem.n} (+${oldItem.s})\n\n` +
                 `ЦЕНА ПРОДАЖИ: ${newItem.price} золота`, 
                 { fontSize: '22px', align: 'center', fill: '#ffffff' }).setOrigin(0.5);
