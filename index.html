@@ -373,56 +373,92 @@
             this.updateUI();
         }
 
-        applyMobEffect() {
-            if (this.lootActive || this.mob.hp <= 0) return;
-            
-            let damage = this.mob.atk; // Базовый урон моба
-            
-            // Логика поглощения урона броней
-            if (this.player.arm > 0) {
-                if (this.player.arm >= damage) {
-                    this.player.arm -= damage;
-                    damage = 0; // Броня полностью поглотила урон
-                } else {
-                    damage -= this.player.arm;
-                    this.player.arm = 0; // Броня разрушена, остаток урона идет в HP
-                }
+        a// ==========================================
+        // [БЛОК 5] БОЕВАЯ ЛОГИКА И ИИ МОБА
+        // ==========================================
+        
+        // Метод, который вызывается, когда МОБ собрал камни
+        applyMobEffect(type) {
+            if (this.lootActive || this.player.hp <= 0) return;
+
+            let damage = 0;
+            let manaGain = 0;
+
+            // Логика урона моба по типам плиток
+            if (type === 'Red') {
+                damage = this.mob.atk; // Обычный урон
+            } else if (type === 'Purple') {
+                damage = this.mob.atk * 1.5; // Усиленный урон
+            } else if (type === 'Yellow') {
+                damage = this.mob.atk * 0.5; // Маленький урон
+            } else if (type === 'Blue') {
+                this.mob.mana = Math.min(100, this.mob.mana + 15); // Копит себе ману
+            } else if (type === 'Green') {
+                this.mob.hp = Math.min(this.mob.maxHp, this.mob.hp + 20); // Моб лечится
             }
-            
-            this.player.hp -= damage;
-            
-            // Эффект тряски экрана при получении урона
-            this.cameras.main.shake(200, 0.01);
-            
+
+            // Если есть урон, вычитаем его из ИГРОКА (сначала броня, потом ХП)
+            if (damage > 0) {
+                let currentDamage = damage;
+                if (this.player.arm > 0) {
+                    if (this.player.arm >= currentDamage) {
+                        this.player.arm -= currentDamage;
+                        currentDamage = 0;
+                    } else {
+                        currentDamage -= this.player.arm;
+                        this.player.arm = 0;
+                    }
+                }
+                this.player.hp -= currentDamage;
+                this.cameras.main.shake(150, 0.01); // Тряска экрана при получении урона
+            }
+
             this.updateUI();
         }
 
         async mobAI() {
             if (this.mob.hp <= 0 || this.lootActive) return;
-            let best = null;
-            for (let r=0; r<8; r++) {
-                for (let c=0; c<8; c++) {
-                    let dirs = [[0,1],[1,0]];
-                    for (let [dr, dc] of dirs) {
-                        let nr=r+dr, nc=c+dc;
-                        if (nr<8 && nc<8) {
-                            let temp = this.grid.map(row => row.map(t => t.type));
-                            [temp[r][c], temp[nr][nc]] = [temp[nr][nc], temp[r][c]];
-                            if (this.getMatchesAt(temp) > 0) best = {r1:r, c1:c, r2:nr, c2:nc};
+            
+            let bestMove = null;
+            // Ищем лучший ход для моба
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    let directions = [[0, 1], [1, 0]];
+                    for (let [dr, dc] of directions) {
+                        let nr = r + dr, nc = c + dc;
+                        if (nr < 8 && nc < 8) {
+                            // Пробный сдвиг
+                            let temp = this.grid.map(row => row.map(t => t ? t.type : null));
+                            let t1 = temp[r][c];
+                            temp[r][c] = temp[nr][nc];
+                            temp[nr][nc] = t1;
+
+                            if (this.getMatchesAt(temp) > 0) {
+                                bestMove = { r1: r, c1: c, r2: nr, c2: nc };
+                                break;
+                            }
                         }
                     }
+                    if (bestMove) break;
                 }
+                if (bestMove) break;
             }
-            if (best) await this.swapTiles(this.grid[best.r1][best.c1], this.grid[best.r2][best.c2]);
-            await this.checkMatches();
-            this.turn = "PLAYER"; this.updateUI();
-        }
 
-        getMatchesAt(g) {
-            let res = 0;
-            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(g[r][c]===g[r][c+1] && g[r][c]===g[r][c+2]) res++;
-            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(g[r][c]===g[r+1][c] && g[r][c]===g[r+2][c]) res++;
-            return res;
+            if (bestMove) {
+                let tile1 = this.grid[bestMove.r1][bestMove.c1];
+                let tile2 = this.grid[bestMove.r2][bestMove.c2];
+                
+                await this.swapTiles(tile1, tile2);
+                
+                // Переключаем режим эффектов на моба
+                this.currentTurnOwner = "MOB"; 
+                this.comboCount = 0;
+                await this.checkMatches();
+            }
+
+            this.turn = "PLAYER"; 
+            this.currentTurnOwner = "PLAYER";
+            this.updateUI();
         }
 
 // ==========================================
