@@ -77,69 +77,109 @@
         }
 
         // ========================================== //
-        // [БЛОК 3] СИСТЕМА ЛУТА И МОБОВ
-        // ========================================== //
-        spawnMob() {
-            let lvl = this.player.level;
-            this.mob = { 
-                name: "Монстр Ур." + lvl, 
-                maxHp: 100 + (lvl*60), 
-                hp: 100 + (lvl*60), 
-                atk: 15 + (lvl*10)
-            };
-            this.turn = "PLAYER";
-        }
+// [БЛОК 3] СИСТЕМА ЛУТА, ГРЕЙДОВ И СРАВНЕНИЯ
+// ========================================== //
 
-        generateLoot() {
-            const rarities = [
-                { n: 'Обычный', c: '#ffffff', mult: 1, chance: 60 },
-                { n: 'Редкий', c: '#00ff00', mult: 1.5, chance: 25 },
-                { n: 'Эпический', c: '#800080', mult: 2.2, chance: 10 },
-                { n: 'ЛЕГЕНДА', c: '#ff8c00', mult: 4, chance: 5 }
-            ];
-            let rand = Phaser.Math.Between(1, 100);
-            let cum = 0, rarity = rarities[0];
-            for (let r of rarities) { cum += r.chance; if (rand <= cum) { rarity = r; break; } }
+generateLoot() {
+    // 1. Настройка редкости (Грейды)
+    const rarities = [
+        { n: 'Обычный', c: '#ffffff', mult: 1, chance: 60 },
+        { n: 'Редкий', c: '#00ff00', mult: 1.6, chance: 20 },
+        { n: 'Эпический', c: '#800080', mult: 2.5, chance: 12 },
+        { n: 'Легендарный', c: '#ff8c00', mult: 4, chance: 6 },
+        { n: 'ДРЕВНИЙ', c: '#00ffff', mult: 6, chance: 2 }
+    ];
 
-            const items = [
-                {n:'Шлем', s:'head', st:'arm'}, 
-                {n:'Доспех', s:'body', st:'arm'}, 
-                {n:'Меч', s:'weapon', st:'atk'}, 
-                {n:'Кольцо', s:'ring', st:'atk'}
-            ];
-            let item = Phaser.Utils.Array.GetRandom(items);
-            let val = Math.floor(this.player.level * 4 * rarity.mult);
+    // Определение выпавшей редкости
+    let rand = Phaser.Math.Between(1, 100);
+    let cum = 0, rarity = rarities[0];
+    for (let r of rarities) { cum += r.chance; if (rand <= cum) { rarity = r; break; } }
 
-            return { 
-                name: item.n, slot: item.s, stat: item.st, val: val, 
-                rarity: rarity.n, color: rarity.c 
-            };
-        }
+    // 2. Выбор типа предмета
+    const items = [
+        {n:'Шлем', s:'head', st:'arm'}, 
+        {n:'Доспех', s:'body', st:'arm'}, 
+        {n:'Меч', s:'weapon', st:'atk'}, 
+        {n:'Кольцо', s:'ring', st:'atk'}
+    ];
+    let it = Phaser.Utils.Array.GetRandom(items);
+    
+    // Расчет силы предмета на основе уровня игрока и редкости
+    let val = Math.floor(this.player.level * 4 * rarity.mult);
+    
+    return { 
+        name: it.n, 
+        slot: it.s, 
+        stat: it.st, 
+        val: val, 
+        rarity: rarity.n, 
+        color: rarity.c, 
+        price: Math.floor(val * 1.5) 
+    };
+}
 
-        showLoot(loot) {
-            this.lootActive = true;
-            let container = this.add.container(GW/2, GH/2).setDepth(100);
-            let bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.9).setStrokeStyle(3, 0xffd700);
-            let title = this.add.text(0, -100, "ПОБЕДА! ВЫПАЛ ЛУТ:", { fontSize: '28px', fill: '#ffd700' }).setOrigin(0.5);
-            let itemTxt = this.add.text(0, -10, `${loot.rarity} ${loot.name}\n+${loot.val} ${loot.stat === 'atk' ? 'Атаки' : 'Брони'}`, 
-                { fontSize: '24px', fill: loot.color, align: 'center' }).setOrigin(0.5);
-            
-            let btn = this.add.rectangle(0, 100, 200, 50, 0x444444).setInteractive().setStrokeStyle(1, 0xffffff);
-            let btnTxt = this.add.text(0, 100, "ЭКИПИРОВАТЬ", { fontSize: '20px' }).setOrigin(0.5);
+showLoot(loot) {
+    this.lootActive = true; // Блокируем геймплей
+    
+    // 3. Сравнение с текущим предметом
+    const current = this.player.equip[loot.slot];
+    const oldVal = current[loot.stat] || 0;
+    const diff = loot.val - oldVal;
 
-            container.add([bg, title, itemTxt, btn, btnTxt]);
+    // Создаем контейнер окна лута
+    let con = this.add.container(GW/2, GH/2).setDepth(2000);
+    let bg = this.add.rectangle(0, 0, 500, 450, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46);
+    
+    let title = this.add.text(0, -180, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+    let itemTitle = this.add.text(0, -110, `${loot.rarity} ${loot.name}`, { fontSize: '28px', fill: loot.color, fontStyle: 'bold' }).setOrigin(0.5);
+    
+    // Текст характеристик и сравнения
+    let statName = loot.stat === 'atk' ? 'Атаки' : 'Брони';
+    let compareText = `Новое: +${loot.val} ${statName}\n` +
+                      `Сейчас: +${oldVal} ${statName}\n` +
+                      `Разница: ${diff >= 0 ? '+' : ''}${diff}`;
+    
+    let info = this.add.text(0, 0, compareText, { 
+        fontSize: '24px', fill: '#ffffff', align: 'center', lineSpacing: 10 
+    }).setOrigin(0.5);
 
-            btn.on('pointerdown', () => {
-                this.player.equip[loot.slot] = { n: loot.name, [loot.stat]: loot.val, color: loot.color };
-                this.updateStats();
-                container.destroy();
-                this.player.level++;
-                this.lootActive = false;
-                this.spawnMob();
-                this.updateUI();
-            });
-        }
+    // 4. Кнопки управления
+    // Кнопка ОДЕТЬ
+    let btnEquip = this.add.rectangle(-110, 140, 180, 60, 0x224422).setInteractive().setStrokeStyle(2, 0x00ff00);
+    let txtEquip = this.add.text(-110, 140, "ОДЕТЬ", { fontSize: '22px', fill: '#ffffff' }).setOrigin(0.5);
 
+    // Кнопка ПРОДАТЬ
+    let btnSell = this.add.rectangle(110, 140, 180, 60, 0x442222).setInteractive().setStrokeStyle(2, 0xff0000);
+    let txtSell = this.add.text(110, 140, `ПРОДАТЬ\n(${loot.price}г)`, { fontSize: '18px', fill: '#ffffff', align: 'center' }).setOrigin(0.5);
+
+    con.add([bg, title, itemTitle, info, btnEquip, txtEquip, btnSell, txtSell]);
+
+    // Логика нажатий
+    btnEquip.on('pointerdown', () => {
+        // Заменяем предмет в слоте
+        this.player.equip[loot.slot] = { 
+            n: loot.name, 
+            [loot.stat]: loot.val, 
+            rarity: loot.rarity, 
+            color: loot.color 
+        };
+        this.closeLoot(con);
+    });
+
+    btnSell.on('pointerdown', () => {
+        this.player.gold += loot.price;
+        this.closeLoot(con);
+    });
+}
+
+closeLoot(con) {
+    con.destroy();
+    this.updateStats(); // Пересчитываем общую броню/атаку
+    this.player.level++; // Увеличиваем уровень сложности
+    this.spawnMob();    // Спавним нового моба
+    this.updateUI();    // Обновляем текст на экране
+    this.lootActive = false; // Разблокируем игру
+}
         // ========================================== //
         // [БЛОК 4] МЕХАНИКА БОЯ И ЭФФЕКТЫ
         // ========================================== //
