@@ -227,9 +227,12 @@
             let tile = this.add.image(tx, fromTop ? ty - 500 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive();
             tile.gridR = r; tile.gridC = c; tile.type = type;
             
-            // Важно: событие pointerdown только на плитке
+            // ИСПРАВЛЕННЫЙ КЛИК:
             tile.on('pointerdown', (pointer, localX, localY, event) => {
-                event.stopPropagation(); // Запрещаем клику «проваливаться» дальше
+                // Если нажали левее поля (в зоне меню) или правее (в зоне моба) — игнорируем
+                if (pointer.x < OFFSET_X - 34 || pointer.x > (OFFSET_X + 8 * TILE_S - 34)) return;
+                
+                event.stopPropagation(); 
                 this.handleTileClick(tile);
             });
 
@@ -238,7 +241,6 @@
         }
 
         async handleTileClick(tile) {
-            // Если анимация, ход моба или окно лута — игнорируем всё
             if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive) return;
 
             if (!this.selectedTile) { 
@@ -266,7 +268,6 @@
                 this.selectedTile = null;
             }
         }
-
         // ==========================================
         // [БЛОК 5] БОЕВАЯ ЛОГИКА И ИИ МОБА
         // ==========================================
@@ -316,8 +317,8 @@
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
         createUI() {
-            // Фон панели UI (не интерактивный, чтобы не ловить клики)
-            this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
+            // Фон панели (теперь интерактивный, чтобы блокировать клики под ним)
+            this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46).setInteractive();
             
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140);
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
@@ -333,7 +334,7 @@
             
             this.add.text(40, 480, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' });
             
-            // Создаем массив текстовых объектов для каждого слота
+            // Создаем массив текстовых объектов для каждого слота отдельно
             this.equipTexts = {};
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
             slots.forEach((s, i) => {
@@ -358,7 +359,7 @@
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
             
-            // Обновляем каждую строку инвентаря её цветом
+            // Цикл обновления строк инвентаря с учетом их цвета
             for (let k in this.player.equip) {
                 let item = this.player.equip[k];
                 if (this.equipTexts[k]) {
