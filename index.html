@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War - Combat Update</title>
+    <title>Taverna War - PC & Mobile Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -61,9 +61,11 @@
         
         scene.add.graphics().fillStyle(0x1a1a1a, 1).fillRoundedRect(isMobile ? 50 : 20, 20, isMobile ? 900 : 310, isMobile ? 520 : 860, 30);
         let hBtn = scene.add.image(isMobile ? 220 : 175, isMobile ? 260 : 450, `hero_${player.name}`).setDisplaySize(200, 200).setInteractive();
-        hBtn.on('pointerdown', () => showStats(scene));
+        
+        // Настройка клика по герою (Инвентарь)
+        hBtn.on('pointerdown', () => { if(turn === "PLAYER") showStats(scene); });
 
-        goldText = scene.add.text(isMobile ? 420 : 40, 60, `Золото: 0`, { fontSize: '40px', fill: '#ffd700', fontStyle: 'bold' });
+        goldText = scene.add.text(isMobile ? 420 : 40, 60, `Золото: 0`, { fontSize: '36px', fill: '#ffd700', fontStyle: 'bold' });
         logText = scene.add.text(GW/2, isMobile ? 580 : 840, "Твой ход!", { fontSize: '32px', fill: '#00ff00' }).setOrigin(0.5);
 
         hpBar = scene.add.graphics(); manaBar = scene.add.graphics(); mobHpBar = scene.add.graphics();
@@ -75,7 +77,10 @@
         updateUI();
     }
 
-    function spawnMob() { mob = { hp: 200 * player.lvl, maxHp: 200 * player.lvl, atk: 20 + (player.lvl * 5) }; turn = "PLAYER"; }
+    function spawnMob() { 
+        mob = { hp: 200 * player.lvl, maxHp: 200 * player.lvl, atk: 20 + (player.lvl * 5) }; 
+        turn = "PLAYER"; 
+    }
 
     function createGrid(scene) {
         for (let r = 0; r < 8; r++) { grid[r] = []; for (let c = 0; c < 8; c++) spawnTile(r, c, scene); }
@@ -97,8 +102,12 @@
             let dR = Math.abs(selectedTile.gridR - tile.gridR), dC = Math.abs(selectedTile.gridC - tile.gridC);
             if ((dR === 1 && dC === 0) || (dR === 0 && dC === 1)) {
                 await swapTiles(selectedTile, tile, scene);
-                if (!checkMatches(scene, "PLAYER")) await swapTiles(selectedTile, tile, scene);
-                else { turn = "MOB"; setTimeout(() => mobTurn(scene), 1000); }
+                if (!checkMatches(scene, "PLAYER")) {
+                    await swapTiles(selectedTile, tile, scene);
+                } else {
+                    turn = "MOB";
+                    setTimeout(() => mobTurn(scene), 600);
+                }
             }
             selectedTile.clearTint(); selectedTile = null;
         }
@@ -116,7 +125,7 @@
     }
 
     function mobTurn(scene) {
-        if (mob.hp <= 0) return;
+        if (mob.hp <= 0 || turn === "DROP") return;
         let moves = [];
         for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
             if (c < 7 && testMatch(r, c, r, c+1)) moves.push({t1: grid[r][c], t2: grid[r][c+1]});
@@ -128,7 +137,7 @@
                 await swapTiles(move.t1, move.t2, scene);
                 checkMatches(scene, "MOB");
                 turn = "PLAYER"; updateUI();
-            }, 600);
+            }, 500);
         } else { player.hp -= 15; turn = "PLAYER"; updateUI(); }
     }
 
@@ -159,9 +168,7 @@
         let atk = (owner === "PLAYER") ? (player.atk + player.equip.weapon.atk + player.equip.ring.atk) : mob.atk;
         
         if (type === 'Red') (owner === "PLAYER" ? mob : player).hp -= Math.floor(atk/3);
-        // ФИОЛЕТОВАЯ ПЛИТКА ТЕПЕРЬ БЬЕТ СИЛЬНЕЕ (x1.5)
         if (type === 'Purple') (owner === "PLAYER" ? mob : player).hp -= Math.floor(atk/2);
-        
         if (type === 'Green') {
             if (owner === "PLAYER") player.hp = Math.min(totalMaxHp, player.hp + 25);
             else mob.hp = Math.min(mob.maxHp, mob.hp + 20);
@@ -176,58 +183,84 @@
         setTimeout(() => checkMatches(scene, owner), 300);
     }
 
+    // --- ОКНО ХАРАКТЕРИСТИК (ИНВЕНТАРЬ) ---
     function showStats(scene) {
-        let cont = scene.add.container(GW/2, GH/2).setDepth(100000);
-        let bg = scene.add.rectangle(0, 0, 850, 1200, 0x0a0a0a, 0.98).setStrokeStyle(6, 0xffd700).setInteractive();
-        let header = scene.add.text(0, -520, `--- ${player.name.toUpperCase()} ---`, { fontSize: '50px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
-        let statsTxt = `УРОВЕНЬ: ${player.lvl}\nАТАКА: ${player.atk + player.equip.weapon.atk + player.equip.ring.atk}\nЗОЛОТО: ${player.gold}`;
-        let statsLabel = scene.add.text(0, -420, statsTxt, { fontSize: '36px', fill: '#fff', align: 'center' }).setOrigin(0.5);
-
-        const items = [
-            { slot: "Голова", d: player.equip.head },
-            { slot: "Грудь", d: player.equip.body },
-            { slot: "Ноги", d: player.equip.legs },
-            { slot: "Оружие", d: player.equip.weapon },
-            { slot: "Кольцо", d: player.equip.ring },
-            { slot: "Амулет", d: player.equip.neck }
+        isAnimating = true;
+        let cont = scene.add.container(GW/2, GH/2).setDepth(200000);
+        let bg = scene.add.rectangle(0, 0, 800, 1100, 0x000, 0.9).setStrokeStyle(6, 0xffd700).setInteractive();
+        
+        let txt = `--- ХАРАКТЕРИСТИКИ ---\n\nАТАКА: ${player.atk + player.equip.weapon.atk + player.equip.ring.atk}\nЗОЛОТО: ${player.gold}\n\n`;
+        const slots = [
+            {n: "Голова", i: player.equip.head},
+            {n: "Грудь", i: player.equip.body},
+            {n: "Ноги", i: player.equip.legs},
+            {n: "Оружие", i: player.equip.weapon},
+            {n: "Кольцо", i: player.equip.ring},
+            {n: "Амулет", i: player.equip.neck}
         ];
+        
+        slots.forEach(s => { txt += `${s.n}: ${s.i.name} (+${s.i.atk} ATK / +${s.i.hp} HP)\n`; });
+        
+        let info = scene.add.text(0, -100, txt, { fontSize: '32px', fill: '#fff', align: 'center', wordWrap: { width: 700 } }).setOrigin(0.5);
+        
+        let closeBtn = scene.add.rectangle(0, 450, 300, 80, 0xff0000).setInteractive();
+        let closeTxt = scene.add.text(0, 450, "ЗАКРЫТЬ", { fontSize: '36px', fill: '#fff' }).setOrigin(0.5);
+        
+        cont.add([bg, info, closeBtn, closeTxt]);
 
-        items.forEach((item, i) => {
-            let y = -250 + (i * 110);
-            let color = item.d.name === "Ничего" ? "#666" : "#0f0";
-            scene.add.text(0, y, `${item.slot}: ${item.d.name}`, { fontSize: '34px', fill: color }).setOrigin(0.5).setParentContainer(cont);
-            scene.add.text(0, y + 35, `(АТК: +${item.d.atk} | HP: +${item.d.hp})`, { fontSize: '24px', fill: '#aaa' }).setOrigin(0.5).setParentContainer(cont);
+        closeBtn.on('pointerdown', () => { 
+            cont.destroy(); 
+            isAnimating = false;
         });
-
-        let closeBtn = scene.add.rectangle(0, 500, 400, 100, 0x880000).setInteractive();
-        scene.add.text(0, 500, "ЗАКРЫТЬ", { fontSize: '40px', fill: '#fff' }).setOrigin(0.5).setParentContainer(cont);
-        cont.add([bg, header, statsLabel, closeBtn]);
-        closeBtn.on('pointerdown', () => cont.destroy());
     }
 
+    // --- ОКНО ДРОПА ПО ЦЕНТРУ ЭКРАНА ---
     function dropLoot(scene) {
-        const cx = OFFSET_X + (3.5 * (TILE_SIZE + 5));
-        const cy = OFFSET_Y + (3.5 * (TILE_SIZE + 5));
+        turn = "DROP";
         const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
         const slotNames = {head: "ШЛЕМ", body: "ДОСПЕХ", legs: "ПОНОЖИ", weapon: "МЕЧ", ring: "КОЛЬЦО", neck: "АМУЛЕТ"};
         let slot = slots[Math.floor(Math.random()*slots.length)];
-        let newItem = { slot, name: `${slotNames[slot]} +${player.lvl}`, atk: (slot==='weapon'||slot==='ring')?30+player.lvl*10:0, hp: (slot!=='weapon'&&slot!=='ring')?150+player.lvl*30:0, price: 50 };
+        
+        let newItem = { 
+            slot, 
+            name: `${slotNames[slot]} +${player.lvl}`, 
+            atk: (slot==='weapon'||slot==='ring') ? 30 + player.lvl*10 : 0, 
+            hp: (slot!=='weapon'&&slot!=='ring') ? 150 + player.lvl*30 : 0, 
+            price: 50 
+        };
         let oldItem = player.equip[slot];
 
-        let cont = scene.add.container(cx, cy).setDepth(150000);
-        let bg = scene.add.rectangle(0, 0, 930, 930, 0x111, 1).setStrokeStyle(10, 0x00ff00).setInteractive();
-        scene.add.text(0, -380, "ТРОФЕЙ НАЙДЕН!", { fontSize: '60px', fill: '#0f0', fontStyle: 'bold' }).setOrigin(0.5).setParentContainer(cont);
-        scene.add.text(-220, -50, `НОВЫЙ:\n${newItem.name}\nАТК: +${newItem.atk}\nHP: +${newItem.hp}`, { fontSize: '32px', fill: '#4f4', align: 'center' }).setOrigin(0.5).setParentContainer(cont);
-        scene.add.text(220, -50, `НАДЕТО:\n${oldItem.name}\nАТК: +${oldItem.atk}\nHP: +${oldItem.hp}`, { fontSize: '32px', fill: '#f44', align: 'center' }).setOrigin(0.5).setParentContainer(cont);
+        let dropCont = scene.add.container(GW/2, GH/2).setDepth(300000);
+        let bg = scene.add.rectangle(0, 0, 900, 800, 0x111, 0.95).setStrokeStyle(8, 0x00ff00).setInteractive();
+        
+        scene.add.text(0, -320, "ПОБЕДА! ВЫПАЛ ТРОФЕЙ:", { fontSize: '50px', fill: '#0f0', fontStyle: 'bold' }).setOrigin(0.5).setParentContainer(dropCont);
+        scene.add.text(-220, -50, `НОВЫЙ:\n${newItem.name}\nАТК: +${newItem.atk}\nHP: +${newItem.hp}`, { fontSize: '32px', fill: '#4f4', align: 'center' }).setOrigin(0.5).setParentContainer(dropCont);
+        scene.add.text(220, -50, `НАДЕТО:\n${oldItem.name}\nАТК: +${oldItem.atk}\nHP: +${oldItem.hp}`, { fontSize: '32px', fill: '#f44', align: 'center' }).setOrigin(0.5).setParentContainer(dropCont);
 
-        let bE = scene.add.rectangle(-220, 320, 400, 150, 0x228b22).setInteractive();
-        scene.add.text(-220, 320, "НАДЕТЬ", { fontSize: '45px' }).setOrigin(0.5).setParentContainer(cont);
-        let bS = scene.add.rectangle(220, 320, 400, 150, 0x8b0000).setInteractive();
-        scene.add.text(220, 320, "ПРОДАТЬ", { fontSize: '45px' }).setOrigin(0.5).setParentContainer(cont);
+        let btnEquip = scene.add.rectangle(-220, 250, 350, 120, 0x228b22).setInteractive();
+        scene.add.text(-220, 250, "НАДЕТЬ", { fontSize: '40px' }).setOrigin(0.5).setParentContainer(dropCont);
+        
+        let btnSell = scene.add.rectangle(220, 250, 350, 120, 0x8b0000).setInteractive();
+        scene.add.text(220, 250, "ПРОДАТЬ", { fontSize: '40px' }).setOrigin(0.5).setParentContainer(dropCont);
 
-        cont.add([bg, bE, bS]);
-        bE.on('pointerdown', () => { player.gold += oldItem.price; player.equip[slot] = newItem; cont.destroy(); spawnMob(); updateUI(); });
-        bS.on('pointerdown', () => { player.gold += newItem.price; cont.destroy(); spawnMob(); updateUI(); });
+        dropCont.add([bg, btnEquip, btnSell]);
+
+        btnEquip.on('pointerdown', () => {
+            player.gold += oldItem.price;
+            player.equip[slot] = newItem;
+            dropCont.destroy();
+            player.lvl++;
+            spawnMob();
+            updateUI();
+        });
+
+        btnSell.on('pointerdown', () => {
+            player.gold += newItem.price;
+            dropCont.destroy();
+            player.lvl++;
+            spawnMob();
+            updateUI();
+        });
     }
 
     function updateUI() {
@@ -241,7 +274,9 @@
         mobHpValTxt.setText(`${Math.floor(Math.max(0, mob.hp))} / ${mob.maxHp}`);
         goldText.setText(`ЗОЛОТО: ${player.gold} | УР: ${player.lvl}`);
 
-        if(mob.hp <= 0 && turn === "PLAYER") { turn = "DROP"; dropLoot(game.scene.scenes[0]); player.lvl++; }
+        if(mob.hp <= 0 && turn === "PLAYER") {
+            dropLoot(game.scene.scenes[0]);
+        }
         if(player.hp <= 0) location.reload();
     }
     </script>
