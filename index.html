@@ -114,16 +114,23 @@
             const diff = loot.val - currentVal;
 
             this.lootContainer = this.add.container(GW/2, GH/2).setDepth(1000);
-            let bg = this.add.rectangle(0, 0, 500, 500, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46);
-            let title = this.add.text(0, -200, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700' }).setOrigin(0.5);
+            let bg = this.add.rectangle(0, 0, 500, 500, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46).setInteractive();
+            let title = this.add.text(0, -200, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
             let itemName = this.add.text(0, -120, `${loot.rarity} ${loot.name}`, { fontSize: '30px', fill: loot.color, fontStyle: 'bold' }).setOrigin(0.5);
-            let info = this.add.text(0, 0, `Новый: +${loot.val} ${loot.statType}\nТекущий: +${currentVal}\nРазница: ${diff > 0 ? '+' : ''}${diff}`, { fontSize: '24px', align: 'center', fill: '#ffffff' }).setOrigin(0.5);
+            
+            // ИСПРАВЛЕННЫЙ ТЕКСТ (Жирный, без курсива, крупные статы)
+            let info = this.add.text(0, 0, 
+                `Новый: +${loot.val} ${loot.label}\n` +
+                `Текущий: +${currentVal} ${loot.label}\n` +
+                `Разница: ${diff > 0 ? '+' : ''}${diff}`, 
+                { fontSize: '26px', align: 'center', fill: '#ffffff', fontStyle: 'bold', fontFamily: 'Arial' }
+            ).setOrigin(0.5);
 
             let btnEquip = this.add.rectangle(-120, 180, 200, 60, 0x224422).setInteractive().setStrokeStyle(2, 0x00ff00);
-            let txtEquip = this.add.text(-120, 180, "НАДЕТЬ", { fontSize: '22px' }).setOrigin(0.5);
+            let txtEquip = this.add.text(-120, 180, "НАДЕТЬ", { fontSize: '22px', fontStyle: 'bold' }).setOrigin(0.5);
 
             let btnSell = this.add.rectangle(120, 180, 200, 60, 0x442222).setInteractive().setStrokeStyle(2, 0xff0000);
-            let txtSell = this.add.text(120, 180, `ПРОДАТЬ (${loot.price})`, { fontSize: '20px' }).setOrigin(0.5);
+            let txtSell = this.add.text(120, 180, `ПРОДАТЬ (${loot.price})`, { fontSize: '20px', fontStyle: 'bold' }).setOrigin(0.5);
 
             this.lootContainer.add([bg, title, itemName, info, btnEquip, txtEquip, btnSell, txtSell]);
 
@@ -224,42 +231,76 @@
 
         async checkMatches() {
             let toRem = new Set();
-            for(let r=0; r<8; r++) for(let c=0; c<6; c++) 
-                if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type) 
-                { toRem.add(this.grid[r][c]); toRem.add(this.grid[r][c+1]); toRem.add(this.grid[r][c+2]); }
-            for(let c=0; c<8; c++) for(let r=0; r<6; r++)
-                if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type)
-                { toRem.add(this.grid[r][c]); toRem.add(this.grid[r+1][c]); toRem.add(this.grid[r+2][c]); }
+            let specialEffects = []; // Храним координаты для спецэффектов
+
+            // Проверка по горизонтали
+            for(let r=0; r<8; r++) {
+                for(let c=0; c<6; c++) {
+                    if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && 
+                       this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) {
+                        let match = [this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]];
+                        let nextC = c+3;
+                        while(nextC < 8 && this.grid[r][nextC] && this.grid[r][nextC].type === this.grid[r][c].type) {
+                            match.push(this.grid[r][nextC]);
+                            nextC++;
+                        }
+                        
+                        // Логика 4 и 5 в ряд
+                        if(match.length === 4) specialEffects.push({type: 'LINE_H', r: r, c: c});
+                        if(match.length >= 5) specialEffects.push({type: 'BOMB', r: r, c: c});
+                        
+                        match.forEach(t => toRem.add(t));
+                    }
+                }
+            }
+
+            // Проверка по вертикали (аналогично)
+            for(let c=0; c<8; c++) {
+                for(let r=0; r<6; r++) {
+                    if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && 
+                       this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) {
+                        let match = [this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]];
+                        let nextR = r+3;
+                        while(nextR < 8 && this.grid[nextR] && this.grid[nextR][c] && this.grid[nextR][c].type === this.grid[r][c].type) {
+                            match.push(this.grid[nextR][c]);
+                            nextR++;
+                        }
+
+                        if(match.length === 4) specialEffects.push({type: 'LINE_V', r: r, c: c});
+                        if(match.length >= 5) specialEffects.push({type: 'BOMB', r: r, c: c});
+
+                        match.forEach(t => toRem.add(t));
+                    }
+                }
+            }
             
+            // Обработка спецэффектов (линии и взрывы)
+            specialEffects.forEach(eff => {
+                if(eff.type === 'LINE_H') for(let i=0; i<8; i++) if(this.grid[eff.r][i]) toRem.add(this.grid[eff.r][i]);
+                if(eff.type === 'LINE_V') for(let i=0; i<8; i++) if(this.grid[i][eff.c]) toRem.add(this.grid[i][eff.c]);
+                if(eff.type === 'BOMB') {
+                    for(let i=eff.r-1; i<=eff.r+1; i++) 
+                        for(let j=eff.c-1; j<=eff.c+1; j++)
+                            if(i>=0 && i<8 && j>=0 && j<8 && this.grid[i][j]) toRem.add(this.grid[i][j]);
+                }
+            });
+
             if (toRem.size > 0) {
                 toRem.forEach(t => { 
-                    if (this.turn === "PLAYER") this.applyEffect(t.type); else this.applyMobEffect(t.type);
+                    this.applyEffect(t.type); // Множитель комбо теперь внутри applyEffect
                     this.grid[t.gridR][t.gridC] = null;
                     this.tweens.add({ targets: t, alpha: 0, scale: 0, duration: 200, onComplete: () => t.destroy() });
                 });
                 await new Promise(res => this.time.delayedCall(250, res));
                 await this.fillEmpty();
-                await this.checkMatches();
+                
+                // РЕКУРСИЯ (КОМБО): После падения проверяем заново
+                this.comboCount = (this.comboCount || 0) + 1;
+                await this.checkMatches(); 
                 return true;
             }
+            this.comboCount = 0; // Сброс комбо, если совпадений больше нет
             return false;
-        }
-
-        async fillEmpty() {
-            for(let c=0; c<8; c++) {
-                let empty = 0;
-                for(let r=7; r>=0; r--) {
-                    if(!this.grid[r][c]) empty++;
-                    else if(empty > 0) {
-                        let t = this.grid[r][c];
-                        this.grid[r+empty][c] = t; this.grid[r][c] = null;
-                        t.gridR = r+empty;
-                        this.tweens.add({ targets: t, y: OFFSET_Y+t.gridR*TILE_S, duration: 400 });
-                    }
-                }
-                for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
-            }
-            await new Promise(res => this.time.delayedCall(450, res));
         }
 
         // ==========================================
@@ -267,11 +308,19 @@
         // ==========================================
         applyEffect(type, mult = 1) {
             if (this.lootActive) return;
+            
+            // Считаем множитель за комбо (каждый взрыв после падения дает +20% к силе)
+            let comboBonus = 1 + ((this.comboCount || 0) * 0.2);
+            let totalMult = mult * comboBonus;
+
             let totalA = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + (b.atk || 0), 0);
-            if (type==='Red' || type==='Purple') this.mob.hp -= (totalA/5) * mult;
-            if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 15);
-            if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + 10);
-            if (type==='Yellow') this.player.gold += 5;
+            
+            if (type==='Red' || type==='Purple') {
+                this.mob.hp -= (totalA/5) * totalMult;
+            }
+            if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + (15 * totalMult));
+            if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + (10 * totalMult));
+            if (type==='Yellow') this.player.gold += Math.floor(5 * totalMult);
             this.updateUI();
         }
 
