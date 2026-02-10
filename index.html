@@ -325,10 +325,28 @@
             let totalMult = mult * comboBonus;
             let totalA = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + (b.atk || 0), 0);
             
-            if (type==='Red' || type==='Purple') this.mob.hp -= (totalA/5) * totalMult;
-            if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + (15 * totalMult));
-            if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + (10 * totalMult));
-            if (type==='Yellow') this.player.gold += Math.floor(5 * totalMult);
+            let comboStr = this.comboCount > 0 ? ` (Комбо x${this.comboCount + 1}!)` : "";
+
+            if (type === 'Red' || type === 'Purple') {
+                let dmg = Math.floor((totalA / 5) * totalMult);
+                this.mob.hp -= dmg;
+                this.addLog(`Нанесено ${dmg} урона${comboStr}`, '#ff4444');
+            }
+            if (type === 'Green') {
+                let heal = Math.floor(15 * totalMult);
+                this.player.hp = Math.min(this.player.maxHp, this.player.hp + heal);
+                this.addLog(`Исцеление: +${heal} HP${comboStr}`, '#44ff44');
+            }
+            if (type === 'Blue') {
+                let manaGain = Math.floor(10 * totalMult);
+                this.player.mana = Math.min(100, this.player.mana + manaGain);
+                this.addLog(`Мана: +${manaGain}%${comboStr}`, '#4444ff');
+            }
+            if (type === 'Yellow') {
+                let goldGain = Math.floor(5 * totalMult);
+                this.player.gold += goldGain;
+                this.addLog(`Найдено золота: +${goldGain}${comboStr}`, '#ffd700');
+            }
             this.updateUI();
         }
 
@@ -362,30 +380,36 @@
         }
 
         // ==========================================
-        // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
+        // [БЛОК 6] ИНТЕРФЕЙС И ЛОГИ БОЯ
         // ==========================================
         createUI() {
-            // 1. ЛЕВЫЙ ЩИТ И РАМКА (Инвентарь)
+            // 1. ЛЕВЫЙ ЩИТ (Инвентарь)
             this.uiShieldLeft = this.add.rectangle(0, 0, 366, GH, 0x191614)
-                .setOrigin(0,0).setInteractive().setDepth(10)
-                .setStrokeStyle(2, 0xb48c46);
+                .setOrigin(0,0).setInteractive().setDepth(10).setStrokeStyle(2, 0xb48c46);
             
-            // 2. ПРАВЫЙ ЩИТ И РАМКА (Зона моба) — теперь такая же, как слева
+            // 2. ПРАВЫЙ ЩИТ (Зона моба)
             this.uiShieldRight = this.add.rectangle(910, 0, GW - 910, GH, 0x191614)
-                .setOrigin(0,0).setInteractive().setDepth(10)
-                .setStrokeStyle(2, 0xb48c46);
+                .setOrigin(0,0).setInteractive().setDepth(10).setStrokeStyle(2, 0xb48c46);
 
-            // 3. ЛОГОТИП БОЯ ПОД ПОЛЕМ
-            // Размещаем в пустом пространстве под сеткой
-            this.battleLogo = this.add.text(GW/2, 780, "BATTLE", { 
-                fontSize: '64px', 
-                fill: '#ffd700', 
-                fontStyle: 'bold italic',
-                stroke: '#440000',
-                strokeThickness: 8
-            }).setOrigin(0.5).setDepth(11);
+            // 3. ЗОНА ЛОГОВ ПОД ПОЛЕМ
+            this.logMessages = []; // Хранилище строк лога
+            this.logTexts = [];    // Объекты текста на экране
+            
+            // Заголовок лога
+            this.add.text(GW/2, 705, "— ЖУРНАЛ БОЯ —", { fontSize: '16px', fill: '#b48c46', fontStyle: 'bold' }).setOrigin(0.5).setDepth(11);
+            
+            // Создаем 5 строк для отображения последних событий
+            for (let i = 0; i < 5; i++) {
+                let txt = this.add.text(GW/2, 730 + (i * 22), "", { 
+                    fontSize: '18px', 
+                    fill: '#ffffff', 
+                    fontStyle: 'bold',
+                    align: 'center' 
+                }).setOrigin(0.5).setDepth(11);
+                this.logTexts.push(txt);
+            }
 
-            // Элементы Игрока (Левая панель)
+            // [Остальной UI Игрока]
             this.add.image(183, 120, `hero_${this.player.job}`).setDisplaySize(140, 140).setDepth(11);
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' }).setDepth(11);
             this.hpBar = this.add.graphics().setDepth(11);
@@ -400,46 +424,31 @@
             
             this.add.text(40, 480, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' }).setDepth(11);
             this.equipTexts = {};
-            const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
-            slots.forEach((s, i) => {
+            ['head', 'body', 'legs', 'weapon', 'ring', 'neck'].forEach((s, i) => {
                 this.equipTexts[s] = this.add.text(40, 510 + (i * 25), "", { fontSize: '15px' }).setDepth(11);
             });
 
-            // Элементы Моба (Правая панель)
-            // Иконка моба (можно заменить на mob_icon, если есть ассет)
-            this.add.rectangle(1055, 120, 140, 140, 0x330000).setStrokeStyle(2, 0xff0000).setDepth(11);
+            // [UI Моба]
             this.mobHpText = this.add.text(1055, 230, "", { fontSize: '22px', fill: '#ff0000', align: 'center' }).setOrigin(0.5).setDepth(11);
             this.mobHpBar = this.add.graphics().setDepth(11);
         }
 
-        updateUI() {
-            if (!this.player || !this.mob) return;
-            let maxA = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
+        // Метод для добавления записи в лог
+        addLog(message, color = '#ffffff') {
+            this.logMessages.unshift({ text: message, color: color });
+            if (this.logMessages.length > 5) this.logMessages.pop();
             
-            // Обновление игрока
-            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 280, 15).fillStyle(0xff0000).fillRect(40, 250, (Math.max(0, this.player.hp)/this.player.maxHp)*280, 15);
-            if(maxA > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*280, 5);
-            else this.armBar.clear();
-
-            this.manaText.setText(`МАНА: ${this.player.mana}%`);
-            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 280, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*280, 12);
-            this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
-            
-            for (let k in this.player.equip) {
-                let item = this.player.equip[k];
-                if (this.equipTexts[k]) {
-                    this.equipTexts[k].setText(`${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр`);
-                    this.equipTexts[k].setFill(item.color || '#ffffff');
+            this.logTexts.forEach((txt, i) => {
+                if (this.logMessages[i]) {
+                    txt.setText(this.logMessages[i].text);
+                    txt.setFill(this.logMessages[i].color);
+                    // Анимация появления новой строки
+                    if (i === 0) {
+                        txt.setAlpha(0);
+                        this.tweens.add({ targets: txt, alpha: 1, duration: 200 });
+                    }
                 }
-            }
-            
-            // Обновление моба (теперь симметрично в правой панели)
-            this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
-            this.mobHpBar.clear().fillStyle(0x440000).fillRect(950, 280, 210, 15).fillStyle(0xff0000).fillRect(950, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
-            
-            if (this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot()); 
-            if (this.player.hp <= 0) location.reload();
+            });
         }
     }
 
