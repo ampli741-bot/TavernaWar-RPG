@@ -47,14 +47,14 @@
             this.children.removeAll();
             const hps = { "Воин": 350, "Маг": 180, "Лучник": 220, "Ассасин": 200 };
             this.player = {
-                job, maxHp: hps[job], hp: hps[job], atk: 30, mana: 0, gold: 0, level: 1,
+                job, maxHp: hps[job], hp: hps[job], arm: 0, mana: 0, gold: 0, level: 1, baseAtk: 30,
                 equip: {
-                    head: { n: "Пусто", s: 0 },
-                    body: { n: "Пусто", s: 0 },
-                    legs: { n: "Пусто", s: 0 },
-                    weapon: { n: "Ржавый меч", s: 10 },
-                    ring: { n: "Пусто", s: 0 },
-                    neck: { n: "Пусто", s: 0 }
+                    head: { s: 0, type: 'ARM' },
+                    body: { s: 10, type: 'ARM' },
+                    legs: { s: 0, type: 'ARM' },
+                    weapon: { s: 10, type: 'ATK' },
+                    ring: { s: 0, type: 'ATK' },
+                    neck: { s: 0, type: 'DODGE' }
                 }
             };
             this.spawnMob();
@@ -94,7 +94,10 @@
                 if (dR + dC === 1) {
                     await this.swapTiles(this.selectedTile, tile);
                     if (!await this.checkMatches()) await this.swapTiles(this.selectedTile, tile);
-                    else { this.turn = "MOB"; this.time.delayedCall(800, () => this.mobTurn()); }
+                    else { 
+                        this.turn = "MOB"; 
+                        this.time.delayedCall(600, () => this.mobTurn()); 
+                    }
                 }
                 if(this.selectedTile) this.selectedTile.clearTint();
                 this.selectedTile = null;
@@ -114,8 +117,24 @@
 
         async mobTurn() {
             if (this.mob.hp <= 0) return;
-            this.player.hp -= this.mob.atk;
+            
+            let dodgeChance = this.player.equip.neck.s;
+            if (Math.random() * 100 < dodgeChance) {
+                let t = this.add.text(GW/2, GH/2, "УКЛОНЕНИЕ!", { fontSize: '64px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
+                this.time.delayedCall(1000, () => t.destroy());
+            } else {
+                let damage = this.mob.atk;
+                if (this.player.arm > 0) {
+                    let absorbed = Math.min(this.player.arm, damage);
+                    this.player.arm -= absorbed;
+                    damage -= absorbed;
+                }
+                this.player.hp -= damage;
+            }
+
             this.turn = "PLAYER";
+            // Броня восстанавливается от шмота в начале твоего хода
+            this.player.arm = this.player.equip.head.s + this.player.equip.body.s + this.player.equip.legs.s;
             this.updateUI();
         }
 
@@ -138,8 +157,8 @@
         }
 
         applyEffect(type) {
-            let totalBonus = Object.values(this.player.equip).reduce((a, b) => a + b.s, 0);
-            if (type==='Red' || type==='Purple') this.mob.hp -= (this.player.atk + totalBonus)/4;
+            let totalAtk = this.player.baseAtk + this.player.equip.weapon.s + this.player.equip.ring.s;
+            if (type==='Red' || type==='Purple') this.mob.hp -= totalAtk/4;
             if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 10);
             if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + 10);
             if (type==='Yellow') this.player.gold += 10;
@@ -162,44 +181,63 @@
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(130, 130);
             
             this.hpBar = this.add.graphics();
-            this.hpText = this.add.text(40, 200, "", { fontSize: '18px', fill: '#ff4444' });
+            this.armBar = this.add.graphics();
+            this.hpText = this.add.text(40, 200, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
+            
             this.manaBar = this.add.graphics();
-            this.manaText = this.add.text(40, 240, "", { fontSize: '18px', fill: '#4444ff' });
-            this.goldText = this.add.text(40, 280, "", { fontSize: '20px', fill: '#ffd700', fontStyle: 'bold' });
+            this.manaText = this.add.text(40, 245, "", { fontSize: '18px', fill: '#4444ff' });
+            
+            this.goldText = this.add.text(40, 285, "", { fontSize: '20px', fill: '#ffd700', fontStyle: 'bold' });
+            this.totalAtkText = this.add.text(40, 320, "", { fontSize: '20px', fill: '#ff4444', fontStyle: 'bold' });
 
-            this.ultBtn = this.add.rectangle(175, 330, 200, 45, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
-            this.add.text(175, 330, "УЛЬТА [S]", { fontSize: '16px' }).setOrigin(0.5);
+            this.ultBtn = this.add.rectangle(175, 370, 200, 45, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
+            this.add.text(175, 370, "УЛЬТА [S]", { fontSize: '16px' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
 
-            this.add.text(40, 380, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
+            this.add.text(40, 410, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
             this.equipLines = {};
             slots.forEach((s, i) => {
-                this.equipLines[s] = this.add.text(40, 410 + (i * 25), "", { fontSize: '15px', fill: '#ffffff' });
+                this.equipLines[s] = this.add.text(40, 440 + (i * 25), "", { fontSize: '16px', fill: '#ffffff' });
             });
 
             this.mobIcon = this.add.image(1050, 150, 'mob_icon').setDisplaySize(140, 140).setFlipX(true);
-            this.mobHpText = this.add.text(950, 240, "", { fontSize: '22px', fill: '#ff0000' });
+            this.mobHpText = this.add.text(950, 240, "", { fontSize: '22px', fill: '#ff0000', align: 'center' });
             this.mobHpBar = this.add.graphics();
         }
 
         updateUI() {
-            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)}/${this.player.maxHp}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 220, 270, 12).fillStyle(0xff0000).fillRect(40, 220, (this.player.hp/this.player.maxHp)*270, 12);
-            this.manaText.setText(`МАНА: ${this.player.mana}%`);
-            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 260, 270, 8).fillStyle(0x4444ff).fillRect(40, 260, (this.player.mana/100)*270, 8);
-            this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
-
-            const loc = { head: "Голова", body: "Тело", legs: "Ноги", weapon: "Оружие", ring: "Кольцо", neck: "Амулет" };
-            for(let key in this.equipLines) {
-                let item = this.player.equip[key];
-                // ДОБАВЛЕНО: "УРОН" после цифры
-                this.equipLines[key].setText(`${loc[key]}: ${item.n} (+${item.s} УРОН)`);
+            let maxArmorFromGear = this.player.equip.head.s + this.player.equip.body.s + this.player.equip.legs.s;
+            
+            // Отрисовка HP
+            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
+            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 225, 270, 15).fillStyle(0xff0000).fillRect(40, 225, (this.player.hp/this.player.maxHp)*270, 15);
+            
+            // Отрисовка Брони поверх HP (голубая полоска)
+            if(maxArmorFromGear > 0) {
+                this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 225, (this.player.arm/maxArmorFromGear)*270, 5);
             }
 
-            this.mobHpText.setText(`${this.mob.name}\n${Math.floor(this.mob.hp)}/${this.mob.maxHp}`);
+            this.manaText.setText(`МАНА: ${this.player.mana}%`);
+            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 265, 270, 10).fillStyle(0x4444ff).fillRect(40, 265, (this.player.mana/100)*270, 10);
+            
+            this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
+            let totalAtk = this.player.baseAtk + this.player.equip.weapon.s + this.player.equip.ring.s;
+            this.totalAtkText.setText(`УРОН ЗА ХОД: ${totalAtk}`);
+
+            const loc = { head: "Голова", body: "Тело", legs: "Ноги", weapon: "Оружие", ring: "Кольцо", neck: "Амулет" };
+            const typeText = { ARM: "БРОНЯ", ATK: "УРОН", DODGE: "ЛОВКОСТЬ" };
+            
+            for(let key in this.equipLines) {
+                let item = this.player.equip[key];
+                this.equipLines[key].setText(`${loc[key]}: +${item.s} ${typeText[item.type]}`);
+            }
+
+            this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}/${this.mob.maxHp}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(950, 300, 210, 15).fillStyle(0xff0000).fillRect(950, 300, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
+            
             if (this.mob.hp <= 0 && this.turn !== "LOOT") this.showLoot();
+            if (this.player.hp <= 0) location.reload();
         }
 
         useUlt() {
@@ -212,31 +250,36 @@
         showLoot() {
             this.turn = "LOOT";
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
-            const names = { head: "Шлем", body: "Доспех", legs: "Поножи", weapon: "Меч", ring: "Кольцо", neck: "Ожерелье" };
+            const names = { head: "Шлем", body: "Доспех", legs: "Поножи", weapon: "Оружие", ring: "Кольцо", neck: "Амулет" };
+            const types = { head: 'ARM', body: 'ARM', legs: 'ARM', weapon: 'ATK', ring: 'ATK', neck: 'DODGE' };
+            const typeNames = { ARM: "БРОНИ", ATK: "УРОНА", DODGE: "ЛОВКОСТИ" };
+            
             let slot = Phaser.Utils.Array.GetRandom(slots);
-            let newItem = { slot: slot, n: names[slot] + " +" + this.player.level, s: 5 + this.player.level * 5, price: 50 + this.player.level * 20 };
+            let statVal = 5 + (this.player.level * 5);
+            let newItem = { slot: slot, n: names[slot], s: statVal, type: types[slot], price: 50 + (this.player.level * 25) };
             let oldItem = this.player.equip[slot];
 
             let overlay = this.add.container(GW/2, GH/2).setDepth(9999);
-            let bg = this.add.rectangle(0, 0, 550, 400, 0x000000).setAlpha(0.9).setStrokeStyle(4, 0xffd700).setInteractive();
+            let bg = this.add.rectangle(0, 0, 550, 450, 0x000000).setAlpha(0.95).setStrokeStyle(4, 0xffd700).setInteractive();
             
-            let title = this.add.text(0, -130, "ДОБЫЧА!", { fontSize: '36px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
-            let desc = this.add.text(0, -10, 
-                `НАЙДЕНО: ${newItem.n}\nБонус: +${newItem.s} к УРОНУ\n\n` +
-                `СЕЙЧАС ОДЕТО: ${oldItem.n} (+${oldItem.s})\n\n` +
+            let title = this.add.text(0, -150, "ПОБЕДА!", { fontSize: '42px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+            let desc = this.add.text(0, -20, 
+                `НАЙДЕНО: ${newItem.n}\nБонус: +${newItem.s} ${typeNames[newItem.type]}\n\n` +
+                `СЕЙЧАС ОДЕТО: +${oldItem.s}\n\n` +
                 `ЦЕНА ПРОДАЖИ: ${newItem.price} золота`, 
-                { fontSize: '22px', align: 'center', fill: '#ffffff' }).setOrigin(0.5);
+                { fontSize: '24px', align: 'center', fill: '#ffffff' }).setOrigin(0.5);
 
-            let btnEquip = this.add.rectangle(-130, 130, 220, 60, 0x006600).setInteractive().setStrokeStyle(2, 0xffffff);
-            this.add.text(-130, 130, "ОДЕТЬ", { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+            let btnEquip = this.add.rectangle(-130, 150, 220, 70, 0x228B22).setInteractive().setStrokeStyle(2, 0xffffff);
+            this.add.text(-130, 150, "ОДЕТЬ", { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
 
-            let btnSell = this.add.rectangle(130, 130, 220, 60, 0x660000).setInteractive().setStrokeStyle(2, 0xffffff);
-            this.add.text(130, 130, "ПРОДАТЬ", { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
+            let btnSell = this.add.rectangle(130, 150, 220, 70, 0xB22222).setInteractive().setStrokeStyle(2, 0xffffff);
+            this.add.text(130, 150, "ПРОДАТЬ", { fontSize: '28px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
 
             overlay.add([bg, title, desc, btnEquip, btnSell]);
 
             btnEquip.on('pointerdown', () => {
-                this.player.equip[newItem.slot] = { n: newItem.n, s: newItem.s };
+                this.player.equip[newItem.slot] = { s: newItem.s, type: newItem.type };
+                this.player.arm = this.player.equip.head.s + this.player.equip.body.s + this.player.equip.legs.s;
                 this.nextLevel(overlay);
             });
             btnSell.on('pointerdown', () => {
