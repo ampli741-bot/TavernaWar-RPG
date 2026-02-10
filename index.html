@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Core Mechanics</title>
+    <title>Taverna War: Fixed UI</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -213,23 +213,29 @@
 
         createUI() {
             this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
+            // Убрал интерактивность с иконки, чтобы поле не обновлялось
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(130, 130);
-            this.hpBar = this.add.graphics(); this.armBar = this.add.graphics();
+            
+            // UI Группировка
             this.hpText = this.add.text(40, 200, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
+            this.hpBar = this.add.graphics();
+            this.armBar = this.add.graphics();
+            
+            this.manaText = this.add.text(40, 260, "", { fontSize: '18px', fill: '#4444ff', fontStyle: 'bold' });
             this.manaBar = this.add.graphics();
-            this.manaText = this.add.text(40, 245, "", { fontSize: '18px', fill: '#4444ff' });
-            this.goldText = this.add.text(40, 285, "", { fontSize: '20px', fill: '#ffd700', fontStyle: 'bold' });
-            this.totalAtkText = this.add.text(40, 320, "", { fontSize: '20px', fill: '#ff4444', fontStyle: 'bold' });
+            
+            this.goldText = this.add.text(40, 310, "", { fontSize: '20px', fill: '#ffd700', fontStyle: 'bold' });
+            this.totalAtkText = this.add.text(40, 340, "", { fontSize: '20px', fill: '#ff4444', fontStyle: 'bold' });
             
             let ultName = { "Воин": "ЯРОСТЬ", "Маг": "АРМАГЕДДОН", "Лучник": "ГРАД СТРЕЛ", "Ассасин": "ВЫПАД" }[this.player.job];
-            this.ultBtn = this.add.rectangle(175, 370, 200, 45, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
-            this.ultTxt = this.add.text(175, 370, `${ultName}`, { fontSize: '16px', fill: '#fff' }).setOrigin(0.5);
+            this.ultBtn = this.add.rectangle(175, 400, 200, 45, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
+            this.ultTxt = this.add.text(175, 400, `${ultName}`, { fontSize: '16px', fill: '#fff' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
 
-            this.add.text(40, 415, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
+            this.add.text(40, 450, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
             this.equipLines = {};
-            slots.forEach((s, i) => this.equipLines[s] = this.add.text(40, 445 + (i * 35), "", { fontSize: '14px', fill: '#ffffff' }));
+            slots.forEach((s, i) => this.equipLines[s] = this.add.text(40, 480 + (i * 35), "", { fontSize: '14px', fill: '#ffffff' }));
             
             this.mobIcon = this.add.image(1050, 150, 'mob_icon').setDisplaySize(140, 140).setFlipX(true);
             this.mobHpText = this.add.text(950, 240, "", { fontSize: '22px', fill: '#ff0000', align: 'center' });
@@ -238,12 +244,16 @@
 
         updateUI() {
             let maxArm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
-            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 225, 270, 15).fillStyle(0xff0000).fillRect(40, 225, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 15);
-            if(maxArm > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 225, (this.player.arm/maxArm)*270, 5);
             
+            // HP и Броня (разделил позиции)
+            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
+            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 240, 270, 12).fillStyle(0xff0000).fillRect(40, 240, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 12);
+            this.armBar.clear();
+            if(maxArm > 0) this.armBar.fillStyle(0x00ffff).fillRect(40, 240, (this.player.arm/maxArm)*270, 4);
+            
+            // Мана
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
-            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 265, 270, 10).fillStyle(0x4444ff).fillRect(40, 265, (this.player.mana/100)*270, 10);
+            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 285, 270, 10).fillStyle(0x4444ff).fillRect(40, 285, (this.player.mana/100)*270, 10);
             this.ultBtn.setAlpha(this.player.mana >= 100 ? 1 : 0.5);
             
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
@@ -263,7 +273,7 @@
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(950, 300, 210, 15).fillStyle(0xff0000).fillRect(950, 300, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
             
             if (this.mob.hp <= 0 && this.turn !== "LOOT") {
-                this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0); // Реген брони
+                this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
                 this.showLoot();
             }
             if (this.player.hp <= 0) location.reload();
