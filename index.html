@@ -311,11 +311,15 @@
             return res;
         }
 
-        // ==========================================
+// ==========================================
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
         createUI() {
-            this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
+            // Добавляем подложку и делаем её интерактивной, чтобы клики не проходили сквозь неё
+            let uiBG = this.add.rectangle(175, 450, 310, 860, 0x191614)
+                .setStrokeStyle(2, 0xb48c46)
+                .setInteractive(); // Блокирует нажатия на плитки под меню
+
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140);
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
             this.hpBar = this.add.graphics();
@@ -323,9 +327,11 @@
             this.manaText = this.add.text(40, 280, "", { fontSize: '18px', fill: '#4444ff' });
             this.manaBar = this.add.graphics();
             this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' });
+            
             this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
             this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
+            
             this.equipLines = this.add.text(40, 480, "", { fontSize: '15px', lineSpacing: 8 });
             this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5);
             this.mobHpBar = this.add.graphics();
