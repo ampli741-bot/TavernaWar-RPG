@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Duel Mode</title>
+    <title>Taverna War: Battle of Wits</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
-        canvas { border: 2px solid #b48c46; }
+        canvas { border: 2px solid #b48c46; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -33,13 +33,15 @@
 
         showMenu() {
             this.children.removeAll();
-            this.add.text(GW/2, 80, "ВЫБЕРИТЕ ГЕРОЯ", { fontSize: '42px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+            this.add.text(GW/2, 80, "ВЫБЕРИТЕ ГЕРОЯ", { fontSize: '42px', fill: '#ffd700', fontStyle: 'bold', stroke: '#000', strokeThickness: 6 }).setOrigin(0.5);
             ["Воин", "Маг", "Лучник", "Ассасин"].forEach((name, i) => {
                 let x = 300 * i + 150;
                 let card = this.add.rectangle(x, 450, 260, 600, 0x1a1a1a).setInteractive().setStrokeStyle(2, 0xb48c46);
                 this.add.image(x, 400, `hero_${name}`).setDisplaySize(200, 200);
                 this.add.text(x, 620, name, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
                 card.on('pointerdown', () => this.startGame(name));
+                card.on('pointerover', () => card.setStrokeStyle(4, 0xffd700));
+                card.on('pointerout', () => card.setStrokeStyle(2, 0xb48c46));
             });
         }
 
@@ -49,12 +51,12 @@
             this.player = {
                 job, maxHp: hps[job], hp: hps[job], arm: 0, mana: 0, gold: 0, level: 1, baseAtk: 25,
                 equip: {
-                    head: { g: "Обычный", atk: 0, arm: 2, dge: 0, color: '#ffffff' },
-                    body: { g: "Обычный", atk: 0, arm: 5, dge: 0, color: '#ffffff' },
-                    legs: { g: "Обычный", atk: 0, arm: 2, dge: 0, color: '#ffffff' },
-                    weapon: { g: "Обычный", atk: 12, arm: 0, dge: 0, color: '#ffffff' },
-                    ring: { g: "Обычный", atk: 2, arm: 0, dge: 0, color: '#ffffff' },
-                    neck: { g: "Обычный", atk: 0, arm: 0, dge: 2, color: '#ffffff' }
+                    head: { n: "Шлем", atk: 0, arm: 2, dge: 0, color: '#ffffff' },
+                    body: { n: "Броня", atk: 0, arm: 5, dge: 0, color: '#ffffff' },
+                    legs: { n: "Сапоги", atk: 0, arm: 2, dge: 0, color: '#ffffff' },
+                    weapon: { n: "Меч", atk: 12, arm: 0, dge: 0, color: '#ffffff' },
+                    ring: { n: "Кольцо", atk: 2, arm: 0, dge: 0, color: '#ffffff' },
+                    neck: { n: "Амулет", atk: 0, arm: 0, dge: 2, color: '#ffffff' }
                 }
             };
             this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
@@ -66,11 +68,7 @@
 
         spawnMob() {
             let lvl = this.player.level;
-            this.mob = { 
-                name: "Монстр Ур." + lvl, 
-                maxHp: 150 + (lvl*60), hp: 150 + (lvl*60), 
-                atk: 15 + (lvl*7), mana: 0 
-            };
+            this.mob = { name: "Монстр Ур." + lvl, maxHp: 150 + (lvl*60), hp: 150 + (lvl*60), atk: 15 + (lvl*7), mana: 0 };
             this.turn = "PLAYER";
         }
 
@@ -92,14 +90,17 @@
         }
 
         async handleTileClick(tile) {
-            if (!tile || this.isAnimating || this.turn !== "PLAYER") return;
+            if (this.isAnimating || this.turn !== "PLAYER") return;
             if (!this.selectedTile) { this.selectedTile = tile; tile.setTint(0xffff00); }
             else {
                 let dR = Math.abs(this.selectedTile.gridR - tile.gridR), dC = Math.abs(this.selectedTile.gridC - tile.gridC);
                 if (dR + dC === 1) {
                     await this.swapTiles(this.selectedTile, tile);
                     if (!await this.checkMatches()) await this.swapTiles(this.selectedTile, tile);
-                    else { this.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI()); }
+                    else { 
+                        this.turn = "MOB"; 
+                        this.time.delayedCall(800, () => this.mobAI()); 
+                    }
                 }
                 if(this.selectedTile) this.selectedTile.clearTint();
                 this.selectedTile = null;
@@ -112,66 +113,56 @@
             this.grid[r1][c1] = t2; this.grid[r2][c2] = t1;
             t1.gridR = r2; t1.gridC = c2; t2.gridR = r1; t2.gridC = c1;
             return new Promise(res => {
-                this.tweens.add({ targets: t1, x: OFFSET_X+c2*66, y: OFFSET_Y+r2*66, duration: 200 });
-                this.tweens.add({ targets: t2, x: OFFSET_X+c1*66, y: OFFSET_Y+r1*66, duration: 200, onComplete: () => { this.isAnimating = false; res(); } });
+                this.tweens.add({ targets: t1, x: OFFSET_X+c2*66, y: OFFSET_Y+r2*66, duration: 250 });
+                this.tweens.add({ targets: t2, x: OFFSET_X+c1*66, y: OFFSET_Y+r1*66, duration: 250, onComplete: () => { this.isAnimating = false; res(); } });
             });
         }
 
-        // --- ЛОГИКА МОБА ---
+        // --- ИИ МОБА ---
         async mobAI() {
-            if (this.mob.hp <= 0) return;
+            if (this.mob.hp <= 0 || this.turn === "LOOT") return;
             let moves = [];
-            // Поиск возможных ходов
             for(let r=0; r<8; r++) {
                 for(let c=0; c<8; c++) {
-                    if (c < 7) moves.push({r1:r, c1:c, r2:r, c2:c+1, type: this.grid[r][c].type});
-                    if (r < 7) moves.push({r1:r, c1:c, r2:r+1, c2:c, type: this.grid[r][c].type});
+                    if (c < 7) moves.push({r1:r, c1:c, r2:r, c2:c+1});
+                    if (r < 7) moves.push({r1:r, c1:c, r2:r+1, c2:c});
                 }
             }
-
             let bestMove = null;
-            const priority = { 'Purple': 5, 'Red': 4, 'Blue': 3, 'Yellow': 2, 'Green': 1 };
-
+            const priority = { 'Purple': 5, 'Red': 4, 'Blue': 3, 'Yellow': 1, 'Green': 0 };
+            
             for(let m of moves) {
-                // Виртуальный свап
                 let t1 = this.grid[m.r1][m.c1], t2 = this.grid[m.r2][m.c2];
                 if (this.isMatch(m.r1, m.c1, t2.type, m.r2, m.c2) || this.isMatch(m.r2, m.c2, t1.type, m.r1, m.c1)) {
-                    if (!bestMove || priority[t1.type] > priority[bestMove.type]) {
-                        bestMove = { ...m, type: t1.type };
-                    }
+                    if (!bestMove || priority[t1.type] > priority[bestMove.type]) bestMove = { ...m, type: t1.type };
                 }
             }
 
             if (bestMove) {
-                let t1 = this.grid[bestMove.r1][bestMove.c1], t2 = this.grid[bestMove.r2][bestMove.c2];
-                await this.swapTiles(t1, t2);
+                await this.swapTiles(this.grid[bestMove.r1][bestMove.c1], this.grid[bestMove.r2][bestMove.c2]);
                 await this.checkMatches();
             } else {
-                // Если ходов нет, просто пассивная атака
-                this.applyMobEffect('Red', 0.5);
+                this.applyMobEffect('Red', 0.5); // Мини-удар если нет ходов
             }
-
             this.turn = "PLAYER";
             this.updateUI();
         }
 
         isMatch(r, c, type, skipR, skipC) {
-            let countH = 1, countV = 1;
-            // Проверка по горизонтали
-            for(let i=c+1; i<8; i++) { if(i===skipC && r===skipR) break; if(this.grid[r][i].type === type) countH++; else break; }
-            for(let i=c-1; i>=0; i--) { if(i===skipC && r===skipR) break; if(this.grid[r][i].type === type) countH++; else break; }
-            // Проверка по вертикали
-            for(let i=r+1; i<8; i++) { if(i===skipR && c===skipC) break; if(this.grid[i][c].type === type) countV++; else break; }
-            for(let i=r-1; i>=0; i--) { if(i===skipR && c===skipC) break; if(this.grid[i][c].type === type) countV++; else break; }
-            return countH >= 3 || countV >= 3;
+            let h = 1, v = 1;
+            for(let i=c+1; i<8; i++) { if(i===skipC && r===skipR) break; if(this.grid[r][i].type === type) h++; else break; }
+            for(let i=c-1; i>=0; i--) { if(i===skipC && r===skipR) break; if(this.grid[r][i].type === type) h++; else break; }
+            for(let i=r+1; i<8; i++) { if(i===skipR && c===skipC) break; if(this.grid[i][c].type === type) v++; else break; }
+            for(let i=r-1; i>=0; i--) { if(i===skipR && c===skipC) break; if(this.grid[i][c].type === type) v++; else break; }
+            return h >= 3 || v >= 3;
         }
 
         applyMobEffect(type, mult = 1) {
             let dmg = 0;
             if (type === 'Red') dmg = this.mob.atk * mult;
-            if (type === 'Purple') dmg = (this.mob.atk * 1.5) * mult;
-            if (type === 'Blue') this.mob.mana += 15;
-            if (type === 'Yellow') dmg = (this.mob.atk * 0.5) * mult;
+            if (type === 'Purple') dmg = (this.mob.atk * 1.6) * mult;
+            if (type === 'Blue') this.mob.mana = Math.min(100, this.mob.mana + 15);
+            if (type === 'Yellow') dmg = (this.mob.atk * 0.4) * mult;
 
             if (dmg > 0) {
                 let finalDmg = dmg;
@@ -183,11 +174,7 @@
                 this.player.hp -= finalDmg;
                 this.showDamage(dmg, 175, 120);
             }
-
-            if (this.mob.mana >= 100) {
-                this.mob.mana = 0;
-                this.applyMobEffect('Purple', 1.2); // Доп. удар ультой
-            }
+            if (this.mob.mana >= 100) { this.mob.mana = 0; this.applyMobEffect('Purple', 1.3); }
         }
 
         async checkMatches() {
@@ -211,14 +198,13 @@
             }
             return false;
         }
-        // --- КОНЕЦ ЛОГИКИ МОБА ---
 
-        applyEffect(type, multiplier = 1) {
+        applyEffect(type, mult = 1) {
             let totalAtk = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + b.atk, 0);
             if (type==='Red' || type==='Purple') {
-                let dmg = (totalAtk/4) * multiplier;
-                this.mob.hp -= dmg;
-                this.showDamage(dmg, 1050, 150, "#ff4444");
+                let d = (totalAtk/4) * mult;
+                this.mob.hp -= d;
+                this.showDamage(d, 1050, 150, "#ff4444");
             }
             if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 5);
             if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + 8);
@@ -228,8 +214,7 @@
 
         async useUlt() {
             if (this.player.mana < 100 || this.isAnimating) return;
-            this.player.mana = 0;
-            this.isAnimating = true;
+            this.player.mana = 0; this.isAnimating = true;
             let targets = [];
             for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
                 let t = this.grid[r][c];
@@ -240,10 +225,8 @@
             }
             targets.forEach(t => { this.applyEffect(t.type, 1.5); t.destroy(); this.grid[t.gridR][t.gridC] = null; });
             await this.fillEmpty();
-            this.isAnimating = false;
-            this.updateUI();
-            this.turn = "MOB";
-            this.time.delayedCall(800, () => this.mobAI());
+            this.isAnimating = false; this.updateUI();
+            this.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI());
         }
 
         async fillEmpty() {
@@ -263,56 +246,67 @@
         }
 
         createUI() {
+            // Боковая панель
             this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(130, 130);
-            this.hpText = this.add.text(40, 200, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
-            this.hpBar = this.add.graphics(); this.armBar = this.add.graphics();
-            this.manaText = this.add.text(40, 260, "", { fontSize: '18px', fill: '#4444ff', fontStyle: 'bold' });
-            this.manaBar = this.add.graphics();
-            this.goldText = this.add.text(40, 310, "", { fontSize: '20px', fill: '#ffd700', fontStyle: 'bold' });
-            this.totalAtkText = this.add.text(40, 340, "", { fontSize: '20px', fill: '#ff4444', fontStyle: 'bold' });
             
-            let ultName = { "Воин": "ЯРОСТЬ", "Маг": "АРМАГЕДДОН", "Лучник": "ГРАД СТРЕЛ", "Ассасин": "ВЫПАД" }[this.player.job];
-            this.ultBtn = this.add.rectangle(175, 400, 200, 45, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
-            this.add.text(175, 400, `${ultName}`, { fontSize: '16px', fill: '#fff' }).setOrigin(0.5);
+            // Жизнь и Броня (Разнесено!)
+            this.hpText = this.add.text(40, 200, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
+            this.hpBar = this.add.graphics();
+            this.armBar = this.add.graphics();
+            
+            this.manaText = this.add.text(40, 265, "", { fontSize: '18px', fill: '#4444ff', fontStyle: 'bold' });
+            this.manaBar = this.add.graphics();
+            
+            this.goldText = this.add.text(40, 315, "", { fontSize: '20px', fill: '#ffd700', fontStyle: 'bold' });
+            this.totalAtkText = this.add.text(40, 345, "", { fontSize: '20px', fill: '#ff4444', fontStyle: 'bold' });
+            
+            let ultN = { "Воин": "ЯРОСТЬ", "Маг": "АРМАГЕДДОН", "Лучник": "ГРАД СТРЕЛ", "Ассасин": "ВЫПАД" }[this.player.job];
+            this.ultBtn = this.add.rectangle(175, 405, 220, 45, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
+            this.add.text(175, 405, ultN, { fontSize: '18px', fill: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
 
+            // Инвентарь
+            this.add.text(40, 465, "ИНВЕНТАРЬ:", { fontSize: '20px', fill: '#ffd700', fontStyle: 'bold' });
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
             this.equipLines = {};
-            slots.forEach((s, i) => this.equipLines[s] = this.add.text(40, 485 + (i * 35), "", { fontSize: '14px', fill: '#ffffff' }));
+            slots.forEach((s, i) => this.equipLines[s] = this.add.text(40, 495 + (i * 38), "", { fontSize: '15px', fill: '#ffffff' }));
             
-            this.shopBtn = this.add.rectangle(175, 780, 200, 50, 0x463212).setInteractive().setStrokeStyle(2, 0xffd700).setAlpha(0.8);
+            // Кнопка Магазина
+            this.shopBtn = this.add.rectangle(175, 780, 220, 55, 0x463212).setInteractive().setStrokeStyle(2, 0xffd700);
             this.add.text(175, 780, "МАГАЗИН", { fontSize: '22px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
 
+            // Моб UI
             this.mobIcon = this.add.image(1050, 150, 'mob_icon').setDisplaySize(140, 140).setFlipX(true);
-            this.mobHpText = this.add.text(950, 240, "", { fontSize: '22px', fill: '#ff0000', align: 'center' });
+            this.mobHpText = this.add.text(950, 240, "", { fontSize: '22px', fill: '#ff0000', align: 'center', fontStyle: 'bold' });
             this.mobHpBar = this.add.graphics();
             this.mobManaBar = this.add.graphics();
         }
 
         updateUI() {
-            let maxArm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
+            let maxA = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 240, 270, 12).fillStyle(0xff0000).fillRect(40, 240, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 12);
-            this.armBar.clear(); if(maxArm > 0) this.armBar.fillStyle(0x00ffff).fillRect(40, 240, (this.player.arm/maxArm)*270, 4);
+            
+            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 242, 270, 14).fillStyle(0xff0000).fillRect(40, 242, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 14);
+            this.armBar.clear();
+            if(maxA > 0) this.armBar.fillStyle(0x00ffff).fillRect(40, 242, (this.player.arm/maxA)*270, 5);
             
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
-            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 285, 270, 10).fillStyle(0x4444ff).fillRect(40, 285, (this.player.mana/100)*270, 10);
+            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 290, 270, 12).fillStyle(0x4444ff).fillRect(40, 290, (this.player.mana/100)*270, 12);
             this.ultBtn.setAlpha(this.player.mana >= 100 ? 1 : 0.5);
             
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
-            let totalAtk = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + b.atk, 0);
-            this.totalAtkText.setText(`УРОН ЗА ХОД: ${totalAtk}`);
+            let totalA = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + b.atk, 0);
+            this.totalAtkText.setText(`УРОН: ${totalA}`);
             
-            const loc = { head: "Голова", body: "Тело", legs: "Ноги", weapon: "Оружие", ring: "Кольцо", neck: "Амулет" };
             for(let k in this.equipLines) {
                 let it = this.player.equip[k];
-                this.equipLines[k].setText(`${loc[k]}: +${it.atk||0} Атк +${it.arm||0} Бр`).setFill(it.color);
+                this.equipLines[k].setText(`${it.n}: +${it.atk} Атк / +${it.arm} Бр`).setFill(it.color);
             }
 
-            this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}/${this.mob.maxHp}`);
+            this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(950, 300, 210, 15).fillStyle(0xff0000).fillRect(950, 300, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
-            this.mobManaBar.clear().fillStyle(0x000044).fillRect(950, 320, 210, 5).fillStyle(0x4444ff).fillRect(950, 320, (this.mob.mana/100)*210, 5);
+            this.mobManaBar.clear().fillStyle(0x111111).fillRect(950, 320, 210, 6).fillStyle(0x4444ff).fillRect(950, 320, (this.mob.mana/100)*210, 6);
             
             if (this.mob.hp <= 0 && this.turn !== "LOOT") {
                 this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
@@ -323,25 +317,30 @@
 
         showLoot() {
             this.turn = "LOOT";
-            const grades = [{ n: "Обычный", c: 1, cl: '#ffffff', p: 60 }, { n: "Необычный", c: 2, cl: '#2ecc71', p: 30 }, { n: "Редкий", c: 3, cl: '#3498db', p: 8 }, { n: "Эпический", c: 4, cl: '#9b59b6', p: 2 }];
-            let roll = Math.random() * 100, grade = grades[0], curP = 0;
-            for(let g of grades) { curP += g.p; if(roll <= curP) { grade = g; break; } }
+            const grades = [{n:"Обычный", c:1, cl:'#ffffff', p:60}, {n:"Редкий", c:2, cl:'#3498db', p:30}, {n:"Эпик", c:3, cl:'#9b59b6', p:10}];
+            let r = Math.random()*100, g = grades[0], cp = 0;
+            for(let x of grades) { cp += x.p; if(r <= cp) { g = x; break; } }
+            
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
-            let slot = Phaser.Utils.Array.GetRandom(slots);
-            let newItem = { slot, g: grade.n, color: grade.cl, atk: 0, arm: 0, dge: 0, price: 50 + this.player.level * 30 };
-            if(slot === 'weapon') newItem.atk = Math.floor(this.player.level * 2.5) + 5;
-            for(let i=0; i<grade.c; i++) newItem[Phaser.Utils.Array.GetRandom(['atk', 'arm'])] += Math.floor(Math.random() * (this.player.level * 2)) + 1;
+            let s = Phaser.Utils.Array.GetRandom(slots);
+            let it = { n: this.player.equip[s].n, g: g.n, color: g.cl, atk: 0, arm: 0, price: 50 + this.player.level*20 };
+            it.atk = s === 'weapon' ? 10 + g.c*5 : g.c*2;
+            it.arm = s !== 'weapon' ? 5 + g.c*3 : 0;
 
-            let overlay = this.add.container(GW/2, GH/2).setDepth(9999);
-            let bg = this.add.rectangle(0, 0, 500, 400, 0x000000, 0.9).setStrokeStyle(4, 0xffd700).setInteractive();
-            let txt = this.add.text(0, -50, `НАГРАДА: ${grade.n} ${slot}\n+${newItem.atk} Атака\n+${newItem.arm} Броня`, { align: 'center' }).setOrigin(0.5);
-            let bE = this.add.rectangle(-100, 100, 150, 50, 0x228B22).setInteractive();
-            this.add.text(-100, 100, "ОДЕТЬ").setOrigin(0.5);
-            let bS = this.add.rectangle(100, 100, 150, 50, 0xB22222).setInteractive();
-            this.add.text(100, 100, "ПРОДАТЬ").setOrigin(0.5);
-            overlay.add([bg, txt, bE, bS]);
-            bE.on('pointerdown', () => { this.player.equip[slot] = newItem; this.nextLevel(overlay); });
-            bS.on('pointerdown', () => { this.player.gold += newItem.price; this.nextLevel(overlay); });
+            let overlay = this.add.container(GW/2, GH/2).setDepth(999);
+            let bg = this.add.rectangle(0, 0, 550, 450, 0x000000, 0.95).setStrokeStyle(4, 0xffd700).setInteractive();
+            let tit = this.add.text(0, -150, "НАЙДЕНО СНАРЯЖЕНИЕ!", { fontSize: '32px', fill: g.cl, fontStyle: 'bold' }).setOrigin(0.5);
+            let info = this.add.text(0, -20, `${g.n} ${it.n}\n\nАтака: +${it.atk}\nБроня: +${it.arm}\nЦена: ${it.price} золота`, { fontSize: '24px', align: 'center' }).setOrigin(0.5);
+
+            let btnE = this.add.rectangle(-130, 150, 200, 60, 0x228B22).setInteractive().setStrokeStyle(2, 0xffffff);
+            let txtE = this.add.text(-130, 150, "ОДЕТЬ", { fontSize: '24px', fontStyle: 'bold' }).setOrigin(0.5);
+            let btnS = this.add.rectangle(130, 150, 200, 60, 0xB22222).setInteractive().setStrokeStyle(2, 0xffffff);
+            let txtS = this.add.text(130, 150, "ПРОДАТЬ", { fontSize: '24px', fontStyle: 'bold' }).setOrigin(0.5);
+
+            overlay.add([bg, tit, info, btnE, txtE, btnS, txtS]);
+
+            btnE.on('pointerdown', () => { this.player.equip[s] = it; this.nextLevel(overlay); });
+            btnS.on('pointerdown', () => { this.player.gold += it.price; this.nextLevel(overlay); });
         }
 
         nextLevel(overlay) { overlay.destroy(); this.player.level++; this.spawnMob(); this.updateUI(); }
