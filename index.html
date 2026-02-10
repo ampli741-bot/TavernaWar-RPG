@@ -368,7 +368,9 @@
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
         createUI() {
-            let uiBG = this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46).setInteractive();
+            // УБРАНО .setInteractive(), чтобы фон не ловил лишние клики
+            let uiBG = this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
+            
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140);
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
             this.hpBar = this.add.graphics();
@@ -376,36 +378,54 @@
             this.manaText = this.add.text(40, 280, "", { fontSize: '18px', fill: '#4444ff' });
             this.manaBar = this.add.graphics();
             this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' });
+            
             this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
             this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
+            
             this.equipLines = this.add.text(40, 480, "", { fontSize: '15px', lineSpacing: 8 });
             this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5);
             this.mobHpBar = this.add.graphics();
         }
 
         updateUI() {
+            if (!this.player || !this.mob) return; // Защита от ошибок, если данные еще не созданы
+
             let maxA = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (this.player.hp/this.player.maxHp)*270, 15);
-            if(maxA > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
+            
+            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 15);
+            
+            if(maxA > 0) {
+                this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
+            } else {
+                this.armBar.clear();
+            }
+
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
+            
             let eqS = "ИНВЕНТАРЬ:\n";
             for(let k in this.player.equip) {
                 let item = this.player.equip[k];
                 eqS += `${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр\n`;
             }
             this.equipLines.setText(eqS);
+            
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(945, 280, 210, 15).fillStyle(0xff0000).fillRect(945, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
             
-            if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot()); 
-            if(this.player.hp <= 0) location.reload();
+            if(this.mob.hp <= 0 && !this.lootActive) {
+                this.showLootWindow(this.generateLoot()); 
+            }
+            
+            if(this.player.hp <= 0) {
+                // Вместо перезагрузки всей страницы, лучше вызвать метод поражения, но пока оставляем как есть
+                location.reload();
+            }
         }
-    }
-
+        
     new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: GW, height: GH, scene: [MainScene] });
     </script>
 </body>
