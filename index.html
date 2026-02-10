@@ -187,42 +187,64 @@
         // [БЛОК 4] ИГРОВОЕ ПОЛЕ И ТИЛЫ
         // ==========================================
         initGrid() {
-            this.grid = []; this.isAnimating = false; this.comboCount = 0;
-            for (let r=0; r<8; r++) { this.grid[r] = []; for (let c=0; c<8; c++) this.spawnTile(r, c); }
+            this.grid = []; 
+            this.isAnimating = false; 
+            this.comboCount = 0;
+
+            // Создаем невидимую зону кликов строго по размеру сетки (8х8)
+            const gridSize = 8 * TILE_S;
+            this.gridArea = this.add.rectangle(OFFSET_X - TILE_S/2, OFFSET_Y - TILE_S/2, gridSize, gridSize, 0x000000, 0)
+                .setOrigin(0, 0)
+                .setInteractive();
+
+            // Если кликнули по этой зоне, но не по плитке — сбрасываем выделение
+            this.gridArea.on('pointerdown', () => {
+                if (this.selectedTile) {
+                    this.selectedTile.clearTint();
+                    this.selectedTile = null;
+                }
+            });
+
+            for (let r = 0; r < 8; r++) { 
+                this.grid[r] = []; 
+                for (let c = 0; c < 8; c++) this.spawnTile(r, c); 
+            }
         }
 
         spawnTile(r, c, fromTop = false) {
             const types = ['Red', 'Blue', 'Green', 'Purple', 'Yellow'];
             let type;
             let attempts = 0;
-            do {
-                type = Phaser.Utils.Array.GetRandom(types);
-                attempts++;
+            do { 
+                type = Phaser.Utils.Array.GetRandom(types); 
+                attempts++; 
             } while (attempts < 10 && (
-                (c > 1 && this.grid[r][c-1] && this.grid[r][c-1].type === type && this.grid[r][c-2] && this.grid[r][c-2].type === type) ||
+                (c > 1 && this.grid[r][c-1] && this.grid[r][c-1].type === type && this.grid[r][c-2] && this.grid[r][c-2].type === type) || 
                 (r > 1 && this.grid[r-1] && this.grid[r-1][c] && this.grid[r-1][c].type === type && this.grid[r-2] && this.grid[r-2][c] && this.grid[r-2][c].type === type)
             ));
 
             let tx = OFFSET_X + c * TILE_S, ty = OFFSET_Y + r * TILE_S;
             let tile = this.add.image(tx, fromTop ? ty - 500 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive();
             tile.gridR = r; tile.gridC = c; tile.type = type;
-            tile.on('pointerdown', () => this.handleTileClick(tile));
+            
+            // Важно: событие pointerdown только на плитке
+            tile.on('pointerdown', (pointer, localX, localY, event) => {
+                event.stopPropagation(); // Запрещаем клику «проваливаться» дальше
+                this.handleTileClick(tile);
+            });
+
             this.grid[r][c] = tile;
             if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 500, ease: 'Bounce.easeOut' });
         }
 
         async handleTileClick(tile) {
-            // КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Если клик пришел не от объекта тайла (пустое место), ничего не делаем
-            if (!tile || tile.type === undefined) return;
-            
+            // Если анимация, ход моба или окно лута — игнорируем всё
             if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive) return;
-            
+
             if (!this.selectedTile) { 
                 this.selectedTile = tile; 
                 tile.setTint(0xffff00); 
-            }
-            else {
-                // Если кликнули на тот же самый тайл - снимаем выделение
+            } else {
                 if (this.selectedTile === tile) {
                     this.selectedTile.clearTint();
                     this.selectedTile = null;
@@ -233,94 +255,16 @@
                 if (dR + dC === 1) {
                     await this.swapTiles(this.selectedTile, tile);
                     this.comboCount = 0;
-                    if (!await this.checkMatches()) await this.swapTiles(this.selectedTile, tile);
-                    else { this.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI()); }
+                    if (!await this.checkMatches()) {
+                        await this.swapTiles(this.selectedTile, tile);
+                    } else { 
+                        this.turn = "MOB"; 
+                        this.time.delayedCall(800, () => this.mobAI()); 
+                    }
                 }
-                if(this.selectedTile) this.selectedTile.clearTint();
+                if (this.selectedTile) this.selectedTile.clearTint();
                 this.selectedTile = null;
             }
-        }
-
-        async swapTiles(t1, t2) {
-            this.isAnimating = true;
-            let r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
-            this.grid[r1][c1] = t2; this.grid[r2][c2] = t1;
-            t1.gridR = r2; t1.gridC = c2; t2.gridR = r1; t2.gridC = c1;
-            return new Promise(res => {
-                this.tweens.add({ targets: t1, x: OFFSET_X+c2*TILE_S, y: OFFSET_Y+r2*TILE_S, duration: 250 });
-                this.tweens.add({ targets: t2, x: OFFSET_X+c1*TILE_S, y: OFFSET_Y+r1*TILE_S, duration: 250, onComplete: () => { this.isAnimating = false; res(); } });
-            });
-        }
-
-        async checkMatches() {
-            let toRem = new Set();
-            let specialEffects = [];
-
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<6; c++) {
-                    if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && 
-                       this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) {
-                        let match = [this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]];
-                        let nextC = c+3;
-                        while(nextC < 8 && this.grid[r][nextC] && this.grid[r][nextC].type === this.grid[r][c].type) { match.push(this.grid[r][nextC]); nextC++; }
-                        if(match.length === 4) specialEffects.push({type: 'LINE_H', r: r, c: c});
-                        if(match.length >= 5) specialEffects.push({type: 'BOMB', r: r, c: c});
-                        match.forEach(t => toRem.add(t));
-                    }
-                }
-            }
-            for(let c=0; c<8; c++) {
-                for(let r=0; r<6; r++) {
-                    if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && 
-                       this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) {
-                        let match = [this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]];
-                        let nextR = r+3;
-                        while(nextR < 8 && this.grid[nextR] && this.grid[nextR][c] && this.grid[nextR][c].type === this.grid[r][c].type) { match.push(this.grid[nextR][c]); nextR++; }
-                        if(match.length === 4) specialEffects.push({type: 'LINE_V', r: r, c: c});
-                        if(match.length >= 5) specialEffects.push({type: 'BOMB', r: r, c: c});
-                        match.forEach(t => toRem.add(t));
-                    }
-                }
-            }
-            specialEffects.forEach(eff => {
-                if(eff.type === 'LINE_H') for(let i=0; i<8; i++) if(this.grid[eff.r][i]) toRem.add(this.grid[eff.r][i]);
-                if(eff.type === 'LINE_V') for(let i=0; i<8; i++) if(this.grid[i][eff.c]) toRem.add(this.grid[i][eff.c]);
-                if(eff.type === 'BOMB') {
-                    for(let i=eff.r-1; i<=eff.r+1; i++) for(let j=eff.c-1; j<=eff.c+1; j++)
-                            if(i>=0 && i<8 && j>=0 && j<8 && this.grid[i][j]) toRem.add(this.grid[i][j]);
-                }
-            });
-
-            if (toRem.size > 0) {
-                toRem.forEach(t => { 
-                    this.applyEffect(t.type);
-                    this.grid[t.gridR][t.gridC] = null;
-                    this.tweens.add({ targets: t, alpha: 0, scale: 0, duration: 200, onComplete: () => t.destroy() });
-                });
-                await new Promise(res => this.time.delayedCall(250, res));
-                await this.fillEmpty();
-                this.comboCount++;
-                await this.checkMatches(); 
-                return true;
-            }
-            return false;
-        }
-
-        async fillEmpty() {
-            for(let c=0; c<8; c++) {
-                let empty = 0;
-                for(let r=7; r>=0; r--) {
-                    if(!this.grid[r][c]) empty++;
-                    else if(empty > 0) {
-                        let t = this.grid[r][c];
-                        this.grid[r+empty][c] = t; this.grid[r][c] = null;
-                        t.gridR = r+empty;
-                        this.tweens.add({ targets: t, y: OFFSET_Y+t.gridR*TILE_S, duration: 400 });
-                    }
-                }
-                for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
-            }
-            await new Promise(res => this.time.delayedCall(450, res));
         }
 
         // ==========================================
@@ -372,7 +316,9 @@
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
         createUI() {
-            let uiBG = this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
+            // Фон панели UI (не интерактивный, чтобы не ловить клики)
+            this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
+            
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140);
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
             this.hpBar = this.add.graphics();
@@ -385,7 +331,15 @@
             this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
             
-            this.equipLines = this.add.text(40, 480, "", { fontSize: '15px', lineSpacing: 8 });
+            this.add.text(40, 480, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' });
+            
+            // Создаем массив текстовых объектов для каждого слота
+            this.equipTexts = {};
+            const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
+            slots.forEach((s, i) => {
+                this.equipTexts[s] = this.add.text(40, 510 + (i * 25), "", { fontSize: '15px' });
+            });
+
             this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5);
             this.mobHpBar = this.add.graphics();
         }
@@ -393,6 +347,7 @@
         updateUI() {
             if (!this.player || !this.mob) return;
             let maxA = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
+            
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
             this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 15);
             
@@ -403,18 +358,20 @@
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
             
-            let eqS = "ИНВЕНТАРЬ:\n";
-            for(let k in this.player.equip) {
+            // Обновляем каждую строку инвентаря её цветом
+            for (let k in this.player.equip) {
                 let item = this.player.equip[k];
-                eqS += `${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр\n`;
+                if (this.equipTexts[k]) {
+                    this.equipTexts[k].setText(`${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр`);
+                    this.equipTexts[k].setFill(item.color || '#ffffff');
+                }
             }
-            this.equipLines.setText(eqS);
             
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(945, 280, 210, 15).fillStyle(0xff0000).fillRect(945, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
             
-            if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot()); 
-            if(this.player.hp <= 0) location.reload();
+            if (this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot()); 
+            if (this.player.hp <= 0) location.reload();
         }
     }
 
