@@ -365,27 +365,35 @@
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
         createUI() {
-            // ЩИТ МЕНЮ (Depth 10)
-            this.uiShieldLeft = this.add.rectangle(175, 450, 350, 900, 0x191614)
-                .setStrokeStyle(2, 0xb48c46)
+            // 1. ЛЕВЫЙ ЩИТ: Расширен до 366 пикселей (ровно до границы первой плитки)
+            // Это убирает полосу между инвентарем и полем
+            this.uiShieldLeft = this.add.rectangle(0, 0, 366, GH, 0x191614)
+                .setOrigin(0,0)
+                .setInteractive()
+                .setDepth(10)
+                .setStrokeStyle(2, 0xb48c46);
+            
+            // 2. ПРАВЫЙ ЩИТ: Начинается от 910 пикселей (сразу после последней плитки)
+            // Закрывает зону моба полностью
+            this.uiShieldRight = this.add.rectangle(910, 0, GW - 910, GH, 0x0c0a08, 0)
+                .setOrigin(0,0)
                 .setInteractive()
                 .setDepth(10);
+
+            // Отрисовка элементов внутри левой панели (теперь всё на Depth 11)
+            this.add.image(183, 120, `hero_${this.player.job}`).setDisplaySize(140, 140).setDepth(11);
             
-            // ЩИТ МОБА (Depth 10)
-            this.uiShieldRight = this.add.rectangle(1075, 450, 250, 900, 0x0c0a08, 0)
-                .setInteractive()
-                .setDepth(10);
-            
-            this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140).setDepth(11);
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' }).setDepth(11);
             this.hpBar = this.add.graphics().setDepth(11);
             this.armBar = this.add.graphics().setDepth(12);
+            
             this.manaText = this.add.text(40, 280, "", { fontSize: '18px', fill: '#4444ff' }).setDepth(11);
             this.manaBar = this.add.graphics().setDepth(11);
+            
             this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' }).setDepth(11);
             
-            this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa).setDepth(11);
-            this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+            this.ultBtn = this.add.rectangle(183, 410, 260, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa).setDepth(11);
+            this.add.text(183, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
             this.ultBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.useUlt(); });
             
             this.add.text(40, 480, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' }).setDepth(11);
@@ -396,6 +404,7 @@
                 this.equipTexts[s] = this.add.text(40, 510 + (i * 25), "", { fontSize: '15px' }).setDepth(11);
             });
 
+            // Индикатор моба справа
             this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5).setDepth(11);
             this.mobHpBar = this.add.graphics().setDepth(11);
         }
@@ -405,13 +414,13 @@
             let maxA = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
             
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 15);
+            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 280, 15).fillStyle(0xff0000).fillRect(40, 250, (Math.max(0, this.player.hp)/this.player.maxHp)*280, 15);
             
-            if(maxA > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
+            if(maxA > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*280, 5);
             else this.armBar.clear();
 
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
-            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
+            this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 280, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*280, 12);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
             
             for (let k in this.player.equip) {
