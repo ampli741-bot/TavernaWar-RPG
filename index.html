@@ -352,28 +352,9 @@
             await Promise.all(promises);
             await new Promise(res => this.time.delayedCall(100, res));
         }
-        // ==========================================
-        // [БЛОК 5] БОЕВАЯ ЛОГИКА И ИИ МОБА
-        // ==========================================
-        applyEffect(type, mult = 1) {
-            if (this.lootActive) return;
-            
-            // Считаем множитель за комбо (каждый взрыв после падения дает +20% к силе)
-            let comboBonus = 1 + ((this.comboCount || 0) * 0.2);
-            let totalMult = mult * comboBonus;
+        
 
-            let totalA = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + (b.atk || 0), 0);
-            
-            if (type==='Red' || type==='Purple') {
-                this.mob.hp -= (totalA/5) * totalMult;
-            }
-            if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + (15 * totalMult));
-            if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + (10 * totalMult));
-            if (type==='Yellow') this.player.gold += Math.floor(5 * totalMult);
-            this.updateUI();
-        }
-
-        a// ==========================================
+        // ==========================================
         // [БЛОК 5] БОЕВАЯ ЛОГИКА И ИИ МОБА
         // ==========================================
         
