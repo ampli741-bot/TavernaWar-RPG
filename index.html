@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Fixed UI</title>
+    <title>Taverna War: UI & Bugfix</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -83,13 +83,21 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let tile = this.add.image(OFFSET_X + c*66, OFFSET_Y + r*66, `tile_${type}`).setDisplaySize(62, 62).setInteractive();
             tile.gridR = r; tile.gridC = c; tile.type = type;
-            tile.on('pointerdown', () => this.handleTileClick(tile));
+            tile.on('pointerdown', (pointer) => {
+                pointer.event.stopPropagation(); // Останавливаем всплытие, чтобы не сработал клик по сцене
+                this.handleTileClick(tile);
+            });
             this.grid[r][c] = tile;
         }
 
         async handleTileClick(tile) {
-            if (this.isAnimating || this.turn !== "PLAYER") return;
-            if (!this.selectedTile) { this.selectedTile = tile; tile.setTint(0xffff00); }
+            // Проверка: если клик пришел не от объекта тайла или анимация идет — выходим
+            if (!tile || !tile.type || this.isAnimating || this.turn !== "PLAYER") return;
+
+            if (!this.selectedTile) { 
+                this.selectedTile = tile; 
+                tile.setTint(0xffff00); 
+            }
             else {
                 let dR = Math.abs(this.selectedTile.gridR - tile.gridR), dC = Math.abs(this.selectedTile.gridC - tile.gridC);
                 if (dR + dC === 1) {
@@ -213,10 +221,8 @@
 
         createUI() {
             this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
-            // Убрал интерактивность с иконки, чтобы поле не обновлялось
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(130, 130);
             
-            // UI Группировка
             this.hpText = this.add.text(40, 200, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
             this.hpBar = this.add.graphics();
             this.armBar = this.add.graphics();
@@ -232,11 +238,16 @@
             this.ultTxt = this.add.text(175, 400, `${ultName}`, { fontSize: '16px', fill: '#fff' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
 
-            this.add.text(40, 450, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
+            this.add.text(40, 455, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffd700', fontStyle: 'bold' });
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
             this.equipLines = {};
-            slots.forEach((s, i) => this.equipLines[s] = this.add.text(40, 480 + (i * 35), "", { fontSize: '14px', fill: '#ffffff' }));
+            slots.forEach((s, i) => this.equipLines[s] = this.add.text(40, 485 + (i * 35), "", { fontSize: '14px', fill: '#ffffff' }));
             
+            // КНОПКА МАГАЗИНА (БУДУЩЕЕ)
+            this.shopBtn = this.add.rectangle(175, 780, 200, 50, 0x463212).setInteractive().setStrokeStyle(2, 0xffd700).setAlpha(0.8);
+            this.shopTxt = this.add.text(175, 780, "МАГАЗИН", { fontSize: '22px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
+            this.shopBtn.on('pointerdown', () => console.log("Shop opened soon..."));
+
             this.mobIcon = this.add.image(1050, 150, 'mob_icon').setDisplaySize(140, 140).setFlipX(true);
             this.mobHpText = this.add.text(950, 240, "", { fontSize: '22px', fill: '#ff0000', align: 'center' });
             this.mobHpBar = this.add.graphics();
@@ -245,13 +256,11 @@
         updateUI() {
             let maxArm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
             
-            // HP и Броня (разделил позиции)
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
             this.hpBar.clear().fillStyle(0x440000).fillRect(40, 240, 270, 12).fillStyle(0xff0000).fillRect(40, 240, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 12);
             this.armBar.clear();
             if(maxArm > 0) this.armBar.fillStyle(0x00ffff).fillRect(40, 240, (this.player.arm/maxArm)*270, 4);
             
-            // Мана
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 285, 270, 10).fillStyle(0x4444ff).fillRect(40, 285, (this.player.mana/100)*270, 10);
             this.ultBtn.setAlpha(this.player.mana >= 100 ? 1 : 0.5);
