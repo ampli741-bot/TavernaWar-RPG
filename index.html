@@ -193,7 +193,10 @@
         // ==========================================
         initGrid() {
             this.grid = []; this.isAnimating = false; this.comboCount = 0;
-            for (let r=0; r<8; r++) { this.grid[r] = []; for (let c=0; c<8; c++) this.spawnTile(r, c); }
+            for (let r=0; r<8; r++) { 
+                this.grid[r] = []; 
+                for (let c=0; c<8; c++) this.spawnTile(r, c); 
+            }
         }
 
         spawnTile(r, c, fromTop = false) {
@@ -212,15 +215,13 @@
             let tile = this.add.image(tx, fromTop ? ty - 500 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive();
             tile.gridR = r; tile.gridC = c; tile.type = type;
             
-            // Возвращаем стандартный клик без блокировки событий
             tile.on('pointerdown', () => this.handleTileClick(tile));
 
             this.grid[r][c] = tile;
-            if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 500, ease: 'Bounce.easeOut' });
+            if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 500, ease: 'Cubic.easeOut' });
         }
 
         async handleTileClick(tile) {
-            // Если анимация, ход моба, лут или кликнули НЕ по плитке — выходим
             if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive || !tile) return;
             
             if (!this.selectedTile) { 
@@ -238,7 +239,8 @@
                     let t2 = tile;
                     await this.swapTiles(t1, t2);
                     this.comboCount = 0;
-                    if (!await this.checkMatches()) {
+                    let hasMatch = await this.checkMatches();
+                    if (!hasMatch) {
                         await this.swapTiles(t1, t2);
                     } else { 
                         this.turn = "MOB"; 
@@ -263,49 +265,34 @@
 
         async checkMatches() {
             let toRem = new Set();
-            let specialEffects = [];
+            // Поиск горизонтальных
             for(let r=0; r<8; r++) {
                 for(let c=0; c<6; c++) {
-                    if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && 
-                       this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) {
-                        let match = [this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]];
-                        let nextC = c+3;
-                        while(nextC < 8 && this.grid[r][nextC] && this.grid[r][nextC].type === this.grid[r][c].type) { match.push(this.grid[r][nextC]); nextC++; }
-                        if(match.length === 4) specialEffects.push({type: 'LINE_H', r: r, c: c});
-                        if(match.length >= 5) specialEffects.push({type: 'BOMB', r: r, c: c});
-                        match.forEach(t => toRem.add(t));
+                    if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2]) {
+                        if(this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) {
+                            toRem.add(this.grid[r][c]); toRem.add(this.grid[r][c+1]); toRem.add(this.grid[r][c+2]);
+                        }
                     }
                 }
             }
+            // Поиск вертикальных
             for(let c=0; c<8; c++) {
                 for(let r=0; r<6; r++) {
-                    if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && 
-                       this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) {
-                        let match = [this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]];
-                        let nextR = r+3;
-                        while(nextR < 8 && this.grid[nextR] && this.grid[nextR][c] && this.grid[nextR][c].type === this.grid[r][c].type) { match.push(this.grid[nextR][c]); nextR++; }
-                        if(match.length === 4) specialEffects.push({type: 'LINE_V', r: r, c: c});
-                        if(match.length >= 5) specialEffects.push({type: 'BOMB', r: r, c: c});
-                        match.forEach(t => toRem.add(t));
+                    if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c]) {
+                        if(this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) {
+                            toRem.add(this.grid[r][c]); toRem.add(this.grid[r+1][c]); toRem.add(this.grid[r+2][c]);
+                        }
                     }
                 }
             }
-            specialEffects.forEach(eff => {
-                if(eff.type === 'LINE_H') for(let i=0; i<8; i++) if(this.grid[eff.r][i]) toRem.add(this.grid[eff.r][i]);
-                if(eff.type === 'LINE_V') for(let i=0; i<8; i++) if(this.grid[i][eff.c]) toRem.add(this.grid[i][eff.c]);
-                if(eff.type === 'BOMB') {
-                    for(let i=eff.r-1; i<=eff.r+1; i++) for(let j=eff.c-1; j<=eff.c+1; j++)
-                            if(i>=0 && i<8 && j>=0 && j<8 && this.grid[i][j]) toRem.add(this.grid[i][j]);
-                }
-            });
 
             if (toRem.size > 0) {
-                toRem.forEach(t => { 
+                let list = Array.from(toRem);
+                for (let t of list) {
                     this.applyEffect(t.type);
-                    this.grid[t.gridR][t.gridC] = null;
-                    this.tweens.add({ targets: t, alpha: 0, scale: 0, duration: 200, onComplete: () => t.destroy() });
-                });
-                await new Promise(res => this.time.delayedCall(250, res));
+                    if (this.grid[t.gridR][t.gridC] === t) this.grid[t.gridR][t.gridC] = null;
+                    t.destroy();
+                }
                 await this.fillEmpty();
                 this.comboCount++;
                 await this.checkMatches(); 
@@ -323,14 +310,51 @@
                         let t = this.grid[r][c];
                         this.grid[r+empty][c] = t; this.grid[r][c] = null;
                         t.gridR = r+empty;
-                        this.tweens.add({ targets: t, y: OFFSET_Y+t.gridR*TILE_S, duration: 400 });
+                        this.tweens.add({ targets: t, y: OFFSET_Y+t.gridR*TILE_S, duration: 300 });
                     }
                 }
                 for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
             }
-            await new Promise(res => this.time.delayedCall(450, res));
+            await new Promise(res => this.time.delayedCall(350, res));
         }
-        
+
+        // ==========================================
+        // [БЛОК 5] БОЕВАЯ ЛОГИКА
+        // ==========================================
+        applyEffect(type, mult = 1) {
+            if (this.lootActive) return;
+            let comboBonus = 1 + (this.comboCount * 0.2);
+            let totalMult = mult * comboBonus;
+            let totalA = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + (b.atk || 0), 0);
+            
+            if (type==='Red' || type==='Purple') this.mob.hp -= (totalA/5) * totalMult;
+            if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + (15 * totalMult));
+            if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + (10 * totalMult));
+            if (type==='Yellow') this.player.gold += Math.floor(5 * totalMult);
+            this.updateUI();
+        }
+
+        applyMobEffect(type) {
+            if (this.lootActive) return;
+            let d = this.mob.atk * 0.7;
+            if(this.player.arm > 0) { let a = Math.min(this.player.arm, d); this.player.arm -= a; d -= a; }
+            this.player.hp -= d;
+            this.updateUI();
+        }
+
+        async mobAI() {
+            if (this.mob.hp <= 0 || this.lootActive) return;
+            this.player.hp -= this.mob.atk * 0.5; // Упрощенный урон для теста
+            this.turn = "PLAYER"; 
+            this.updateUI();
+        }
+
+        getMatchesAt(g) {
+            let res = 0;
+            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(g[r][c] && g[r][c]===g[r][c+1] && g[r][c]===g[r][c+2]) res++;
+            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(g[r][c] && g[r][c]===g[r+1][c] && g[r][c]===g[r+2][c]) res++;
+            return res;
+        }
         
         // ==========================================
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
