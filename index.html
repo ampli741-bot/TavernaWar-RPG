@@ -368,57 +368,78 @@
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
         createUI() {
+            // Фон интерфейса
             let uiBG = this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46).setInteractive();
+            
+            // Иконка героя
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140);
+            
+            // Текст и полоски HP/Брони
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
             this.hpBar = this.add.graphics();
             this.armBar = this.add.graphics();
+            
+            // Текст и полоска Маны
             this.manaText = this.add.text(40, 280, "", { fontSize: '18px', fill: '#4444ff' });
             this.manaBar = this.add.graphics();
+            
+            // Золото
             this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' });
+            
+            // Кнопка Ульты
             this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
             this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
 
-            // Создаем заголовок и контейнер для цветного списка вещей
-            this.add.text(40, 455, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' });
+            // ИНВЕНТАРЬ: Заголовок и новый контейнер для цветных вещей
+            this.add.text(40, 455, "СНАРЯЖЕНИЕ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' });
             this.inventoryContainer = this.add.container(40, 485);
 
-            // ВАЖНО: Добавляем объекты моба, чтобы updateUI не выдавал ошибку
+            // Данные Врага (чтобы не было черного экрана)
             this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5);
             this.mobHpBar = this.add.graphics();
         }
 
         updateUI() {
-            // Если игрок или моб еще не созданы, выходим из функции
-            if (!this.player || !this.mob) return;
+            // Защита от ошибок, если данные еще не подгрузились
+            if (!this.player || !this.mob || !this.inventoryContainer) return;
 
             let maxA = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
-            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
             
+            // Обновление здоровья и брони
+            this.hpText.setText(`ЗДОРОВЬЕ: ${Math.floor(this.player.hp)}\nБРОНЯ: ${this.player.arm}`);
             this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (this.player.hp/this.player.maxHp)*270, 15);
             
-            // Здесь был лишний ноль - убрали его
-            if(maxA > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
+            // Полоска брони поверх HP (тонкая линия)
+            this.armBar.clear();
+            if(maxA > 0) {
+                this.armBar.fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
+            }
             
+            // Мана и Золото
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
 
-            // Очистка и отрисовка списка инвентаря
+            // ОЧИСТКА И ОТРИСОВКА ЦВЕТНОГО ИНВЕНТАРЯ
             this.inventoryContainer.removeAll(true);
             let yIdx = 0;
-            for(let k in this.player.equip) {
-                let item = this.player.equip[k];
-                let nameTxt = this.add.text(0, yIdx * 28, item.n, { fontSize: '15px', fill: item.color, fontStyle: 'bold' });
+            for(let slot in this.player.equip) {
+                let item = this.player.equip[slot];
+                // Название предмета цветом грейда
+                let nameTxt = this.add.text(0, yIdx * 28, item.n, { fontSize: '15px', fill: item.color || '#ffffff', fontStyle: 'bold' });
+                // Статы серым цветом
                 let statsTxt = this.add.text(nameTxt.width + 5, yIdx * 28, `: +${item.atk || 0} Атк / +${item.arm || 0} Бр`, { fontSize: '14px', fill: '#bbbbbb' });
+                
                 this.inventoryContainer.add([nameTxt, statsTxt]);
                 yIdx++;
             }
 
+            // UI Врага
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(945, 280, 210, 15).fillStyle(0xff0000).fillRect(945, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
             
+            // Условия победы/поражения
             if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot()); 
             if(this.player.hp <= 0) location.reload();
         }
