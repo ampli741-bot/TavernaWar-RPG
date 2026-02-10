@@ -71,7 +71,7 @@
         }
 
         // ==========================================
-        // [БЛОК 2] МОБЫ И СИСТЕМА ЛУТА (Грейды/Статы)
+        // [БЛОК 2] МОБЫ И СИСТЕМА ЛУТА
         // ==========================================
         spawnMob() {
             let lvl = this.player.level;
@@ -97,14 +97,27 @@
             for (let r of rarities) { cum += r.chance; if (rand <= cum) { rarity = r; break; } }
 
             const slots = [
-                {n:'Шлем', s:'head', st:'arm'}, {n:'Доспех', s:'body', st:'arm'}, {n:'Сапоги', s:'legs', st:'arm'},
-                {n:'Меч', s:'weapon', st:'atk'}, {n:'Кольцо', s:'ring', st:'atk'}, {n:'Амулет', s:'neck', st:'atk'}
+                {n:'Шлем', s:'head', st:'arm', l: 'Броня'}, 
+                {n:'Доспех', s:'body', st:'arm', l: 'Броня'}, 
+                {n:'Сапоги', s:'legs', st:'arm', l: 'Броня'},
+                {n:'Меч', s:'weapon', st:'atk', l: 'Атака'}, 
+                {n:'Кольцо', s:'ring', st:'atk', l: 'Атака'}, 
+                {n:'Амулет', s:'neck', st:'atk', l: 'Атака'}
             ];
             let item = Phaser.Utils.Array.GetRandom(slots);
             let baseVal = Math.floor(this.player.level * 3 * rarity.mult);
             let finalVal = baseVal + Phaser.Math.Between(1, 5);
 
-            return { name: item.n, slot: item.s, statType: item.st, val: finalVal, rarity: rarity.n, color: rarity.c, price: Math.floor(finalVal * 2) };
+            return { 
+                name: item.n, 
+                slot: item.s, 
+                statType: item.st, 
+                label: item.l, // Явно прописываем метку
+                val: finalVal, 
+                rarity: rarity.n, 
+                color: rarity.c, 
+                price: Math.floor(finalVal * 2) 
+            };
         }
 
         showLootWindow(loot) {
@@ -112,18 +125,20 @@
             const current = this.player.equip[loot.slot];
             const currentVal = current[loot.statType] || 0;
             const diff = loot.val - currentVal;
+            const statLabel = loot.label || (loot.statType === 'atk' ? 'Атака' : 'Броня');
 
             this.lootContainer = this.add.container(GW/2, GH/2).setDepth(1000);
             let bg = this.add.rectangle(0, 0, 500, 500, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46).setInteractive();
+            
             let title = this.add.text(0, -200, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
             let itemName = this.add.text(0, -120, `${loot.rarity} ${loot.name}`, { fontSize: '30px', fill: loot.color, fontStyle: 'bold' }).setOrigin(0.5);
             
-            // ИСПРАВЛЕННЫЙ ТЕКСТ (Жирный, без курсива, крупные статы)
+            // Исправленный текст с проверкой на undefined
             let info = this.add.text(0, 0, 
-                `Новый: +${loot.val} ${loot.label}\n` +
-                `Текущий: +${currentVal} ${loot.label}\n` +
+                `Новый: +${loot.val} ${statLabel}\n` +
+                `Текущий: +${currentVal} ${statLabel}\n` +
                 `Разница: ${diff > 0 ? '+' : ''}${diff}`, 
-                { fontSize: '26px', align: 'center', fill: '#ffffff', fontStyle: 'bold', fontFamily: 'Arial' }
+                { fontSize: '26px', align: 'center', fill: '#ffffff', fontStyle: 'bold' }
             ).setOrigin(0.5);
 
             let btnEquip = this.add.rectangle(-120, 180, 200, 60, 0x224422).setInteractive().setStrokeStyle(2, 0x00ff00);
@@ -143,16 +158,6 @@
                 this.closeLoot();
             });
         }
-
-        closeLoot() {
-            if(this.lootContainer) this.lootContainer.destroy();
-            this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
-            this.player.level++; 
-            this.spawnMob(); 
-            this.updateUI();
-            this.lootActive = false;
-        }
-
         // ==========================================
         // [БЛОК 3] СУПЕРСПОСОБНОСТИ (УЛЬТЫ)
         // ==========================================
