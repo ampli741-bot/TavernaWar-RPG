@@ -211,21 +211,40 @@
             let tx = OFFSET_X + c * TILE_S, ty = OFFSET_Y + r * TILE_S;
             let tile = this.add.image(tx, fromTop ? ty - 500 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive();
             tile.gridR = r; tile.gridC = c; tile.type = type;
-            tile.on('pointerdown', () => this.handleTileClick(tile));
+            
+            // Исправлено: добавлена остановка всплытия события
+            tile.on('pointerdown', (pointer) => {
+                pointer.stopPropagation();
+                this.handleTileClick(tile);
+            });
+
             this.grid[r][c] = tile;
             if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 500, ease: 'Bounce.easeOut' });
         }
 
         async handleTileClick(tile) {
             if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive) return;
-            if (!this.selectedTile) { this.selectedTile = tile; tile.setTint(0xffff00); }
-            else {
+            if (!this.selectedTile) { 
+                this.selectedTile = tile; 
+                tile.setTint(0xffff00); 
+            } else {
+                if (this.selectedTile === tile) {
+                    this.selectedTile.clearTint();
+                    this.selectedTile = null;
+                    return;
+                }
                 let dR = Math.abs(this.selectedTile.gridR - tile.gridR), dC = Math.abs(this.selectedTile.gridC - tile.gridC);
                 if (dR + dC === 1) {
-                    await this.swapTiles(this.selectedTile, tile);
+                    let t1 = this.selectedTile;
+                    let t2 = tile;
+                    await this.swapTiles(t1, t2);
                     this.comboCount = 0;
-                    if (!await this.checkMatches()) await this.swapTiles(this.selectedTile, tile);
-                    else { this.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI()); }
+                    if (!await this.checkMatches()) {
+                        await this.swapTiles(t1, t2);
+                    } else { 
+                        this.turn = "MOB"; 
+                        this.time.delayedCall(800, () => this.mobAI()); 
+                    }
                 }
                 if(this.selectedTile) this.selectedTile.clearTint();
                 this.selectedTile = null;
@@ -365,7 +384,6 @@
             for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(g[r][c] && g[r][c]===g[r+1][c] && g[r][c]===g[r+2][c]) res++;
             return res;
         }
-
         // ==========================================
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
