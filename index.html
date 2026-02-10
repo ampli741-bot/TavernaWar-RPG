@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Balanced Ultimates</title>
+    <title>Taverna War: Core Mechanics</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -57,6 +57,7 @@
                     neck: { g: "Обычный", atk: 0, arm: 0, dge: 2, color: '#ffffff' }
                 }
             };
+            this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
             this.spawnMob();
             this.initGrid();
             this.createUI();
@@ -112,23 +113,28 @@
             });
         }
 
+        showDamage(val, x, y, color = "#ff0000") {
+            let txt = this.add.text(x, y, `-${Math.floor(val)}`, { fontSize: '32px', fill: color, fontStyle: 'bold', stroke: '#000', strokeThickness: 4 });
+            this.tweens.add({ targets: txt, y: y - 100, alpha: 0, duration: 800, onComplete: () => txt.destroy() });
+        }
+
         async mobTurn() {
             if (this.mob.hp <= 0) return;
             let totalDge = Object.values(this.player.equip).reduce((a, b) => a + b.dge, 0);
             if (Math.random() * 100 < totalDge) {
-                let t = this.add.text(GW/2, GH/2, "ПРОМАХ!", { fontSize: '64px', fill: '#ffff00', fontStyle: 'bold' }).setOrigin(0.5);
-                this.time.delayedCall(800, () => t.destroy());
+                this.showDamage(0, 175, 120, "#ffff00");
             } else {
                 let damage = this.mob.atk;
+                let finalDmg = damage;
                 if (this.player.arm > 0) {
                     let absorbed = Math.min(this.player.arm, damage);
                     this.player.arm -= absorbed;
-                    damage -= absorbed;
+                    finalDmg -= absorbed;
                 }
-                this.player.hp -= damage;
+                this.player.hp -= finalDmg;
+                this.showDamage(damage, 175, 120);
             }
             this.turn = "PLAYER";
-            this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
             this.updateUI();
         }
 
@@ -152,10 +158,14 @@
 
         applyEffect(type, multiplier = 1) {
             let totalAtk = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + b.atk, 0);
-            if (type==='Red' || type==='Purple') this.mob.hp -= (totalAtk/4) * multiplier;
-            if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 10);
-            if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + 10);
-            if (type==='Yellow') this.player.gold += 10;
+            if (type==='Red' || type==='Purple') {
+                let dmg = (totalAtk/4) * multiplier;
+                this.mob.hp -= dmg;
+                this.showDamage(dmg, 1050, 150, "#ff4444");
+            }
+            if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 5);
+            if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + 8);
+            if (type==='Yellow') this.player.gold += 5;
             this.updateUI();
         }
 
@@ -229,7 +239,7 @@
         updateUI() {
             let maxArm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0);
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 225, 270, 15).fillStyle(0xff0000).fillRect(40, 225, (this.player.hp/this.player.maxHp)*270, 15);
+            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 225, 270, 15).fillStyle(0xff0000).fillRect(40, 225, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 15);
             if(maxArm > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 225, (this.player.arm/maxArm)*270, 5);
             
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
@@ -251,7 +261,11 @@
             }
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}/${this.mob.maxHp}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(950, 300, 210, 15).fillStyle(0xff0000).fillRect(950, 300, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
-            if (this.mob.hp <= 0 && this.turn !== "LOOT") this.showLoot();
+            
+            if (this.mob.hp <= 0 && this.turn !== "LOOT") {
+                this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + b.arm, 0); // Реген брони
+                this.showLoot();
+            }
             if (this.player.hp <= 0) location.reload();
         }
 
@@ -263,8 +277,7 @@
                 { n: "Редкий", c: 3, cl: '#3498db', p: 8 },
                 { n: "Эпический", c: 4, cl: '#9b59b6', p: 2 }
             ];
-            let roll = Math.random() * 100, grade = grades[0];
-            let curP = 0;
+            let roll = Math.random() * 100, grade = grades[0], curP = 0;
             for(let g of grades) { curP += g.p; if(roll <= curP) { grade = g; break; } }
 
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
@@ -276,7 +289,7 @@
 
             for(let i=0; i<grade.c; i++) {
                 let stat = Phaser.Utils.Array.GetRandom(['atk', 'arm', 'dge']);
-                newItem[stat] += Math.floor(Math.random() * (this.player.level * 3)) + 1;
+                newItem[stat] += Math.floor(Math.random() * (this.player.level * 2)) + 1;
             }
 
             let old = this.player.equip[slot];
