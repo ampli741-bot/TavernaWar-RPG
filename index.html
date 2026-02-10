@@ -64,6 +64,11 @@
                 }
             };
             this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
+            
+            // Сброс всех глобальных событий ввода перед началом игры, 
+            // чтобы старые клики из меню не влияли на поле
+            this.input.off('pointerdown'); 
+
             this.spawnMob();
             this.initGrid();
             this.createUI();
