@@ -373,11 +373,27 @@
             this.updateUI();
         }
 
-        applyMobEffect(type) {
-            if (this.lootActive) return;
-            let d = this.mob.atk * 0.7;
-            if(this.player.arm > 0) { let a = Math.min(this.player.arm, d); this.player.arm -= a; d -= a; }
-            this.player.hp -= d;
+        applyMobEffect() {
+            if (this.lootActive || this.mob.hp <= 0) return;
+            
+            let damage = this.mob.atk; // Базовый урон моба
+            
+            // Логика поглощения урона броней
+            if (this.player.arm > 0) {
+                if (this.player.arm >= damage) {
+                    this.player.arm -= damage;
+                    damage = 0; // Броня полностью поглотила урон
+                } else {
+                    damage -= this.player.arm;
+                    this.player.arm = 0; // Броня разрушена, остаток урона идет в HP
+                }
+            }
+            
+            this.player.hp -= damage;
+            
+            // Эффект тряски экрана при получении урона
+            this.cameras.main.shake(200, 0.01);
+            
             this.updateUI();
         }
 
@@ -436,26 +452,66 @@
         }
 
         updateUI() {
+            // Рассчитываем максимальную броню от экипировки для полоски
             let maxA = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
+            
+            // Обновление основных баров
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
-            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (this.player.hp/this.player.maxHp)*270, 15);
-            if(maxA > 0) this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
+            this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (Math.max(0, this.player.hp)/this.player.maxHp)*270, 15);
+            
+            if(maxA > 0) {
+                this.armBar.clear().fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
+            } else {
+                this.armBar.clear();
+            }
+
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
-            let eqS = "ИНВЕНТАРЬ:\n";
-            for(let k in this.player.equip) {
-                let item = this.player.equip[k];
-                eqS += `${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр\n`;
-            }
-            this.equipLines.setText(eqS);
+
+            // ОБНОВЛЕНИЕ ИНВЕНТАРЯ (Очищаем старый текст и создаем цветной)
+            if (this.inventoryGroup) this.inventoryGroup.destroy(true);
+            this.inventoryGroup = this.add.group();
+            
+            let startY = 480;
+            this.inventoryTitle = this.add.text(40, 460, "ИНВЕНТАРЬ:", { fontSize: '18px', fontStyle: 'bold', fill: '#ffffff' });
+            this.inventoryGroup.add(this.inventoryTitle);
+
+            const slotLabels = {
+                head: "Голова", body: "Тело", legs: "Ноги",
+                weapon: "Оружие", ring: "Кольцо", neck: "Амулет"
+            };
+
+            Object.keys(this.player.equip).forEach((slot, i) => {
+                let item = this.player.equip[slot];
+                let statText = item.atk ? `+${item.atk} Атк` : `+${item.arm} Бр`;
+                
+                // Название предмета цветом грейда
+                let t = this.add.text(40, startY + (i * 25), `${slotLabels[slot]}: ${item.n}`, { 
+                    fontSize: '15px', 
+                    fill: item.color || '#ffffff',
+                    fontStyle: 'bold'
+                });
+                // Значение статов белым
+                let s = this.add.text(230, startY + (i * 25), statText, { 
+                    fontSize: '14px', 
+                    fill: '#cccccc' 
+                });
+                
+                this.inventoryGroup.add(t);
+                this.inventoryGroup.add(s);
+            });
+
+            // Обновление моба
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(945, 280, 210, 15).fillStyle(0xff0000).fillRect(945, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
             
-            if(this.mob.hp <= 0 && !this.lootActive) { 
-                this.showLootWindow(this.generateLoot()); 
+            // Проверка условий победы/поражения
+            if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot()); 
+            if(this.player.hp <= 0) {
+                alert("ГЕРОЙ ПАЛ В БОЮ!");
+                location.reload();
             }
-            if(this.player.hp <= 0) location.reload();
         }
     }
 
