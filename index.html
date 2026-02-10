@@ -313,7 +313,13 @@
             if (toRem.size > 0) {
                 this.isAnimating = true;
                 toRem.forEach(t => { 
-                    this.applyEffect(t.type);
+                    // КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ ЗДЕСЬ:
+                    if (this.currentTurnOwner === "MOB") {
+                        this.applyMobEffect(t.type); // Моб атакует игрока или копит ману
+                    } else {
+                        this.applyEffect(t.type);    // Игрок атакует моба или лечится
+                    }
+                    
                     if(this.grid[t.gridR][t.gridC] === t) this.grid[t.gridR][t.gridC] = null;
                     this.tweens.add({ targets: t, alpha: 0, scale: 0, duration: 200, onComplete: () => t.destroy() });
                 });
