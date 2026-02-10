@@ -149,11 +149,50 @@
             this.updateUI();
         }
 
+        // --- МОЗГИ МОБА (ИИ) ---
         async mobAI() {
-            if (this.mob.hp <= 0) return;
+            if (this.mob.hp <= 0 || this.lootActive) return;
             this.addLog("Ход монстра...", '#ffffff');
-            this.player.hp -= Math.max(0, this.mob.atk - this.player.arm);
-            this.turn = "PLAYER"; this.updateUI();
+            
+            let move = null;
+            // Ищем любой возможный ход для моба
+            for (let r=0; r<8; r++) {
+                for (let c=0; c<8; c++) {
+                    let dirs = [[0,1],[1,0]];
+                    for (let [dr, dc] of dirs) {
+                        let nr=r+dr, nc=c+dc;
+                        if (nr<8 && nc<8) {
+                            // Пробный свап
+                            let type1 = this.grid[r][c].type, type2 = this.grid[nr][nc].type;
+                            if (this.testMove(r, c, nr, nc)) { move = {r1:r, c1:c, r2:nr, c2:nc}; break; }
+                        }
+                    }
+                    if (move) break;
+                }
+                if (move) break;
+            }
+
+            if (move) {
+                await this.swapTiles(this.grid[move.r1][move.c1], this.grid[move.r2][move.c2]);
+                this.comboCount = 0;
+                await this.checkMatches();
+            }
+
+            // Наносим прямой урон игроку после хода
+            let mobDmg = Math.max(0, this.mob.atk - this.player.arm);
+            this.player.hp -= mobDmg;
+            this.addLog(`Монстр бьет на ${mobDmg}!`, '#ff0000');
+            
+            this.turn = "PLAYER"; 
+            this.updateUI();
+        }
+
+        testMove(r1, c1, r2, c2) {
+            let temp = this.grid.map(row => row.map(t => t ? t.type : null));
+            [temp[r1][c1], temp[r2][c2]] = [temp[r2][c2], temp[r1][c1]];
+            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(temp[r][c] && temp[r][c]===temp[r][c+1] && temp[r][c]===temp[r][c+2]) return true;
+            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(temp[r][c] && temp[r][c]===temp[r+1][c] && temp[r][c]===temp[r+2][c]) return true;
+            return false;
         }
 
         createUI() {
@@ -185,6 +224,8 @@
             for (let k in this.player.equip) { let item = this.player.equip[k]; if(this.equipTexts[k]) this.equipTexts[k].setText(`${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр`).setFill(item.color); }
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(950, 280, 210, 15).fillStyle(0xff0000).fillRect(950, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
+            if (this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot());
+            if (this.player.hp <= 0) location.reload();
         }
 
         addLog(msg, color) {
