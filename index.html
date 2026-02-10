@@ -20,16 +20,11 @@
         constructor() { super('MainScene'); }
 
         preload() {
-            // Загружаем иконки героев ОДИН раз при старте
-            const jobs = { 
-                'Воин': 'warrior', 
-                'Маг': 'mage', 
-                'Лучник': 'archer', 
-                'Ассасин': 'assasin' 
-            };
-            Object.keys(jobs).forEach(name => {
-                this.load.image(`hero_${name}`, `assets/hero_${jobs[name]}.png`);
-            });
+            // Исправленные пути к иконкам (согласно твоим ассетам)
+            this.load.image('hero_Воин', 'assets/hero_warrior.png');
+            this.load.image('hero_Маг', 'assets/hero_mage.png');
+            this.load.image('hero_Лучник', 'assets/hero_archer.png'); // Проверь, что файл называется именно так
+            this.load.image('hero_Ассасин', 'assets/hero_assasin.png'); // Проверь, что файл называется именно так
             
             this.load.image('mob_icon', 'assets/hero_warrior.png');
             ['Red', 'Blue', 'Green', 'Purple', 'Yellow'].forEach(c => 
@@ -48,7 +43,7 @@
                 let x = 300 * i + 150;
                 let card = this.add.rectangle(x, 450, 260, 600, 0x1a1a1a).setInteractive().setStrokeStyle(2, 0xb48c46);
                 
-                // Исправленное отображение иконки в меню
+                // Отображение иконки в меню выбора
                 this.add.image(x, 400, `hero_${name}`).setDisplaySize(200, 200);
                 this.add.text(x, 620, name, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
                 
@@ -168,7 +163,7 @@
         }
 
         createUI() {
-            // Панель игрока (Лево)
+            // Панель игрока
             this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
             this.add.image(175, 150, `hero_${this.player.job}`).setDisplaySize(160, 160);
             
@@ -181,32 +176,29 @@
             this.add.text(175, 400, "УЛЬТА [S]", { fontSize: '18px' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
 
-            // Шмот под ультой
             this.add.text(40, 470, "ЭКИПИРОВКА:", { fontSize: '18px', fill: '#ffd700' });
             this.equipText = this.add.text(40, 500, "", { fontSize: '16px', fill: '#ffffff' });
 
-            // Панель моба (Смещение вправо)
+            // Панель моба
             this.mobIcon = this.add.image(1050, 150, 'mob_icon').setDisplaySize(140, 140).setFlipX(true);
             this.mobHpText = this.add.text(950, 240, "", { fontSize: '22px', fill: '#ff0000' });
             this.mobHpBar = this.add.graphics();
         }
 
         updateUI() {
-            // HP Бар игрока
             this.hpText.setText(`HP: ${Math.floor(this.player.hp)}/${this.player.maxHp}`);
             this.hpBar.clear().fillStyle(0x440000).fillRect(40, 285, 270, 15).fillStyle(0xff0000).fillRect(40, 285, (this.player.hp/this.player.maxHp)*270, 15);
             
-            // Mana Бар игрока
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 335, 270, 10).fillStyle(0x4444ff).fillRect(40, 335, (this.player.mana/100)*270, 10);
             
             this.equipText.setText(`${this.player.equip.name}\n(+${this.player.equip.stat} АТК)`);
 
-            // HP Бар моба
             this.mobHpText.setText(`${this.mob.name}\n${Math.floor(this.mob.hp)}/${this.mob.maxHp}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(950, 300, 210, 15).fillStyle(0xff0000).fillRect(950, 300, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
 
             if (this.mob.hp <= 0) this.showLoot();
+            if (this.player.hp <= 0) location.reload();
         }
 
         useUlt() {
@@ -225,11 +217,7 @@
             this.add.text(0, 80, "ВЗЯТЬ", { fontSize: '20px' }).setOrigin(0.5);
             overlay.add([bg, txt, btn]);
             btn.on('pointerdown', () => { 
-                this.player.equip = newItem; 
-                this.player.level++; 
-                overlay.destroy(); 
-                this.spawnMob(); 
-                this.updateUI(); 
+                this.player.equip = newItem; this.player.level++; overlay.destroy(); this.spawnMob(); this.updateUI(); 
             });
         }
     }
