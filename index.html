@@ -1,10 +1,13 @@
+// ==========================================
+// [БЛОК 0] ГЛОБАЛЬНЫЕ НАСТРОЙКИ
+// ==========================================
 const GW = 1200, GH = 900, OFFSET_X = 400, OFFSET_Y = 140, TILE_S = 68;
 
 class MainScene extends Phaser.Scene {
     constructor() { super('MainScene'); }
 
     // ==========================================
-    // 1. ЗАГРУЗКА РЕСУРСОВ
+    // [БЛОК 1] ЗАГРУЗКА РЕСУРСОВ
     // ==========================================
     preload() {
         this.load.image('hero_Воин', 'assets/hero_warrior.png');
@@ -20,7 +23,7 @@ class MainScene extends Phaser.Scene {
     create() { this.showMenu(); }
 
     // ==========================================
-    // 2. ЛОГИКА ПЕРСОНАЖЕЙ И МОБОВ
+    // [БЛОК 2] БАЛАНС ИГРОКА (ХП И ВЕЩИ)
     // ==========================================
     initPlayerData(job) {
         const hps = { "Воин": 1400, "Маг": 720, "Лучник": 880, "Ассасин": 800 };
@@ -42,6 +45,9 @@ class MainScene extends Phaser.Scene {
         this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
     }
 
+    // ==========================================
+    // [БЛОК 3] БАЛАНС МОБОВ (СЛОЖНОСТЬ)
+    // ==========================================
     spawnMob() {
         let lvl = this.player.level;
         this.mob = { 
@@ -55,7 +61,83 @@ class MainScene extends Phaser.Scene {
     }
 
     // ==========================================
-    // 3. СУПЕРУДАРЫ (УЛЬТА)
+    // [БЛОК 4] СИСТЕМА ЛУТА (ШАНСЫ И СВИТКИ)
+    // ==========================================
+    generateLoot() {
+        const rarities = [
+            { n: 'Обычный', c: '#ffffff', mult: 1, chance: 60 },
+            { n: 'Редкий', c: '#00ff00', mult: 1.5, chance: 20 },
+            { n: 'Эпический', c: '#800080', mult: 2.2, chance: 10 },
+            { n: 'Легендарный', c: '#ff8c00', mult: 3.5, chance: 5 },
+            { n: 'ДРЕВНИЙ', c: '#00ffff', mult: 0, chance: 5, isExp: true } // Свиток опыта
+        ];
+        
+        let rand = Phaser.Math.Between(1, 100);
+        let cum = 0, rarity = rarities[0];
+        for (let r of rarities) { cum += r.chance; if (rand <= cum) { rarity = r; break; } }
+        
+        if (rarity.isExp) {
+            return { name: 'Свиток Мудрости', type: 'EXP', val: 2, rarity: rarity.n, color: rarity.c };
+        }
+
+        const items = [{n:'Шлем', s:'head', st:'arm'}, {n:'Доспех', s:'body', st:'arm'}, {n:'Меч', s:'weapon', st:'atk'}, {n:'Кольцо', s:'ring', st:'atk'}];
+        let item = Phaser.Utils.Array.GetRandom(items);
+        return { 
+            name: item.n, slot: item.s, stat: item.st, 
+            val: Math.floor(this.player.level * 3 * rarity.mult), 
+            rarity: rarity.n, color: rarity.c 
+        };
+    }
+
+    showLoot(loot) {
+        this.isAnimating = true;
+        let con = this.add.container(GW/2, GH/2);
+        let bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.9).setStrokeStyle(2, 0xb48c46);
+        let title = this.add.text(0, -100, "ТРОФЕЙ!", { fontSize: '32px', fill: '#ffd700' }).setOrigin(0.5);
+        let desc = (loot.type === 'EXP') ? `Дает +${loot.val} Уровня сразу` : `+${loot.val} ${loot.stat === 'atk' ? 'Атаки' : 'Брони'}`;
+        let itemTxt = this.add.text(0, -20, `${loot.rarity}\n${loot.name}\n${desc}`, { fontSize: '22px', fill: loot.color, align: 'center' }).setOrigin(0.5);
+        
+        let btn = this.add.rectangle(0, 100, 180, 50, 0x333333).setInteractive().setStrokeStyle(1, 0xffffff);
+        let btnTxt = this.add.text(0, 100, "ЗАБРАТЬ", { fontSize: '20px' }).setOrigin(0.5);
+        
+        con.add([bg, title, itemTxt, btn, btnTxt]);
+
+        btn.on('pointerdown', () => {
+            if (loot.type === 'EXP') { this.player.level += loot.val; }
+            else { this.player.equip[loot.slot] = { n: loot.name, [loot.stat]: loot.val }; this.updateStats(); }
+            con.destroy();
+            this.player.level++;
+            this.spawnMob();
+            this.updateUI();
+            this.isAnimating = false;
+        });
+    }
+
+    // ==========================================
+    // [БЛОК 5] ЭФФЕКТЫ КАМНЕЙ (МЕХАНИКА БОЯ)
+    // ==========================================
+    applyEffect(type, mult = 1) {
+        let totalAtk = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + (b.atk || 0), 0);
+        if (type === 'Red' || type === 'Purple') this.mob.hp -= (totalAtk / 5) * mult;
+        if (type === 'Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
+        if (type === 'Blue') this.player.mana = Math.min(100, this.player.mana + 10);
+        if (type === 'Yellow') this.player.gold += 5;
+        this.updateUI();
+    }
+
+    applyMobEffect(type) {
+        let dmg = this.mob.atk * 0.8;
+        if (this.player.arm > 0) {
+            let abs = Math.min(this.player.arm, dmg);
+            this.player.arm -= abs;
+            dmg -= abs;
+        }
+        this.player.hp -= dmg;
+        this.updateUI();
+    }
+
+    // ==========================================
+    // [БЛОК 6] СУПЕРУДАРЫ (УЛЬТА)
     // ==========================================
     async useUlt() {
         if (this.player.mana < 100 || this.isAnimating) return;
@@ -74,25 +156,14 @@ class MainScene extends Phaser.Scene {
         }
 
         this.tweens.add({
-            targets: targets,
-            tintFill: true,
-            tint: 0xffffff,
-            duration: 800,
+            targets: targets, tintFill: true, tint: 0xffffff, duration: 800,
             onComplete: () => {
-                let anims = [];
-                targets.forEach(t => {
-                    this.applyEffect(t.type, 1.3);
-                    this.grid[t.gridR][t.gridC] = null;
-                    anims.push(new Promise(res => {
-                        this.tweens.add({
-                            targets: t, scale: 0, alpha: 0, duration: 500,
-                            onComplete: () => { t.destroy(); res(); }
-                        });
-                    }));
+                targets.forEach(t => { 
+                    this.applyEffect(t.type, 1.3); 
+                    this.grid[t.gridR][t.gridC] = null; 
+                    t.destroy(); 
                 });
-
-                Promise.all(anims).then(async () => {
-                    await this.fillEmpty();
+                this.fillEmpty().then(() => {
                     this.isAnimating = false;
                     this.updateUI();
                     this.turn = "MOB";
@@ -103,7 +174,7 @@ class MainScene extends Phaser.Scene {
     }
 
     // ==========================================
-    // 4. ИГРОВОЕ ПОЛЕ (МЕХАНИКА)
+    // [БЛОК 7] ЖЕСТКИЙ СКЕЛЕТ МЕХАНИКИ (НЕ ТРОГАТЬ)
     // ==========================================
     initGrid() {
         this.grid = []; this.isAnimating = false;
@@ -152,78 +223,55 @@ class MainScene extends Phaser.Scene {
     }
 
     async checkMatches() {
-        let toRemove = new Set();
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 6; c++) {
-                if (this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] &&
-                    this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) {
-                    toRemove.add(this.grid[r][c]); toRemove.add(this.grid[r][c+1]); toRemove.add(this.grid[r][c+2]);
-                }
-            }
-        }
-        for (let c = 0; c < 8; c++) {
-            for (let r = 0; r < 6; r++) {
-                if (this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] &&
-                    this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) {
-                    toRemove.add(this.grid[r][c]); toRemove.add(this.grid[r+1][c]); toRemove.add(this.grid[r+2][c]);
-                }
-            }
-        }
-        if (toRemove.size > 0) {
-            toRemove.forEach(t => {
-                if (this.turn === "PLAYER") this.applyEffect(t.type);
-                else this.applyMobEffect(t.type);
-                this.grid[t.gridR][t.gridC] = null;
-                t.destroy();
+        let toRem = new Set();
+        for(let r=0; r<8; r++) for(let c=0; c<6; c++) 
+            if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type)
+            { toRem.add(this.grid[r][c]); toRem.add(this.grid[r][c+1]); toRem.add(this.grid[r][c+2]); }
+        for(let c=0; c<8; c++) for(let r=0; r<6; r++)
+            if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type)
+            { toRem.add(this.grid[r][c]); toRem.add(this.grid[r+1][c]); toRem.add(this.grid[r+2][c]); }
+        
+        if(toRem.size > 0) {
+            toRem.forEach(t => { 
+                this.turn === "PLAYER" ? this.applyEffect(t.type) : this.applyMobEffect(t.type); 
+                this.grid[t.gridR][t.gridC] = null; t.destroy(); 
             });
-            await this.fillEmpty();
-            await this.checkMatches();
-            return true;
+            await this.fillEmpty(); await this.checkMatches(); return true;
         }
         return false;
     }
 
     async fillEmpty() {
-        for (let c = 0; c < 8; c++) {
+        for(let c=0; c<8; c++) {
             let empty = 0;
-            for (let r = 7; r >= 0; r--) {
-                if (!this.grid[r][c]) empty++;
-                else if (empty > 0) {
-                    let t = this.grid[r][c];
-                    this.grid[r + empty][c] = t;
-                    this.grid[r][c] = null;
-                    t.gridR = r + empty;
-                    this.tweens.add({ targets: t, y: OFFSET_Y + t.gridR * TILE_S, duration: 300 });
+            for(let r=7; r>=0; r--) {
+                if(!this.grid[r][c]) empty++;
+                else if(empty > 0) {
+                    let t = this.grid[r][c]; this.grid[r+empty][c] = t; this.grid[r][c] = null;
+                    t.gridR = r+empty; this.tweens.add({ targets: t, y: OFFSET_Y + t.gridR * TILE_S, duration: 300 });
                 }
             }
-            for (let i = 0; i < empty; i++) this.spawnTile(i, c, true);
+            for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
         }
         return new Promise(res => this.time.delayedCall(400, res));
     }
 
-    // ==========================================
-    // 5. УМНЫЙ ИИ (MOB AI)
-    // ==========================================
     async mobAI() {
         if (this.mob.hp <= 0 || this.lootActive) return;
-        let bestMove = null;
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                let dirs = [[0, 1], [1, 0]];
-                for (let [dr, dc] of dirs) {
-                    let nr = r + dr, nc = c + dc;
-                    if (nr < 8 && nc < 8) {
-                        let temp = this.grid.map(row => row.map(t => t.type));
-                        [temp[r][c], temp[nr][nc]] = [temp[nr][nc], temp[r][c]];
-                        if (this.getMatchesCount(temp) > 0) bestMove = { r1: r, c1: c, r2: nr, c2: nc };
-                    }
+        let move = null;
+        for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
+            let ds = [[0,1],[1,0]];
+            for (let [dr, dc] of ds) {
+                let nr=r+dr, nc=c+dc;
+                if (nr<8 && nc<8) {
+                    let tmp = this.grid.map(row => row.map(t => t.type));
+                    [tmp[r][c], tmp[nr][nc]] = [tmp[nr][nc], tmp[r][c]];
+                    if (this.getMatchesCount(tmp) > 0) move = {r1:r, c1:c, r2:nr, c2:nc};
                 }
             }
         }
-        if (bestMove) await this.swapTiles(this.grid[bestMove.r1][bestMove.c1], this.grid[bestMove.r2][bestMove.c2]);
-        await this.checkMatches();
-        this.turn = "PLAYER";
-        this.updateUI();
+        if(move) await this.swapTiles(this.grid[move.r1][move.c1], this.grid[move.r2][move.c2]);
+        await this.checkMatches(); this.turn = "PLAYER"; this.updateUI();
     }
 
     getMatchesCount(g) {
@@ -234,71 +282,7 @@ class MainScene extends Phaser.Scene {
     }
 
     // ==========================================
-    // 6. СИСТЕМА ЛУТА (ДРОП)
-    // ==========================================
-    generateLoot() {
-        const rarities = [
-            { n: 'Обычный', c: '#ffffff', mult: 1, chance: 60 },
-            { n: 'Редкий', c: '#00ff00', mult: 1.5, chance: 25 },
-            { n: 'Эпический', c: '#800080', mult: 2.2, chance: 10 },
-            { n: 'Легендарный', c: '#ff8c00', mult: 3.5, chance: 5 }
-        ];
-        let rand = Phaser.Math.Between(1, 100);
-        let cumulative = 0;
-        let rarity = rarities[0];
-        for (let r of rarities) {
-            cumulative += r.chance;
-            if (rand <= cumulative) { rarity = r; break; }
-        }
-        const items = [
-            { name: 'Шлем', slot: 'head', stat: 'arm' },
-            { name: 'Доспех', slot: 'body', stat: 'arm' },
-            { name: 'Меч', slot: 'weapon', stat: 'atk' },
-            { name: 'Кольцо', slot: 'ring', stat: 'atk' }
-        ];
-        let type = Phaser.Utils.Array.GetRandom(items);
-        let finalValue = Math.floor(this.player.level * 3 * rarity.mult);
-        return { name: type.name, slot: type.slot, statType: type.stat, value: finalValue, rarityName: rarity.n, color: rarity.c };
-    }
-
-    showLootWindow(loot) {
-        this.isAnimating = true;
-        let container = this.add.container(GW/2, GH/2);
-        let bg = this.add.rectangle(0, 0, 420, 320, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46);
-        let title = this.add.text(0, -110, "ТРОФЕЙ НАЙДЕН!", { fontSize: '28px', fill: '#ffd700' }).setOrigin(0.5);
-        let itemDesc = this.add.text(0, -20, `${loot.rarityName} ${loot.name}\n+${loot.value} к ${loot.statType === 'atk' ? 'Атаке' : 'Броне'}`, { fontSize: '22px', fill: loot.color, align: 'center' }).setOrigin(0.5);
-
-        let btnTake = this.add.rectangle(-100, 90, 150, 50, 0x224422).setInteractive().setStrokeStyle(2, 0xffffff);
-        let txtTake = this.add.text(-100, 90, "ВЗЯТЬ", { fontSize: '20px' }).setOrigin(0.5);
-
-        let btnSell = this.add.rectangle(100, 90, 150, 50, 0x442222).setInteractive().setStrokeStyle(2, 0xffffff);
-        let txtSell = this.add.text(100, 90, "ПРОДАТЬ", { fontSize: '20px' }).setOrigin(0.5);
-
-        container.add([bg, title, itemDesc, btnTake, txtTake, btnSell, txtSell]);
-
-        btnTake.on('pointerdown', () => {
-            this.player.equip[loot.slot] = { n: loot.name, [loot.statType]: loot.value };
-            this.updateStats();
-            container.destroy();
-            this.startNextLevel();
-        });
-
-        btnSell.on('pointerdown', () => {
-            this.player.gold += (this.player.level * 10);
-            container.destroy();
-            this.startNextLevel();
-        });
-    }
-
-    startNextLevel() {
-        this.player.level++;
-        this.spawnMob();
-        this.updateUI();
-        this.isAnimating = false;
-    }
-
-    // ==========================================
-    // 7. ИНТЕРФЕЙС (UI)
+    // [БЛОК 8] ИНТЕРФЕЙС (UI)
     // ==========================================
     createUI() {
         this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
@@ -307,13 +291,10 @@ class MainScene extends Phaser.Scene {
         this.hpBar = this.add.graphics();
         this.manaBar = this.add.graphics();
         this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' });
-        
         this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
         this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
         this.ultBtn.on('pointerdown', () => this.useUlt());
-
         this.equipLines = this.add.text(40, 480, "", { fontSize: '15px', lineSpacing: 8 });
-        
         this.mobIcon = this.add.image(1050, 150, 'mob_icon').setDisplaySize(140, 140).setFlipX(true);
         this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5);
         this.mobHpBar = this.add.graphics();
@@ -321,13 +302,13 @@ class MainScene extends Phaser.Scene {
 
     updateUI() {
         this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)}\nБРОНЯ: ${this.player.arm}`);
-        this.hpBar.clear().fillStyle(0xff0000).fillRect(40, 250, (this.player.hp/this.player.maxHp)*270, 15);
+        this.hpBar.clear().fillStyle(0xff0000).fillRect(40, 250, (Math.max(0,this.player.hp)/this.player.maxHp)*270, 15);
         this.manaBar.clear().fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
         this.ultBtn.setAlpha(this.player.mana >= 100 ? 1 : 0.5);
-        this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
+        this.goldText.setText(`ЗОЛОТО: ${this.player.gold}\nУРОВЕНЬ: ${this.player.level}`);
         
         let eqS = "ИНВЕНТАРЬ:\n";
-        for(let k in this.player.equip) eqS += `${this.player.equip[k].n}: +${this.player.equip[k].atk || 0} Атк / +${this.player.equip[k].arm || 0} Бр\n`;
+        for(let k in this.player.equip) eqS += `${this.player.equip[k].n}: +${this.player.equip[k].atk || 0} Атк\n`;
         this.equipLines.setText(eqS);
 
         this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
@@ -335,33 +316,9 @@ class MainScene extends Phaser.Scene {
 
         if(this.mob.hp <= 0 && !this.lootActive) { 
             this.lootActive = true;
-            this.mob.hp = 0;
-            this.time.delayedCall(500, () => {
-                let loot = this.generateLoot();
-                this.showLootWindow(loot);
-            });
+            this.time.delayedCall(500, () => this.showLoot(this.generateLoot()));
         }
         if(this.player.hp <= 0) location.reload();
-    }
-
-    applyEffect(type, mult = 1) {
-        let totalAtk = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + (b.atk || 0), 0);
-        if (type === 'Red' || type === 'Purple') this.mob.hp -= (totalAtk / 5) * mult;
-        if (type === 'Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 20);
-        if (type === 'Blue') this.player.mana = Math.min(100, this.player.mana + 10);
-        if (type === 'Yellow') this.player.gold += 5;
-        this.updateUI();
-    }
-
-    applyMobEffect(type) {
-        let dmg = this.mob.atk * 0.8;
-        if (this.player.arm > 0) {
-            let absorbed = Math.min(this.player.arm, dmg);
-            this.player.arm -= absorbed;
-            dmg -= absorbed;
-        }
-        this.player.hp -= dmg;
-        this.updateUI();
     }
 
     showMenu() {
@@ -370,13 +327,9 @@ class MainScene extends Phaser.Scene {
         ["Воин", "Маг", "Лучник", "Ассасин"].forEach((job, i) => {
             let btn = this.add.rectangle(200 + i*250, 500, 200, 300, 0x1a1a1a).setInteractive().setStrokeStyle(2, 0xb48c46);
             this.add.text(200 + i*250, 500, job, { fontSize: '24px', fill: '#fff' }).setOrigin(0.5);
-            btn.on('pointerdown', () => {
-                this.initPlayerData(job);
-                this.spawnMob();
-                this.children.removeAll();
-                this.initGrid();
-                this.createUI();
-                this.updateUI();
+            btn.on('pointerdown', () => { 
+                this.initPlayerData(job); this.spawnMob(); this.children.removeAll(); 
+                this.initGrid(); this.createUI(); this.updateUI(); 
             });
         });
     }
