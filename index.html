@@ -71,7 +71,7 @@
         }
 
         // ==========================================
-        // [БЛОК 2] БОЕВАЯ ЛОГИКА И МОБЫ
+        // [БЛОК 2] БОЕВАЯ ЛОГИКА, МОБЫ И СИСТЕМА ЛУТА
         // ==========================================
         spawnMob() {
             let lvl = this.player.level;
@@ -83,10 +83,102 @@
                 mana: 0 
             };
             this.turn = "PLAYER";
+            this.lootActive = false; // Блокировка кликов, пока открыт лут
+        }
+
+        // Генерация случайного предмета
+        generateLoot() {
+            const rarities = [
+                { n: 'Обычный', c: '#ffffff', mult: 1, chance: 60 },
+                { n: 'Редкий', c: '#00ff00', mult: 1.6, chance: 20 },
+                { n: 'Эпический', c: '#800080', mult: 2.5, chance: 12 },
+                { n: 'Легендарный', c: '#ff8c00', mult: 4, chance: 6 },
+                { n: 'ДРЕВНИЙ', c: '#00ffff', mult: 6, chance: 2 }
+            ];
+
+            let rand = Phaser.Math.Between(1, 100);
+            let cum = 0, rarity = rarities[0];
+            for (let r of rarities) { cum += r.chance; if (rand <= cum) { rarity = r; break; } }
+
+            const slots = [
+                {n:'Шлем', s:'head', st:'arm'}, 
+                {n:'Доспех', s:'body', st:'arm'}, 
+                {n:'Сапоги', s:'legs', st:'arm'},
+                {n:'Меч', s:'weapon', st:'atk'}, 
+                {n:'Кольцо', s:'ring', st:'atk'},
+                {n:'Амулет', s:'neck', st:'atk'}
+            ];
+            
+            let item = Phaser.Utils.Array.GetRandom(slots);
+            // Количество статов зависит от уровня и грейда
+            let baseVal = Math.floor(this.player.level * 3 * rarity.mult);
+            let finalVal = baseVal + Phaser.Math.Between(1, 5);
+
+            return {
+                name: item.n,
+                slot: item.s,
+                statType: item.st,
+                val: finalVal,
+                rarity: rarity.n,
+                color: rarity.c,
+                price: Math.floor(finalVal * 2)
+            };
+        }
+
+        // Окно выбора лута
+        showLootWindow(loot) {
+            this.lootActive = true;
+            const current = this.player.equip[loot.slot];
+            const currentVal = current[loot.statType] || 0;
+            const diff = loot.val - currentVal;
+            const diffColor = diff >= 0 ? '#00ff00' : '#ff0000';
+
+            let container = this.add.container(GW/2, GH/2).setDepth(1000);
+            let bg = this.add.rectangle(0, 0, 500, 500, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46);
+            
+            let title = this.add.text(0, -200, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700' }).setOrigin(0.5);
+            let itemName = this.add.text(0, -120, `${loot.rarity} ${loot.name}`, { fontSize: '30px', fill: loot.color, fontStyle: 'bold' }).setOrigin(0.5);
+            
+            let info = this.add.text(0, 0, 
+                `Новый стат: +${loot.val} ${loot.statType === 'atk' ? 'Атаки' : 'Брони'}\n` +
+                `Текущий: +${currentVal}\n` +
+                `Разница: ${diff > 0 ? '+' : ''}${diff}`, 
+                { fontSize: '24px', align: 'center', fill: '#ffffff' }
+            ).setOrigin(0.5);
+
+            // Кнопка Надеть
+            let btnEquip = this.add.rectangle(-120, 180, 200, 60, 0x224422).setInteractive().setStrokeStyle(2, 0x00ff00);
+            let txtEquip = this.add.text(-120, 180, "НАДЕТЬ", { fontSize: '22px' }).setOrigin(0.5);
+
+            // Кнопка Продать
+            let btnSell = this.add.rectangle(120, 180, 200, 60, 0x442222).setInteractive().setStrokeStyle(2, 0xff0000);
+            let txtSell = this.add.text(120, 180, `ПРОДАТЬ\n(${loot.price}💰)`, { fontSize: '20px', align: 'center' }).setOrigin(0.5);
+
+            container.add([bg, title, itemName, info, btnEquip, txtEquip, btnSell, txtSell]);
+
+            btnEquip.on('pointerdown', () => {
+                this.player.equip[loot.slot] = { n: loot.name, [loot.statType]: loot.val, color: loot.color };
+                this.closeLoot(container);
+            });
+
+            btnSell.on('pointerdown', () => {
+                this.player.gold += loot.price;
+                this.closeLoot(container);
+            });
+        }
+
+        closeLoot(container) {
+            container.destroy();
+            this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
+            this.player.level++; 
+            this.spawnMob(); 
+            this.updateUI();
+            this.lootActive = false;
         }
 
         applyEffect(type, mult = 1) {
-            let totalA = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + b.atk, 0);
+            if (this.lootActive) return; // Не атакуем, пока висит окно лута
+            let totalA = this.player.baseAtk + Object.values(this.player.equip).reduce((a, b) => a + (b.atk || 0), 0);
             if (type==='Red' || type==='Purple') this.mob.hp -= (totalA/5) * mult;
             if (type==='Green') this.player.hp = Math.min(this.player.maxHp, this.player.hp + 15);
             if (type==='Blue') this.player.mana = Math.min(100, this.player.mana + 10);
@@ -95,38 +187,12 @@
         }
 
         applyMobEffect(type) {
+            if (this.lootActive) return;
             let d = this.mob.atk * 0.7;
             if(this.player.arm > 0) { let a = Math.min(this.player.arm, d); this.player.arm -= a; d -= a; }
             this.player.hp -= d;
             this.updateUI();
         }
-
-        async mobAI() {
-            if (this.mob.hp <= 0) return;
-            let best = null;
-            for (let r=0; r<8; r++) for (let c=0; c<8; c++) {
-                let dirs = [[0,1],[1,0]];
-                for (let [dr, dc] of dirs) {
-                    let nr=r+dr, nc=c+dc;
-                    if (nr<8 && nc<8) {
-                        let temp = this.grid.map(row => row.map(t => t.type));
-                        [temp[r][c], temp[nr][nc]] = [temp[nr][nc], temp[r][c]];
-                        if (this.getMatchesAt(temp) > 0) best = {r1:r, c1:c, r2:nr, c2:nc};
-                    }
-                }
-            }
-            if (best) await this.swapTiles(this.grid[best.r1][best.c1], this.grid[best.r2][best.c2]);
-            await this.checkMatches();
-            this.turn = "PLAYER"; this.updateUI();
-        }
-
-        getMatchesAt(g) {
-            let res = 0;
-            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(g[r][c]===g[r][c+1] && g[r][c]===g[r][c+2]) res++;
-            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(g[r][c]===g[r+1][c] && g[r][c]===g[r+2][c]) res++;
-            return res;
-        }
-
         // ==========================================
         // [БЛОК 3] СУПЕРСПОСОБНОСТИ (УЛЬТЫ)
         // ==========================================
@@ -308,9 +374,9 @@
             this.equipLines.setText(eqS);
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mobHpBar.clear().fillStyle(0x440000).fillRect(945, 280, 210, 15).fillStyle(0xff0000).fillRect(945, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
-            if(this.mob.hp <= 0) { this.player.level++; this.spawnMob(); }
-            if(this.player.hp <= 0) location.reload();
-        }
+            if(this.mob.hp <= 0 && !this.lootActive) { 
+            this.showLootWindow(this.generateLoot()); 
+}
     }
 
     new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: GW, height: GH, scene: [MainScene] });
