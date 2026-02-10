@@ -113,7 +113,7 @@
             const currentVal = current[loot.statType] || 0;
             const diff = loot.val - currentVal;
 
-            this.lootContainer = this.add.container(GW/2, GH/2).setDepth(1000);
+            this.lootContainer = this.add.container(GW/2, GH/2).setDepth(3000);
             let bg = this.add.rectangle(0, 0, 500, 500, 0x000000, 0.9).setStrokeStyle(3, 0xb48c46).setInteractive();
             let title = this.add.text(0, -200, "ТРОФЕЙ НАЙДЕН!", { fontSize: '32px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
             let itemName = this.add.text(0, -120, `${loot.rarity} ${loot.name}`, { fontSize: '30px', fill: loot.color, fontStyle: 'bold' }).setOrigin(0.5);
@@ -191,13 +191,12 @@
             this.isAnimating = false; 
             this.comboCount = 0;
 
-            // Создаем невидимую зону кликов строго по размеру сетки (8х8)
             const gridSize = 8 * TILE_S;
-            this.gridArea = this.add.rectangle(OFFSET_X - TILE_S/2, OFFSET_Y - TILE_S/2, gridSize, gridSize, 0x000000, 0)
+            this.gridArea = this.add.rectangle(OFFSET_X - TILE_S/2, OFFSET_Y - TILE_S/2, gridSize, gridSize, 0x000000, 0.2)
                 .setOrigin(0, 0)
-                .setInteractive();
+                .setInteractive()
+                .setDepth(1); 
 
-            // Если кликнули по этой зоне, но не по плитке — сбрасываем выделение
             this.gridArea.on('pointerdown', () => {
                 if (this.selectedTile) {
                     this.selectedTile.clearTint();
@@ -224,13 +223,12 @@
             ));
 
             let tx = OFFSET_X + c * TILE_S, ty = OFFSET_Y + r * TILE_S;
-            let tile = this.add.image(tx, fromTop ? ty - 500 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive();
+            let tile = this.add.image(tx, fromTop ? ty - 500 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive().setDepth(1);
             tile.gridR = r; tile.gridC = c; tile.type = type;
             
-            // ИСПРАВЛЕННЫЙ КЛИК:
             tile.on('pointerdown', (pointer, localX, localY, event) => {
-                // Если нажали левее поля (в зоне меню) или правее (в зоне моба) — игнорируем
-                if (pointer.x < OFFSET_X - 34 || pointer.x > (OFFSET_X + 8 * TILE_S - 34)) return;
+                // ПРОВЕРКА: Если клик за пределами поля (меню или моб) - игнор
+                if (pointer.x < OFFSET_X - 34 || pointer.x > (OFFSET_X + 7 * TILE_S + 34)) return;
                 
                 event.stopPropagation(); 
                 this.handleTileClick(tile);
@@ -268,6 +266,56 @@
                 this.selectedTile = null;
             }
         }
+
+        async swapTiles(t1, t2) {
+            this.isAnimating = true;
+            let r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
+            this.grid[r1][c1] = t2; this.grid[r2][c2] = t1;
+            t1.gridR = r2; t1.gridC = c2; t2.gridR = r1; t2.gridC = c1;
+            return new Promise(res => {
+                this.tweens.add({ targets: t1, x: OFFSET_X+c2*TILE_S, y: OFFSET_Y+r2*TILE_S, duration: 250 });
+                this.tweens.add({ targets: t2, x: OFFSET_X+c1*TILE_S, y: OFFSET_Y+r1*TILE_S, duration: 250, onComplete: () => { this.isAnimating = false; res(); } });
+            });
+        }
+
+        async checkMatches() {
+            let toRem = new Set();
+            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) { [0,1,2].forEach(i=>toRem.add(this.grid[r][c+i])); }
+            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) { [0,1,2].forEach(i=>toRem.add(this.grid[r+i][c])); }
+            
+            if (toRem.size > 0) { 
+                toRem.forEach(t => { 
+                    this.applyEffect(t.type); 
+                    this.grid[t.gridR][t.gridC] = null; 
+                    this.tweens.add({ targets: t, alpha: 0, scale: 0, duration: 200, onComplete: () => t.destroy() }); 
+                }); 
+                await new Promise(res => this.time.delayedCall(250, res)); 
+                await this.fillEmpty(); 
+                this.comboCount++; 
+                await this.checkMatches(); 
+                return true; 
+            }
+            return false;
+        }
+
+        async fillEmpty() {
+            for(let c=0; c<8; c++) {
+                let empty = 0;
+                for(let r=7; r>=0; r--) { 
+                    if(!this.grid[r][c]) empty++; 
+                    else if(empty > 0) { 
+                        let t = this.grid[r][c]; 
+                        this.grid[r+empty][c] = t; 
+                        this.grid[r][c] = null; 
+                        t.gridR = r+empty; 
+                        this.tweens.add({ targets: t, y: OFFSET_Y+t.gridR*TILE_S, duration: 400 }); 
+                    } 
+                }
+                for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
+            }
+            await new Promise(res => this.time.delayedCall(450, res));
+        }
+
         // ==========================================
         // [БЛОК 5] БОЕВАЯ ЛОГИКА И ИИ МОБА
         // ==========================================
@@ -317,32 +365,39 @@
         // [БЛОК 6] ИНТЕРФЕЙС И ОБНОВЛЕНИЕ UI
         // ==========================================
         createUI() {
-            // Фон панели (теперь интерактивный, чтобы блокировать клики под ним)
-            this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46).setInteractive();
+            // ЩИТ МЕНЮ (Depth 10)
+            this.uiShieldLeft = this.add.rectangle(175, 450, 350, 900, 0x191614)
+                .setStrokeStyle(2, 0xb48c46)
+                .setInteractive()
+                .setDepth(10);
             
-            this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140);
-            this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
-            this.hpBar = this.add.graphics();
-            this.armBar = this.add.graphics();
-            this.manaText = this.add.text(40, 280, "", { fontSize: '18px', fill: '#4444ff' });
-            this.manaBar = this.add.graphics();
-            this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' });
+            // ЩИТ МОБА (Depth 10)
+            this.uiShieldRight = this.add.rectangle(1075, 450, 250, 900, 0x0c0a08, 0)
+                .setInteractive()
+                .setDepth(10);
             
-            this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
-            this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
-            this.ultBtn.on('pointerdown', () => this.useUlt());
+            this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140).setDepth(11);
+            this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' }).setDepth(11);
+            this.hpBar = this.add.graphics().setDepth(11);
+            this.armBar = this.add.graphics().setDepth(12);
+            this.manaText = this.add.text(40, 280, "", { fontSize: '18px', fill: '#4444ff' }).setDepth(11);
+            this.manaBar = this.add.graphics().setDepth(11);
+            this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' }).setDepth(11);
             
-            this.add.text(40, 480, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' });
+            this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa).setDepth(11);
+            this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5).setDepth(11);
+            this.ultBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.useUlt(); });
             
-            // Создаем массив текстовых объектов для каждого слота отдельно
+            this.add.text(40, 480, "ИНВЕНТАРЬ:", { fontSize: '18px', fill: '#ffffff', fontStyle: 'bold' }).setDepth(11);
+            
             this.equipTexts = {};
             const slots = ['head', 'body', 'legs', 'weapon', 'ring', 'neck'];
             slots.forEach((s, i) => {
-                this.equipTexts[s] = this.add.text(40, 510 + (i * 25), "", { fontSize: '15px' });
+                this.equipTexts[s] = this.add.text(40, 510 + (i * 25), "", { fontSize: '15px' }).setDepth(11);
             });
 
-            this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5);
-            this.mobHpBar = this.add.graphics();
+            this.mobHpText = this.add.text(1050, 250, "", { fontSize: '22px', fill: '#ff0000' }).setOrigin(0.5).setDepth(11);
+            this.mobHpBar = this.add.graphics().setDepth(11);
         }
 
         updateUI() {
@@ -359,7 +414,6 @@
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
             
-            // Цикл обновления строк инвентаря с учетом их цвета
             for (let k in this.player.equip) {
                 let item = this.player.equip[k];
                 if (this.equipTexts[k]) {
