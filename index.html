@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Stable Base</title>
+    <title>Taverna War: Ultimate Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         :root { 
@@ -25,11 +25,14 @@
         #battle-log { flex-grow: 1; margin-top: 15px; background: #080808; border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
         #menu-overlay { position: fixed; inset: 0; background: radial-gradient(circle, #222 0%, #000 100%); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: #111; text-align: center; cursor: pointer; border-radius: 20px; transition: 0.2s; }
-        .hero-card:hover { border-color: var(--gold); transform: translateY(-5px); }
+        .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: #111; text-align: center; cursor: pointer; border-radius: 20px; }
         .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #444; }
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; justify-content: center; align-items: center; z-index: 100; }
-        .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); text-align: center; width: 450px; border-radius: 15px; }
+        .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
+        .compare-box { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; text-align: left; font-size: 14px; }
+        .compare-side { background: #222; padding: 10px; border-radius: 8px; border: 1px solid #444; }
+        .diff-pos { color: #4f4; font-weight: bold; }
+        .diff-neg { color: #f44; font-weight: bold; }
         .btn-ultra { width: 100%; margin-top: 10px; padding: 15px; font-size: 18px; background: #300; color: #666; border: 2px solid #333; border-radius: 8px; font-weight: bold; cursor: not-allowed; }
         .btn-ultra.ready { background: #f00; color: white; border-color: #ffaa00; cursor: pointer; box-shadow: 0 0 15px #f00; }
         button { padding: 12px 25px; cursor: pointer; border: none; font-weight: bold; background: var(--gold); border-radius: 4px; color: black; margin: 5px; }
@@ -40,10 +43,10 @@
     <div id="menu-overlay">
         <h1 style="color:var(--gold); font-size: 40px; margin-bottom: 30px;">TAVERNA WAR</h1>
         <div class="hero-cards">
-            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/hero_warrior.png" alt="Воин"><h3>ВОИН</h3><p>Ульта: Красные + Зеленые</p></div>
-            <div class="hero-card" onclick="startGame('mage')"><img src="assets/hero_mage.png" alt="Маг"><h3>МАГ</h3><p>Ульта: Фиол + Желтые</p></div>
-            <div class="hero-card" onclick="startGame('archer')"><img src="assets/hero_archer.png" alt="Лучник"><h3>ЛУЧНИК</h3><p>Ульта: 4 Линии</p></div>
-            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/hero_assassin.png" alt="Убийца"><h3>УБИЙЦА</h3><p>Ульта: 30% поля + Удар</p></div>
+            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/hero_warrior.png"><h3>ВОИН</h3><p>Ульта: Красные + Зеленые</p></div>
+            <div class="hero-card" onclick="startGame('mage')"><img src="assets/hero_mage.png"><h3>МАГ</h3><p>Ульта: Фиол + Желтые</p></div>
+            <div class="hero-card" onclick="startGame('archer')"><img src="assets/hero_archer.png"><h3>ЛУЧНИК</h3><p>Ульта: 4 Линии</p></div>
+            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/hero_assassin.png"><h3>УБИЙЦА</h3><p>Ульта: 30% поля + Удар</p></div>
         </div>
     </div>
 
@@ -73,10 +76,12 @@
 
     <div id="loot-overlay">
         <div class="loot-window">
-            <h2 style="color:var(--gold);">ТРОФЕЙ ПОБЕДИТЕЛЯ</h2>
-            <div id="new-item-desc" style="font-size: 18px; margin: 20px 0; line-height: 1.4;"></div>
-            <button onclick="takeLoot()">ЭКИПИРОВАТЬ</button>
-            <button onclick="sellLoot()" style="background:#444; color:white;">ПРОДАТЬ (+50💰)</button>
+            <h2 style="color:var(--gold); text-align:center;">НОВЫЙ ТРОФЕЙ</h2>
+            <div class="compare-box" id="loot-compare"></div>
+            <div style="text-align:center;">
+                <button onclick="takeLoot()">ЭКИПИРОВАТЬ</button>
+                <button onclick="sellLoot()" style="background:#444; color:white;">ПРОДАТЬ (+50💰)</button>
+            </div>
         </div>
     </div>
 
@@ -99,7 +104,7 @@
     function startGame(key) {
         document.getElementById('menu-overlay').style.display = 'none';
         const base = { 'warrior':{hp:1600,atk:25,agi:5}, 'mage':{hp:800,atk:65,agi:2}, 'archer':{hp:1000,atk:40,agi:18}, 'assassin':{hp:900,atk:55,agi:14} }[key];
-        window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, equip: { weapon:{n:"Старая палка",atk:12,arm:0,agi:0,grade:'common'}, body:null, legs:null, head:null, ring:null, necklace:null, hands:null } };
+        window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, equip: { weapon:{n:"Старая палка",atk:12,arm:0,agi:0}, body:null, legs:null, head:null, ring:null, necklace:null, hands:null } };
         document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.png')`;
         initPhaser(); spawnMob(); refreshUI();
     }
@@ -117,13 +122,12 @@
         let gearAtk=0, gearArm=0, gearAgi=0;
         for(let s in p.equip) { let i = p.equip[s]; if(i) { gearAtk+=i.atk; gearArm+=i.arm; gearAgi+=i.agi; } }
         let totalAtk = p.baseAtk + gearAtk;
-        p.maxArmor = gearArm; if(p.armor > p.maxArmor) p.armor = p.maxArmor;
+        p.maxArmor = gearArm;
 
         document.getElementById('p-hp-t').innerText = `${Math.floor(p.hp)}/${p.maxHp}`;
         document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100)+'%';
         document.getElementById('p-arm-t').innerText = `Броня: ${Math.floor(p.armor)}/${p.maxArmor}`;
         document.getElementById('p-arm-f').style.width = p.maxArmor > 0 ? (p.armor/p.maxArmor*100)+'%' : '0%';
-        document.getElementById('p-mn-t').innerText = `Мана: ${p.mana}%`;
         document.getElementById('p-mn-f').style.width = p.mana+'%';
         
         const btnU = document.getElementById('btn-ultra');
@@ -136,7 +140,6 @@
         document.getElementById('m-hp-t').innerText = `${Math.floor(m.hp)}/${m.maxHp}`;
         document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100)+'%';
         document.getElementById('m-arm-t').innerText = `Броня: ${Math.floor(m.armor)}/${m.maxArmor}`;
-        document.getElementById('m-arm-f').style.width = m.maxArmor > 0 ? (m.armor/m.maxArmor*100)+'%' : '0%';
 
         let invH = "";
         for(let s in slotNames) { let i = p.equip[s]; invH += `<div class="inv-item"><div><b>${slotNames[s]}:</b> ${i?i.n:'---'}</div><div>${i?'⚔️'+i.atk+' 🛡️'+i.arm:''}</div></div>`; }
@@ -144,7 +147,7 @@
     }
 
     async function useUltra() {
-        if(window.app.player.mana < 100 || window.app.lootActive) return;
+        if(window.app.player.mana < 100 || window.app.lootActive || scene.isAnimating) return;
         window.app.player.mana = 0; let key = window.app.player.key;
         window.app.log(`УЛЬТА: ${window.app.player.job}!`, 'sys');
         let toExplode = [];
@@ -156,7 +159,11 @@
             let gearAtk = 0; for(let s in window.app.player.equip) if(window.app.player.equip[s]) gearAtk += window.app.player.equip[s].atk;
             window.app.mob.hp -= (window.app.player.baseAtk + gearAtk);
         }
-        if(toExplode.length > 0) await scene.explodeUnique(toExplode);
+        if(toExplode.length > 0) {
+            await scene.explodeUnique(toExplode);
+            await scene.refill();
+            await scene.check();
+        }
         refreshUI();
     }
 
@@ -164,8 +171,22 @@
         window.app.lootActive = true;
         let slots = Object.keys(slotNames); let slot = slots[Math.floor(Math.random()*slots.length)];
         let power = 10 + window.app.player.level * 8;
-        currentLoot = { slot: slot, n: "Зачарованный " + slotNames[slot], grade: 'rare', atk: (slot==='weapon'||slot==='ring'?power:5), arm: (slot==='body'||slot==='head'?power*2:2), agi: Math.floor(Math.random()*10) };
-        document.getElementById('new-item-desc').innerHTML = `<b style="color:var(--rare)">${currentLoot.n}</b><br>Слот: ${slotNames[slot]}<br>⚔️Атака: +${currentLoot.atk}<br>🛡️Броня: +${currentLoot.arm}<br>🍃Ловкость: +${currentLoot.agi}`;
+        currentLoot = { slot: slot, n: "Рарный " + slotNames[slot], atk: (slot==='weapon'||slot==='ring'?power:5), arm: (slot==='body'||slot==='head'?power*2:2), agi: Math.floor(Math.random()*12) };
+        
+        let old = window.app.player.equip[slot] || {n:"Ничего", atk:0, arm:0, agi:0};
+        const compareHtml = `
+            <div class="compare-side">
+                <div style="color:#888">СЕЙЧАС:</div>
+                <b>${old.n}</b><br>⚔️ ${old.atk} | 🛡️ ${old.arm} | 🍃 ${old.agi}
+            </div>
+            <div class="compare-side">
+                <div style="color:var(--rare)">НОВЫЙ:</div>
+                <b>${currentLoot.n}</b><br>
+                ⚔️ ${currentLoot.atk} <span class="${currentLoot.atk>=old.atk?'diff-pos':'diff-neg'}">(${currentLoot.atk-old.atk>=0?'+':''}${currentLoot.atk-old.atk})</span><br>
+                🛡️ ${currentLoot.arm} <span class="${currentLoot.arm>=old.arm?'diff-pos':'diff-neg'}">(${currentLoot.arm-old.arm>=0?'+':''}${currentLoot.arm-old.arm})</span><br>
+                🍃 ${currentLoot.agi} <span class="${currentLoot.agi>=old.agi?'diff-pos':'diff-neg'}">(${currentLoot.agi-old.agi>=0?'+':''}${currentLoot.agi-old.agi})</span>
+            </div>`;
+        document.getElementById('loot-compare').innerHTML = compareHtml;
         document.getElementById('loot-overlay').style.display = 'flex';
     }
 
@@ -280,17 +301,15 @@
                 if(type==='green') { p.hp = Math.min(p.maxHp, p.hp+10); p.armor = Math.min(p.maxArmor, p.armor+5); }
                 if(type==='yellow') p.gold += 2;
             } else {
-                let dmg = type==='red'? Math.floor(m.atk/5) : type==='purple'? Math.floor(m.atk/3) : (type==='yellow'?5:0);
-                if(dmg > 0) { if(p.armor > 0) { p.armor -= dmg; if(p.armor < 0) { p.hp += p.armor; p.armor = 0; } } else p.hp -= dmg; window.app.log(`Враг бьет: -${dmg}`, 'm'); }
-                if(type==='green') { m.hp = Math.min(m.maxHp, m.hp+15); m.armor = Math.min(m.maxArmor, m.armor+10); }
-                if(type==='blue') m.mana += 10;
+                let dmg = type==='red'? Math.floor(m.atk/5) : type==='purple'? Math.floor(m.atk/3) : 0;
+                if(dmg > 0) { if(p.armor > 0) p.armor -= dmg; else p.hp -= dmg; window.app.log(`Враг бьет: -${dmg}`, 'm'); }
             }
             if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
         }
 
         async mobAI() {
-            if(window.app.mob.hp <= 0 || window.app.lootActive) { this.isAnimating = false; return; }
+            if(window.app.mob.hp <= 0 || window.app.lootActive) return;
             let move = this.findMove();
             if(move) { 
                 await this.swap(this.grid[move.r1][move.c1], this.grid[move.r2][move.c2]); 
