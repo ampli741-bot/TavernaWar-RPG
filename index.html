@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Clean Assets Edition</title>
+    <title>Taverna War: Rigid Skeleton</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        :root { --gold: #ffd700; --border: #b48c46; --bg: #0a0a0a; }
+        :root { --gold: #ffd700; --border: #b48c46; --bg: #050505; }
         body { margin: 0; background: var(--bg); color: white; display: flex; height: 100vh; overflow: hidden; font-family: 'Verdana', sans-serif; }
         
+        /* Панели интерфейса */
         #ui-left, #ui-right { 
-            width: 300px; padding: 20px; background: #000; 
+            width: 320px; padding: 20px; background: #000; 
             border: 1px solid #222; display: flex; flex-direction: column; z-index: 10; 
         }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
         
-        /* Портреты теперь просто выводят обрезанную картинку */
+        /* Портреты: теперь картинка просто заполняет квадрат */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 15px; border: 2px solid var(--border);
             overflow: hidden; background: #111;
@@ -24,55 +25,56 @@
         .portrait img { width: 100%; height: 100%; object-fit: cover; }
 
         .bar-bg { width: 100%; height: 22px; background: #1a1a1a; border: 1px solid #333; margin-top: 8px; position: relative; }
-        .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.4s; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 22px; font-weight: bold; text-shadow: 1px 1px black; z-index: 5; }
         
-        #battle-log { flex-grow: 1; margin-top: 20px; background: #050505; border: 1px solid #1a1a1a; padding: 10px; font-size: 12px; overflow-y: auto; color: #888; }
-        .btn-ultra { width: 100%; padding: 15px; margin: 15px 0; background: #200; color: #555; border: 1px solid #400; font-family: 'Cinzel'; cursor: not-allowed; }
-        .btn-ultra.ready { background: #800; color: #fff; border-color: #f00; cursor: pointer; box-shadow: 0 0 10px #f00; }
+        #battle-log { flex-grow: 1; margin-top: 20px; background: #020202; border: 1px solid #1a1a1a; padding: 12px; font-size: 12px; overflow-y: auto; color: #666; }
+        
+        .btn-ultra { width: 100%; padding: 15px; margin: 15px 0; background: #1a0505; color: #444; border: 1px solid #300; font-family: 'Cinzel'; }
+        .btn-ultra.ready { background: #600; color: #fff; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px #f00; }
         
         #menu-overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-card { width: 130px; padding: 10px; border: 1px solid #333; margin: 10px; text-align: center; cursor: pointer; transition: 0.2s; }
-        .hero-card:hover { border-color: var(--gold); background: #111; }
-        .hero-card img { width: 100%; height: 100px; object-fit: cover; margin-bottom: 5px; }
+        .hero-card { width: 150px; padding: 10px; border: 1px solid #333; margin: 10px; text-align: center; cursor: pointer; background: #0a0a0a; }
+        .hero-card img { width: 100%; height: 100px; object-fit: cover; }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-family: 'Cinzel'; letter-spacing: 3px;">TAVERNA WAR</h1>
+        <h1 style="color:var(--gold); font-family: 'Cinzel'; letter-spacing: 4px;">TAVERNA WAR</h1>
         <div style="display: flex;">
-            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/w.jpg"><h4>ВОИН</h4></div>
-            <div class="hero-card" onclick="startGame('mage')"><img src="assets/m.jpg"><h4>МАГ</h4></div>
-            <div class="hero-card" onclick="startGame('archer')"><img src="assets/A.jpg"><h4>ЛУЧНИК</h4></div>
-            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/as.jpg"><h4>УБИЙЦА</h4></div>
+            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/w.jpg"><h3>ВОИН</h3></div>
+            <div class="hero-card" onclick="startGame('mage')"><img src="assets/m.jpg"><h3>МАГ</h3></div>
+            <div class="hero-card" onclick="startGame('archer')"><img src="assets/A.jpg"><h3>ЛУЧНИК</h3></div>
+            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/as.jpg"><h3>УБИЙЦА</h3></div>
         </div>
     </div>
 
     <div id="ui-left">
         <div id="p-portrait" class="portrait"></div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">HEALTH</div><div id="p-hp-f" class="bar-fill" style="background: #c22;"></div></div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">MANA</div><div id="p-mn-f" class="bar-fill" style="background: #22c;"></div></div>
+        <div class="bar-bg"><div id="p-hp-t" class="bar-text">HEALTH</div><div id="p-hp-f" class="bar-fill" style="background: #d33;"></div></div>
+        <div class="bar-bg"><div id="p-mn-t" class="bar-text">MANA</div><div id="p-mn-f" class="bar-fill" style="background: #33d;"></div></div>
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
-        <div style="margin-top:auto; color:var(--gold); font-family: 'Cinzel';">
-            <div>АТАКА: <span id="stat-atk" style="color:white">0</span></div>
-            <div>ЗОЛОТО: <span id="gold-val" style="color:white">0</span></div>
+        <div style="margin-top:auto; color:var(--gold); font-family: 'Cinzel'; padding-top: 15px; border-top: 1px solid #222;">
+            <div>АТАКА: <span id="stat-atk">0</span></div>
+            <div>ЗОЛОТО: <span id="gold-val">0</span></div>
         </div>
     </div>
 
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait" style="filter: grayscale(1);"></div>
+        <div id="m-portrait" class="portrait" style="filter: grayscale(1) brightness(0.3);"></div>
         <h3 id="m-name" style="text-align:center; color:#f44; font-family: 'Cinzel';">ВРАГ</h3>
-        <div class="bar-bg"><div id="m-hp-t" class="bar-text">HP</div><div id="m-hp-f" class="bar-fill" style="background: #a22;"></div></div>
+        <div class="bar-bg"><div id="m-hp-t" class="bar-text">HP</div><div id="m-hp-f" class="bar-fill" style="background: #d33;"></div></div>
         <div id="battle-log"></div>
     </div>
 
     <script>
-    const TILE_SIZE = 70; // Размер клетки
-    let scene;
+    const TILE_SIZE = 70; 
+    let phaserGame, scene;
 
+    // Базовая конфигурация механик
     window.app = { 
         player: null, mob: null, turn: "PLAYER",
         log: (msg, color) => {
@@ -102,7 +104,7 @@
         if (!p || !m) return;
         document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100) + '%';
         document.getElementById('p-mn-f').style.width = p.mana + '%';
-        document.getElementById('btn-ultra').className = 'ready' ? (p.mana>=100?'btn-ultra ready':'btn-ultra') : 'btn-ultra';
+        document.getElementById('btn-ultra').className = 'btn-ultra' + (p.mana>=100?' ready':'');
         document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100) + '%';
         document.getElementById('stat-atk').innerText = p.baseAtk;
         document.getElementById('gold-val').innerText = p.gold;
@@ -126,9 +128,9 @@
             let x = c * TILE_SIZE + TILE_SIZE/2;
             let y = fromTop ? -TILE_SIZE : r * TILE_SIZE + TILE_SIZE/2;
             
-            // Теперь, когда картинки обрезаны, просто выводим их
+            // Чистая отрисовка: картинка центрируется и подгоняется под размер клетки
             let t = this.add.image(x, y, `t${id}`).setInteractive();
-            t.setDisplaySize(TILE_SIZE - 4, TILE_SIZE - 4); // Небольшой отступ между плитками
+            t.setDisplaySize(TILE_SIZE - 2, TILE_SIZE - 2); 
             
             t.gridR = r; t.gridC = c; t.type = id;
             t.on('pointerdown', () => this.handlePointer(t));
@@ -140,7 +142,7 @@
             if(this.isAnimating || window.app.turn !== "PLAYER") return;
             if(!this.sel) { 
                 this.sel = t; 
-                t.setScale(t.scale * 1.1); // Эффект выбора
+                t.setAlpha(0.6);
             } else {
                 let dist = Math.abs(this.sel.gridR - t.gridR) + Math.abs(this.sel.gridC - t.gridC);
                 if(dist === 1) {
@@ -148,8 +150,7 @@
                     if(!await this.check()) await this.swap(this.sel, t);
                     else { window.app.turn = "MOB"; this.time.delayedCall(500, () => this.mobMove()); }
                 }
-                this.sel.setScale(this.sel.scale / 1.1);
-                this.sel = null;
+                this.sel.setAlpha(1); this.sel = null;
             }
         }
 
@@ -202,7 +203,7 @@
                 this.grid[t.gridR][t.gridC] = null;
                 t.destroy();
             });
-            if(m.hp <= 0) { p.level++; spawnMob(); window.app.log("Уровень пройден!", "gold"); }
+            if(m.hp <= 0) { p.level++; spawnMob(); window.app.log("Враг повержен!", "gold"); }
             refreshUI();
             await new Promise(r => this.time.delayedCall(200, r));
         }
