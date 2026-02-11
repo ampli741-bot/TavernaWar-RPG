@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Epic Selection</title>
+    <title>Taverna War: Full Gear & Stats</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         :root { 
@@ -12,96 +12,95 @@
         }
         body { margin: 0; background: var(--bg); color: white; display: flex; height: 100vh; overflow: hidden; font-family: 'Verdana', sans-serif; touch-action: none; }
         
-        #ui-left, #ui-right { width: 340px; padding: 20px; background: #000; display: flex; flex-direction: column; border: 3px solid var(--border); box-sizing: border-box; z-index: 10; }
+        #ui-left, #ui-right { width: 360px; padding: 15px; background: #000; display: flex; flex-direction: column; border: 3px solid var(--border); box-sizing: border-box; z-index: 10; }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #050505; }
 
-        .portrait { width: 150px; height: 150px; margin: 0 auto 15px; border: 2px solid var(--border); background-size: cover; background-position: center; }
+        .portrait { width: 140px; height: 140px; margin: 0 auto 10px; border: 2px solid var(--border); background-size: cover; background-position: center; }
 
-        .bar-bg { width: 100%; height: 26px; background: #1a1111; border: 2px solid #444; margin-top: 6px; position: relative; border-radius: 4px; }
-        .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
-        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 15px; line-height: 26px; font-weight: 900; text-shadow: 1px 1px 2px black; }
+        /* Полоски с числами */
+        .bar-bg { width: 100%; height: 28px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
+        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 15px; line-height: 28px; font-weight: 900; text-shadow: 2px 2px 2px black; color: white; z-index: 5; }
 
-        /* ИНВЕНТАРЬ - ЧИТАЕМЫЙ ШРИФТ */
-        .inv-item { font-size: 17px; margin-bottom: 12px; padding: 14px; background: rgba(255,255,255,0.05); border-left: 6px solid #555; border-radius: 4px; line-height: 1.4; }
-        .grade-legendary { border-color: var(--legendary); color: var(--legendary); font-weight: bold; }
+        /* ИНВЕНТАРЬ */
+        #inv-box { margin-top: 15px; flex-grow: 1; overflow-y: auto; padding-right: 5px; }
+        .inv-item { font-size: 15px; margin-bottom: 8px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 5px solid #444; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .item-slot-name { color: #888; font-size: 11px; text-transform: uppercase; display: block; }
+        .grade-legendary { border-color: var(--legendary); color: var(--legendary); }
+        .grade-epic { border-color: var(--epic); color: var(--epic); }
+        .grade-rare { border-color: var(--rare); color: var(--rare); }
 
-        /* ОГРОМНОЕ МЕНЮ ВЫБОРА */
+        /* МЕНЮ ВЫБОРА */
         #menu-overlay { position: fixed; inset: 0; background: radial-gradient(circle, #222 0%, #000 100%); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-cards { display: flex; gap: 30px; }
-        .hero-card { 
-            width: 280px; padding: 40px 20px; border: 4px solid var(--border); background: #111; 
-            text-align: center; cursor: pointer; transition: 0.3s; border-radius: 20px; 
-        }
-        .hero-card:hover { border-color: white; transform: scale(1.1); box-shadow: 0 0 40px rgba(180,140,70,0.6); }
-        .hero-card img { width: 200px; height: 200px; margin-bottom: 25px; border-radius: 10px; border: 2px solid #333; }
-        .hero-card h3 { font-size: 32px; margin: 10px 0; color: var(--gold); }
-        .hero-card p { font-size: 20px; color: #ff5555; font-weight: bold; }
+        .hero-cards { display: flex; gap: 20px; }
+        .hero-card { width: 240px; padding: 30px 15px; border: 4px solid var(--border); background: #111; text-align: center; cursor: pointer; transition: 0.3s; border-radius: 15px; }
+        .hero-card:hover { border-color: white; transform: scale(1.05); }
+        .hero-card img { width: 160px; height: 160px; margin-bottom: 20px; border-radius: 10px; }
 
-        /* ОКНО ЛУТА */
+        /* ЛУТ */
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; justify-content: center; align-items: center; z-index: 100; }
-        .loot-window { background: #1a1a1a; padding: 40px; border: 4px solid var(--gold); text-align: center; width: 600px; border-radius: 15px; }
-        .compare-box { display: flex; justify-content: space-between; background: #000; padding: 30px; margin: 25px 0; border: 2px solid #333; }
-        .item-side { width: 45%; font-size: 22px; line-height: 1.6; }
+        .loot-window { background: #1a1a1a; padding: 40px; border: 4px solid var(--gold); text-align: center; width: 580px; border-radius: 15px; }
+        .compare-box { display: flex; justify-content: space-between; background: #000; padding: 25px; margin: 20px 0; border: 2px solid #333; }
+        .item-side { width: 45%; font-size: 20px; line-height: 1.5; }
 
-        button { padding: 18px 40px; cursor: pointer; border: none; font-weight: bold; background: var(--gold); font-size: 20px; border-radius: 8px; }
-        #ult-btn { background: #505; border: 2px solid #f0f; color: white; padding: 15px; text-align: center; cursor: pointer; margin-top: 20px; opacity: 0.4; font-weight: 900; font-size: 20px; }
-        #ult-btn.ready { opacity: 1; box-shadow: 0 0 20px #f0f; }
+        button { padding: 15px 30px; cursor: pointer; border: none; font-weight: bold; background: var(--gold); font-size: 18px; border-radius: 6px; }
+        #ult-btn { background: #505; border: 2px solid #f0f; color: white; padding: 12px; text-align: center; cursor: pointer; margin-top: 15px; opacity: 0.4; font-weight: 900; }
+        #ult-btn.ready { opacity: 1; box-shadow: 0 0 15px #f0f; }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-size: 64px; margin-bottom: 50px; text-shadow: 0 0 20px #000;">ВЫБЕРИ СВОЮ СУДЬБУ</h1>
+        <h1 style="color:var(--gold); font-size: 50px; margin-bottom: 30px;">ВЫБЕРИ ГЕРОЯ</h1>
         <div class="hero-cards">
-            <div class="hero-card" onclick="startGame('warrior')">
-                <img src="assets/hero_warrior.png" alt="Warrior">
-                <h3>ВОИН</h3><p>1400 HP</p>
-            </div>
-            <div class="hero-card" onclick="startGame('mage')">
-                <img src="assets/hero_mage.png" alt="Mage">
-                <h3>МАГ</h3><p>720 HP</p>
-            </div>
-            <div class="hero-card" onclick="startGame('archer')">
-                <img src="assets/hero_archer.png" alt="Archer">
-                <h3>ЛУЧНИК</h3><p>900 HP</p>
-            </div>
-            <div class="hero-card" onclick="startGame('assassin')">
-                <img src="assets/hero_assassin.png" alt="Assassin">
-                <h3>УБИЙЦА</h3><p>800 HP</p>
-            </div>
+            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/hero_warrior.png"><h3>ВОИН</h3><p>1400 HP</p></div>
+            <div class="hero-card" onclick="startGame('mage')"><img src="assets/hero_mage.png"><h3>МАГ</h3><p>720 HP</p></div>
+            <div class="hero-card" onclick="startGame('archer')"><img src="assets/hero_archer.png"><h3>ЛУЧНИК</h3><p>900 HP</p></div>
+            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/hero_assassin.png"><h3>УБИЙЦА</h3><p>800 HP</p></div>
         </div>
     </div>
 
     <div id="ui-left">
         <div id="p-portrait" class="portrait"></div>
-        <h2 id="p-job-text" style="color:var(--gold); margin:0; text-align:center; font-size: 26px;">ГЕРОЙ</h2>
-        <div class="bar-bg"><div id="p-hp-f" class="bar-fill" style="background:#f44"></div><div id="p-hp-t" class="bar-text"></div></div>
-        <div class="bar-bg"><div id="p-mn-f" class="bar-fill" style="background:#44f"></div><div id="p-mn-t" class="bar-text"></div></div>
-        <div style="margin: 25px 0; font-size: 30px; color:var(--gold); text-align:center; font-weight:bold;">💰 <span id="gold-val">0</span></div>
+        <h2 id="p-job-text" style="color:var(--gold); margin:0; text-align:center;">ГЕРОЙ</h2>
+        
+        <div class="bar-bg">
+            <div id="p-hp-t" class="bar-text">0 / 0</div>
+            <div id="p-hp-f" class="bar-fill" style="background: linear-gradient(to right, #700, #f44);"></div>
+        </div>
+        <div class="bar-bg">
+            <div id="p-mn-t" class="bar-text">0 / 100</div>
+            <div id="p-mn-f" class="bar-fill" style="background: linear-gradient(to right, #007, #44f);"></div>
+        </div>
+        
+        <div style="margin: 15px 0; font-size: 26px; color:var(--gold); text-align:center; font-weight:bold;">ЗОЛОТО: <span id="gold-val">0</span></div>
         <div id="ult-btn" onclick="useUlt()">СУПЕРУДАР</div>
+        
         <div id="inv-box"></div>
     </div>
 
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait" style="background-image: url('assets/hero_warrior.png'); filter: grayscale(1) invert(0.2);"></div>
-        <h2 id="m-name" style="color:#ff4444; margin:0; text-align:center; font-size: 26px;">ВРАГ</h2>
-        <div class="bar-bg"><div id="m-hp-f" class="bar-fill" style="background:#f44"></div><div id="m-hp-t" class="bar-text"></div></div>
-        <div class="bar-bg"><div id="m-mn-f" class="bar-fill" style="background:#ff0"></div><div id="m-mn-t" class="bar-text"></div></div>
-        <div id="m-stats" style="margin-top:25px; font-size:20px; color:#aaa; text-align:center; background:#111; padding:15px; border-radius:8px;"></div>
+        <div id="m-portrait" class="portrait" style="background-image: url('assets/hero_warrior.png'); filter: grayscale(1) sepia(1) hue-rotate(-50deg);"></div>
+        <h2 id="m-name" style="color:#ff4444; margin:0; text-align:center;">ВРАГ</h2>
+        <div class="bar-bg">
+            <div id="m-hp-t" class="bar-text">0 / 0</div>
+            <div id="m-hp-f" class="bar-fill" style="background: #f44;"></div>
+        </div>
+        <div id="m-stats" style="margin-top:20px; font-size:18px; color:#aaa; text-align:center; background:#111; padding:15px; border-radius:8px;"></div>
     </div>
 
     <div id="loot-overlay">
         <div class="loot-window">
-            <h1 id="loot-title" style="color:var(--gold); margin:0; font-size: 36px;">НОВЫЙ ПРЕДМЕТ!</h1>
+            <h1 style="color:var(--gold); margin:0;">НАЙДЕН ТРОФЕЙ!</h1>
             <div class="compare-box">
                 <div id="old-item" class="item-side"></div>
-                <div style="align-self:center; font-size:40px; color:var(--gold)">➠</div>
+                <div style="align-self:center; font-size:40px;">➠</div>
                 <div id="new-item" class="item-side"></div>
             </div>
             <button onclick="takeLoot()">ЭКИПИРОВАТЬ</button>
-            <button onclick="sellLoot()" style="background:#444; color:white; margin-left:15px;">ПРОДАТЬ</button>
+            <button onclick="sellLoot()" style="background:#444; color:white; margin-left:15px;">ПРОДАТЬ (+50💰)</button>
         </div>
     </div>
 
@@ -114,15 +113,21 @@
     function startGame(key) {
         document.getElementById('menu-overlay').style.display = 'none';
         const stats = {
-            'warrior': { name: 'ВОИН', hp: 1400, atk: 25 },
-            'mage': { name: 'МАГ', hp: 720, atk: 45 },
-            'archer': { name: 'ЛУЧНИК', hp: 900, atk: 35 },
-            'assassin': { name: 'УБИЙЦА', hp: 800, atk: 40 }
+            'warrior': { n: 'ВОИН', hp: 1400, atk: 25 },
+            'mage': { n: 'МАГ', hp: 720, atk: 50 },
+            'archer': { n: 'ЛУЧНИК', hp: 900, atk: 35 },
+            'assassin': { n: 'УБИЙЦА', hp: 800, atk: 45 }
         };
         let s = stats[key];
         window.app.player = {
-            job: s.name, key: key, hp: s.hp, maxHp: s.hp, mana: 0, gold: 0, level: 1, baseAtk: s.atk,
-            equip: { weapon: {n:"Начальное оружие", arm:0, atk:10, grade:'common'} }
+            job: s.n, key, hp: s.hp, maxHp: s.hp, mana: 0, gold: 0, level: 1, baseAtk: s.atk,
+            equip: {
+                weapon: {n: "Меч новичка", atk: 10, arm: 0, grade: 'common', slot: 'weapon'},
+                head: {n: "Капюшон", atk: 0, arm: 5, grade: 'common', slot: 'head'},
+                body: {n: "Рубаха", atk: 0, arm: 10, grade: 'common', slot: 'body'},
+                legs: {n: "Штаны", atk: 0, arm: 5, grade: 'common', slot: 'legs'},
+                ring: {n: "Кольцо удачи", atk: 2, arm: 0, grade: 'common', slot: 'ring'}
+            }
         };
         document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.png')`;
         spawnMob();
@@ -132,72 +137,102 @@
 
     function spawnMob() {
         let lvl = window.app.player.level;
-        window.app.mob = {
-            name: "Гоблин Ур."+lvl, hp: 160 + (lvl*50), maxHp: 160 + (lvl*50), atk: 12 + (lvl*5), mana: 0
-        };
-        window.app.lootActive = false;
+        window.app.mob = { name: "Скелет Ур."+lvl, hp: 150 + (lvl*60), maxHp: 150 + (lvl*60), atk: 10 + (lvl*5) };
         window.app.turn = "PLAYER";
+        window.app.lootActive = false;
     }
 
     function refreshUI() {
         const p = window.app.player; const m = window.app.mob;
-        document.getElementById('p-hp-t').innerText = `${Math.floor(p.hp)}/${p.maxHp}`;
+        // Числа на барах
+        document.getElementById('p-hp-t').innerText = `${Math.floor(p.hp)} / ${p.maxHp}`;
         document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100)+'%';
-        document.getElementById('p-mn-t').innerText = p.mana+'%';
+        document.getElementById('p-mn-t').innerText = `${p.mana} / 100`;
         document.getElementById('p-mn-f').style.width = p.mana+'%';
         document.getElementById('gold-val').innerText = p.gold;
         document.getElementById('ult-btn').className = p.mana>=100 ? 'ready' : '';
 
+        // Инвентарь
         let invH = "";
+        const slotNames = {weapon: "Оружие", head: "Шлем", body: "Тело", legs: "Ноги", ring: "Кольцо"};
         for(let s in p.equip) {
             let i = p.equip[s];
-            invH += `<div class="inv-item grade-${i.grade}"><b>${i.n}</b><br>⚔️ ${i.atk} | 🛡️ ${i.arm}</div>`;
+            invH += `<div class="inv-item grade-${i.grade}">
+                <div><span class="item-slot-name">${slotNames[s]}</span><b>${i.n}</b></div>
+                <div style="text-align:right">⚔️${i.atk} 🛡️${i.arm}</div>
+            </div>`;
         }
         document.getElementById('inv-box').innerHTML = invH;
 
-        document.getElementById('m-hp-t').innerText = `${Math.floor(m.hp)}/${m.maxHp}`;
+        document.getElementById('m-hp-t').innerText = `${Math.floor(m.hp)} / ${m.maxHp}`;
         document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100)+'%';
-        document.getElementById('m-mn-f').style.width = m.mana+'%';
-        document.getElementById('m-mn-t').innerText = m.mana + '%';
-        document.getElementById('m-stats').innerText = `⚔️ Урон монстра: ${m.atk}`;
+        document.getElementById('m-stats').innerText = `⚔️ Урон врага: ${m.atk}`;
+    }
+
+    function showLootScreen() {
+        window.app.lootActive = true;
+        const slots = ['weapon', 'head', 'body', 'legs', 'ring'];
+        const grades = ['rare', 'rare', 'epic', 'legendary'];
+        let slot = slots[Math.floor(Math.random()*slots.length)];
+        let grade = grades[Math.floor(Math.random()*grades.length)];
+        let power = (10 + window.app.player.level * 5) * (grade==='legendary'?3:grade==='epic'?2:1.5);
+        
+        currentLoot = {
+            slot: slot, 
+            n: (grade==='legendary'?'Мифический ':grade==='epic'?'Магический ':'Улучшенный ') + (slot==='weapon'?'Клинок':slot==='head'?'Шлем':slot==='body'?'Доспех':slot==='legs'?'Поножи':'Перстень'),
+            grade: grade, 
+            atk: (slot==='weapon'||slot==='ring' ? Math.floor(power) : 0),
+            arm: (slot!=='weapon'&&slot!=='ring' ? Math.floor(power) : 0)
+        };
+
+        let old = window.app.player.equip[slot];
+        document.getElementById('old-item').innerHTML = `<span style="color:#888">СЕЙЧАС:</span><br><b>${old.n}</b><br>⚔️${old.atk} 🛡️${old.arm}`;
+        document.getElementById('new-item').innerHTML = `<span style="color:#888">НОВОЕ:</span><br><b class="grade-${grade}">${currentLoot.n}</b><br>⚔️${currentLoot.atk} 🛡️${currentLoot.arm}`;
+        document.getElementById('loot-overlay').style.display = 'flex';
+    }
+
+    function takeLoot() {
+        window.app.player.equip[currentLoot.slot] = currentLoot;
+        nextLevel();
+    }
+    function sellLoot() {
+        window.app.player.gold += 50;
+        nextLevel();
+    }
+    function nextLevel() {
+        document.getElementById('loot-overlay').style.display = 'none';
+        window.app.player.level++;
+        spawnMob();
+        refreshUI();
     }
 
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
-        preload() {
-            ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`));
-        }
+        preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
         create() {
             scene = this; this.grid = []; this.isAnimating = false;
             for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); }
         }
-
         spawnTile(r, c, fromTop=false) {
             let type = Phaser.Utils.Array.GetRandom(['red', 'blue', 'green', 'purple', 'yellow']);
             let t = this.add.image(c*TILE_S+TILE_S/2, fromTop?-TILE_S:r*TILE_S+TILE_S/2, `t_${type}`).setDisplaySize(TILE_S-4, TILE_S-4).setInteractive();
             t.gridR = r; t.gridC = c; t.type = type;
-            t.on('pointerdown', () => this.handlePlayerClick(t));
+            t.on('pointerdown', () => this.handlePointer(t));
             this.grid[r][c] = t;
             if(fromTop) this.tweens.add({targets:t, y:r*TILE_S+TILE_S/2, duration:500, ease:'Bounce.out'});
         }
-
-        async handlePlayerClick(t) {
+        async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER" || window.app.lootActive) return;
-            if(!this.sel) { this.sel = t; t.setAlpha(0.7); }
+            if(!this.sel) { this.sel = t; t.setAlpha(0.6); }
             else {
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
                     await this.swap(this.sel, t);
-                    if(!await this.check()) {
-                        await this.swap(this.sel, t);
-                    } else {
-                        window.app.turn = "MOB";
-                        this.time.delayedCall(600, () => this.mobAI());
-                    }
+                    if(!await this.check()) await this.swap(this.sel, t);
+                    else { window.app.turn = "MOB"; this.time.delayedCall(600, () => this.mobAI()); }
                 }
                 if(this.sel) this.sel.setAlpha(1); this.sel = null;
             }
         }
-
         async swap(t1, t2) {
             this.isAnimating = true;
             let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
@@ -208,32 +243,23 @@
                 this.tweens.add({targets:t2, x:c1*TILE_S+TILE_S/2, y:r1*TILE_S+TILE_S/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}});
             });
         }
-
         async check() {
             let match = [];
-            for(let r=0; r<8; r++) for(let c=0; c<6; c++) 
-                if(this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) 
-                    match.push(this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]);
-            for(let c=0; c<8; c++) for(let r=0; r<6; r++)
-                if(this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type)
-                    match.push(this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]);
-            
+            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type) match.push(this.grid[r][c],this.grid[r][c+1],this.grid[r][c+2]);
+            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type) match.push(this.grid[r][c],this.grid[r+1][c],this.grid[r+2][c]);
             if(match.length > 0) {
                 let unique = [...new Set(match)];
                 this.isAnimating = true;
                 await new Promise(res => {
-                    this.tweens.add({ targets: unique, scale: 0, duration: 250, onComplete: () => {
-                        unique.forEach(t => { this.apply(t.type, window.app.turn); this.grid[t.gridR][t.gridC]=null; t.destroy(); });
+                    this.tweens.add({targets:unique, scale:0, duration:250, onComplete:()=>{
+                        unique.forEach(t => { this.applyEffect(t.type, window.app.turn); this.grid[t.gridR][t.gridC]=null; t.destroy(); });
                         res();
                     }});
                 });
-                await this.refill();
-                await this.check();
-                return true;
+                await this.refill(); await this.check(); return true;
             }
             return false;
         }
-
         async refill() {
             for(let c=0; c<8; c++) {
                 let empty = 0;
@@ -248,37 +274,26 @@
             }
             await new Promise(r => this.time.delayedCall(300, r));
         }
-
-        apply(type, turn) {
+        applyEffect(type, turn) {
             let p = window.app.player; let m = window.app.mob;
+            let pAtk = p.baseAtk + Object.values(p.equip).reduce((s,i)=>s+i.atk, 0);
             if(turn === "PLAYER") {
-                if(type==='red' || type==='purple') m.hp -= 30;
-                if(type==='blue') p.mana = Math.min(100, p.mana + 10);
-                if(type==='green') p.hp = Math.min(p.maxHp, p.hp + 25);
+                if(type==='red' || type==='purple') m.hp -= (pAtk / 4);
+                if(type==='blue') p.mana = Math.min(100, p.mana + 15);
+                if(type==='green') p.hp = Math.min(p.maxHp, p.hp + 30);
+                if(type==='yellow') p.gold += 5; // ЗОЛОТО ТЕПЕРЬ ПРИБАВЛЯЕТСЯ
             } else {
-                if(type==='red') p.hp -= 20;
+                if(type==='red') p.hp -= (m.atk / 5);
             }
             if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
         }
-
         async mobAI() {
-            if(window.app.mob.hp <= 0 || window.app.lootActive) { 
-                this.isAnimating = false; 
-                window.app.turn = "PLAYER"; 
-                return; 
-            }
+            if(window.app.mob.hp <= 0) return;
             let move = this.findMove();
-            if(move) {
-                await this.swap(this.grid[move.r1][move.c1], this.grid[move.r2][move.c2]);
-                await this.check();
-            }
-            // СТРОГИЙ СБРОС ФЛАГОВ ДЛЯ РАЗБЛОКИРОВКИ ХОДА
-            this.isAnimating = false;
-            window.app.turn = "PLAYER";
-            refreshUI();
+            if(move) { await this.swap(this.grid[move.r1][move.c1], this.grid[move.r2][move.c2]); await this.check(); }
+            this.isAnimating = false; window.app.turn = "PLAYER"; refreshUI();
         }
-
         findMove() {
             for(let r=0; r<8; r++) for(let c=0; c<7; c++) {
                 this.vs(r,c,r,c+1); if(this.hm()){this.vs(r,c,r,c+1); return {r1:r,c1:c,r2:r,c2:c+1};} this.vs(r,c,r,c+1);
@@ -293,22 +308,10 @@
         }
     }
 
-    function showLootScreen() { 
-        window.app.lootActive = true; 
-        document.getElementById('loot-overlay').style.display = 'flex'; 
-        document.getElementById('new-item').innerHTML = "Легендарный меч<br>⚔️ +25 АТК";
-        document.getElementById('old-item').innerHTML = "Старый меч<br>⚔️ +10 АТК";
-    }
-    function takeLoot() { window.app.player.level++; spawnMob(); document.getElementById('loot-overlay').style.display = 'none'; refreshUI(); }
-    function sellLoot() { window.app.player.gold += 50; takeLoot(); }
-    function useUlt() { if(window.app.player.mana >= 100) { window.app.player.mana = 0; window.app.mob.hp -= 200; if(window.app.mob.hp <= 0) showLootScreen(); refreshUI(); } }
-
+    function useUlt() { if(window.app.player.mana >= 100) { window.app.player.mana = 0; window.app.mob.hp -= 300; if(window.app.mob.hp <= 0) showLootScreen(); refreshUI(); } }
     function initPhaser() {
         if(phaserGame) return;
-        phaserGame = new Phaser.Game({
-            type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680,
-            scene: GameScene, backgroundColor: 'transparent'
-        });
+        phaserGame = new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680, scene: GameScene, backgroundColor: 'transparent' });
     }
     </script>
 </body>
