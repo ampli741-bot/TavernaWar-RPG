@@ -58,8 +58,9 @@
                 }
             };
             this.player.arm = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
+            
             this.spawnMob();
-            this.createUI(); // Сначала создаем UI один раз
+            this.createUI(); // Создаем UI ОДИН РАЗ
             this.initGrid();
             this.updateUI();
         }
@@ -227,14 +228,6 @@
                     }
                 }
             }
-            specialEffects.forEach(eff => {
-                if(eff.type === 'LINE_H') for(let i=0; i<8; i++) if(this.grid[eff.r][i]) toRem.add(this.grid[eff.r][i]);
-                if(eff.type === 'LINE_V') for(let i=0; i<8; i++) if(this.grid[i][eff.c]) toRem.add(this.grid[i][eff.c]);
-                if(eff.type === 'BOMB') {
-                    for(let i=eff.r-1; i<=eff.r+1; i++) for(let j=eff.c-1; j<=eff.c+1; j++)
-                            if(i>=0 && i<8 && j>=0 && j<8 && this.grid[i][j]) toRem.add(this.grid[i][j]);
-                }
-            });
             if (toRem.size > 0) {
                 toRem.forEach(t => { this.applyEffect(t.type); this.grid[t.gridR][t.gridC] = null; this.tweens.add({ targets: t, alpha: 0, scale: 0, duration: 200, onComplete: () => t.destroy() }); });
                 await new Promise(res => this.time.delayedCall(250, res));
@@ -301,61 +294,43 @@
             return res;
         }
 
-        // ==========================================
-        // ИСПРАВЛЕННЫЙ UI - БЕЗ ПРОЛИСТЫВАНИЯ
-        // ==========================================
         createUI() {
-            // Рамка героя
-            this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46).setInteractive();
+            // ЛЕВАЯ ПАНЕЛЬ (Герой)
+            this.add.rectangle(175, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
             this.add.image(175, 120, `hero_${this.player.job}`).setDisplaySize(140, 140);
-            
-            // Статичные тексты
             this.hpText = this.add.text(40, 210, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
             this.manaText = this.add.text(40, 280, "", { fontSize: '18px', fill: '#4444ff' });
             this.goldText = this.add.text(40, 335, "", { fontSize: '22px', fill: '#ffd700' });
             this.equipLines = this.add.text(40, 480, "", { fontSize: '15px', lineSpacing: 8 });
-            
-            // Кнопка ульты
             this.ultBtn = this.add.rectangle(175, 410, 240, 50, 0x330033).setInteractive().setStrokeStyle(2, 0xaa00aa);
             this.add.text(175, 410, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
             this.ultBtn.on('pointerdown', () => this.useUlt());
-
-            // ГРАФИКА
             this.hpBar = this.add.graphics();
             this.armBar = this.add.graphics();
             this.manaBar = this.add.graphics();
-            this.mobHpBar = this.add.graphics();
 
-            // РАМКА МОБА (Точная рамка поля)
-            this.add.rectangle(1050, 285, 230, 200, 0x191614).setStrokeStyle(2, 0xb48c46);
-            this.mobHpText = this.add.text(1050, 230, "", { fontSize: '22px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
+            // ПРАВАЯ ПАНЕЛЬ (Моб) - СИММЕТРИЧНО
+            this.add.rectangle(1025, 450, 310, 860, 0x191614).setStrokeStyle(2, 0xb48c46);
+            this.mobHpText = this.add.text(1025, 230, "", { fontSize: '22px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
+            this.mobHpBar = this.add.graphics();
         }
 
         updateUI() {
             let maxA = Object.values(this.player.equip).reduce((a, b) => a + (b.arm || 0), 0);
-            
-            // Обновляем текст (не создаем новый!)
             this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${Math.floor(this.player.arm)}`);
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
-
-            // Инвентарь
             let eqS = "ИНВЕНТАРЬ:\n";
             for(let k in this.player.equip) {
                 let item = this.player.equip[k];
                 eqS += `${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр\n`;
             }
             this.equipLines.setText(eqS);
-
-            // Полоски жизни
             this.hpBar.clear().fillStyle(0x440000).fillRect(40, 250, 270, 15).fillStyle(0xff0000).fillRect(40, 250, (this.player.hp/this.player.maxHp)*270, 15);
-            this.armBar.clear();
-            if(maxA > 0) this.armBar.fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
-            
+            this.armBar.clear(); if(maxA > 0) this.armBar.fillStyle(0x00ffff).fillRect(40, 250, (this.player.arm/maxA)*270, 5);
             this.manaBar.clear().fillStyle(0x000044).fillRect(40, 305, 270, 12).fillStyle(0x4444ff).fillRect(40, 305, (this.player.mana/100)*270, 12);
-            this.mobHpBar.clear().fillStyle(0x440000).fillRect(945, 280, 210, 15).fillStyle(0xff0000).fillRect(945, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*210, 15);
-            
+            this.mobHpBar.clear().fillStyle(0x440000).fillRect(900, 280, 250, 15).fillStyle(0xff0000).fillRect(900, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*250, 15);
             if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot()); 
             if(this.player.hp <= 0) location.reload();
         }
