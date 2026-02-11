@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Fixed UI</title>
+    <title>Taverna War: Ironclad UI</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; touch-action: none; }
         canvas { border: 2px solid #b48c46; }
     </style>
 </head>
 <body>
     <div id="game-container"></div>
     <script>
-    const GW = 1200, GH = 900, TILE_S = 72; // Размер плитки с учетом отступов
+    const GW = 1200, GH = 900, TILE_S = 70;
     const GRID_SIZE = 8 * TILE_S;
-    const OFFSET_X = (GW - GRID_SIZE) / 2; // Строгий центр
-    const OFFSET_Y = 160;
+    const OFFSET_X = Math.floor((GW - GRID_SIZE) / 2);
+    const OFFSET_Y = 170;
 
     class MainScene extends Phaser.Scene {
         constructor() { super('MainScene'); }
@@ -40,54 +40,53 @@
                 let x = 300 * i + 150;
                 let card = this.add.rectangle(x, 450, 260, 550, 0x1a1a1a).setInteractive().setStrokeStyle(2, 0xb48c46);
                 this.add.image(x, 400, `hero_${name}`).setDisplaySize(200, 200);
-                this.add.text(x, 600, name, { fontSize: '32px', fill: '#fff' }).setOrigin(0.5);
                 card.on('pointerdown', () => this.startGame(name));
             });
         }
 
         startGame(job) {
             this.children.removeAll();
+            // Настройка персонажа (согласно сохраненным механикам)
             const hps = { "Воин": 1400, "Маг": 720, "Лучник": 880, "Ассасин": 800 };
             this.player = {
                 job, maxHp: hps[job], hp: hps[job], arm: 0, mana: 0, gold: 0, level: 1, baseAtk: 25,
-                equip: {
-                    head: { n: "Шлем", atk: 0, arm: 2 }, body: { n: "Броня", atk: 0, arm: 5 },
-                    legs: { n: "Сапоги", atk: 0, arm: 2 }, weapon: { n: "Меч", atk: 12, arm: 0 },
-                    ring: { n: "Кольцо", atk: 2, arm: 0 }, neck: { n: "Амулет", atk: 0, arm: 0 }
-                }
+                equip: { head: {n:"Шлем", arm:2}, body: {n:"Броня", arm:5}, legs: {n:"Сапоги", arm:2}, weapon: {n:"Меч", atk:12}, ring: {n:"Кольцо", atk:2}, neck: {n:"Амулет", atk:0} }
             };
             this.spawnMob();
-            this.createUI(); 
+
+            // 1. ЖЕСТКИЙ БЛОКИРОВЩИК ФОНА
+            // Этот слой поглощает ВСЕ клики, которые не попали в кнопки или плитки
+            this.add.rectangle(GW/2, GH/2, GW, GH, 0x000000, 0.001).setInteractive().setDepth(0);
+
+            this.createStaticUI();
             this.initGrid();
             this.updateUI();
 
-            // ОТКЛЮЧАЕМ КЛИКИ ПО СЦЕНЕ (только объекты)
-            this.input.setTopOnly(true); 
+            // Запрещаем камере двигаться или дрожать
+            this.cameras.main.setScroll(0, 0);
         }
 
-        createUI() {
-            // ФОНОВЫЕ РАМКИ (рисуются один раз)
-            this.add.rectangle(155, 450, 290, 860, 0x000000).setStrokeStyle(2, 0xb48c46).setAlpha(0.9);
-            this.add.rectangle(GW-155, 450, 290, 860, 0x000000).setStrokeStyle(2, 0xb48c46).setAlpha(0.9);
-
-            // ГЕРОЙ
-            this.add.image(155, 140, `hero_${this.player.job}`).setDisplaySize(160, 160);
-            this.hpText = this.add.text(30, 240, "", { fontSize: '20px', fill: '#ff4444', fontStyle: 'bold' });
-            this.manaText = this.add.text(30, 310, "", { fontSize: '20px', fill: '#4444ff' });
-            this.goldText = this.add.text(30, 370, "", { fontSize: '24px', fill: '#ffd700', fontStyle: 'bold' });
-            this.hpBar = this.add.graphics();
-            this.manaBar = this.add.graphics();
+        createStaticUI() {
+            // Рисуем рамки ОДИН раз на слое Depth(1)
+            const leftBox = this.add.rectangle(155, 450, 290, 860, 0x0c0a08).setStrokeStyle(2, 0xb48c46).setDepth(1);
+            const rightBox = this.add.rectangle(GW - 155, 450, 290, 860, 0x0c0a08).setStrokeStyle(2, 0xb48c46).setDepth(1);
             
-            this.ultBtn = this.add.rectangle(155, 440, 240, 55, 0x440044).setInteractive().setStrokeStyle(2, 0xff00ff);
-            this.add.text(155, 440, "СУПЕРУДАР", { fontSize: '22px', fill: '#fff' }).setOrigin(0.5);
-            this.ultBtn.on('pointerdown', () => this.useUlt());
+            this.add.image(155, 140, `hero_${this.player.job}`).setDisplaySize(160, 160).setDepth(2);
+            this.hpText = this.add.text(35, 240, "", { fontSize: '19px', fill: '#ff4444', fontStyle: 'bold' }).setDepth(2);
+            this.manaText = this.add.text(35, 310, "", { fontSize: '19px', fill: '#4444ff' }).setDepth(2);
+            this.goldText = this.add.text(35, 370, "", { fontSize: '24px', fill: '#ffd700', fontStyle: 'bold' }).setDepth(2);
+            this.hpBar = this.add.graphics().setDepth(2);
+            this.manaBar = this.add.graphics().setDepth(2);
+            
+            this.ultBtn = this.add.rectangle(155, 440, 240, 55, 0x440044).setInteractive().setStrokeStyle(2, 0xff00ff).setDepth(2);
+            this.add.text(155, 440, "СУПЕРУДАР", { fontSize: '22px', fill: '#fff' }).setOrigin(0.5).setDepth(2);
+            this.ultBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.useUlt(); });
 
-            this.equipLines = this.add.text(30, 520, "", { fontSize: '16px', lineSpacing: 10, fill: '#aaaaaa' });
+            this.equipLines = this.add.text(35, 520, "", { fontSize: '16px', lineSpacing: 10, fill: '#aaaaaa' }).setDepth(2);
 
-            // МОБ
-            this.mobIcon = this.add.image(GW - 155, 140, `hero_${this.player.job}`).setDisplaySize(160, 160).setTint(0x333333);
-            this.mobHpText = this.add.text(GW - 155, 260, "", { fontSize: '26px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
-            this.mobHpBar = this.add.graphics();
+            this.mobIcon = this.add.image(GW - 155, 140, `hero_${this.player.job}`).setDisplaySize(160, 160).setTint(0x333333).setDepth(2);
+            this.mobHpText = this.add.text(GW - 155, 260, "", { fontSize: '26px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5).setDepth(2);
+            this.mobHpBar = this.add.graphics().setDepth(2);
         }
 
         updateUI() {
@@ -100,9 +99,9 @@
             for(let k in this.player.equip) eqS += `${this.player.equip[k].n}: +${this.player.equip[k].atk || 0} Атк\n`;
             this.equipLines.setText(eqS);
 
-            this.hpBar.clear().fillStyle(0x330000).fillRect(30, 280, 250, 18).fillStyle(0xff0000).fillRect(30, 280, (this.player.hp/this.player.maxHp)*250, 18);
-            this.manaBar.clear().fillStyle(0x000033).fillRect(30, 340, 250, 14).fillStyle(0x4444ff).fillRect(30, 340, (this.player.mana/100)*250, 14);
-            this.mobHpBar.clear().fillStyle(0x330000).fillRect(GW - 280, 300, 250, 18).fillStyle(0xff0000).fillRect(GW - 280, 300, (Math.max(0, this.mob.hp)/this.mob.maxHp)*250, 18);
+            this.hpBar.clear().fillStyle(0x330000).fillRect(35, 280, 240, 18).fillStyle(0xff0000).fillRect(35, 280, (this.player.hp/this.player.maxHp)*240, 18);
+            this.manaBar.clear().fillStyle(0x000033).fillRect(35, 340, 240, 14).fillStyle(0x4444ff).fillRect(35, 340, (this.player.mana/100)*240, 14);
+            this.mobHpBar.clear().fillStyle(0x330000).fillRect(GW - 275, 300, 240, 18).fillStyle(0xff0000).fillRect(GW - 275, 300, (Math.max(0, this.mob.hp)/this.mob.maxHp)*240, 18);
             
             if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow();
         }
@@ -120,17 +119,16 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let tx = OFFSET_X + c * TILE_S + TILE_S/2;
             let ty = OFFSET_Y + r * TILE_S + TILE_S/2;
-            let tile = this.add.image(tx, fromTop ? ty - 600 : ty, `tile_${type}`).setDisplaySize(66, 66).setInteractive();
+            let tile = this.add.image(tx, fromTop ? ty - 600 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive().setDepth(3);
             tile.gridR = r; tile.gridC = c; tile.type = type;
             
-            // Клик разрешен только по самой плитке
-            tile.on('pointerdown', (pointer, x, y, event) => {
-                if(event) event.stopPropagation(); 
+            tile.on('pointerdown', (p, x, y, e) => {
+                e.stopPropagation(); // Критично: клик по плитке не уходит в фон
                 this.handleTileClick(tile);
             });
 
             this.grid[r][c] = tile;
-            if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 400 });
+            if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 350 });
         }
 
         async handleTileClick(tile) {
@@ -210,14 +208,16 @@
 
         showLootWindow() {
             this.lootActive = true;
-            this.lootContainer = this.add.container(GW/2, GH/2).setDepth(2000);
-            let bg = this.add.rectangle(0, 0, 450, 320, 0x000000, 0.98).setStrokeStyle(4, 0xffd700).setInteractive();
-            let txt = this.add.text(0, -50, `ПОБЕДА!\nМонстр повержен`, { fontSize: '32px', fill: '#ffd700', align: 'center', fontStyle: 'bold' }).setOrigin(0.5);
-            let btn = this.add.rectangle(0, 90, 200, 65, 0x006600).setInteractive().setStrokeStyle(2, 0xffffff);
-            let bTxt = this.add.text(0, 90, "ПРОДОЛЖИТЬ", { fontSize: '24px', fontStyle: 'bold' }).setOrigin(0.5);
+            this.lootContainer = this.add.container(GW/2, GH/2).setDepth(5000);
+            // Фон окна ТАКЖЕ блокирует клики
+            let bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.98).setStrokeStyle(4, 0xffd700).setInteractive();
+            let txt = this.add.text(0, -50, `ПОБЕДА!\nУровень ${this.player.level}`, { fontSize: '30px', fill: '#ffd700', align: 'center' }).setOrigin(0.5);
+            let btn = this.add.rectangle(0, 80, 200, 60, 0x006600).setInteractive().setStrokeStyle(2, 0xffffff);
+            let bTxt = this.add.text(0, 80, "ВПЕРЕД", { fontSize: '24px' }).setOrigin(0.5);
             this.lootContainer.add([bg, txt, btn, bTxt]);
             
-            btn.on('pointerdown', () => { 
+            btn.on('pointerdown', (p, x, y, e) => { 
+                e.stopPropagation();
                 this.lootActive = false;
                 this.lootContainer.destroy(); 
                 this.player.level++; 
@@ -235,7 +235,7 @@
         async useUlt() { if (this.player.mana >= 100) { this.player.mana = 0; this.mob.hp -= 200; this.updateUI(); } }
     }
 
-    new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: GW, height: GH, scene: [MainScene] });
+    new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: GW, height: GH, scene: [MainScene], backgroundColor: '#0c0a08' });
     </script>
 </body>
 </html>
