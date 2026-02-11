@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Rigid Interface</title>
+    <title>Taverna War: Total Lockdown</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -16,7 +16,7 @@
     const GW = 1200, GH = 900, TILE_S = 70;
     const GRID_W = 8 * TILE_S;
     const OFFSET_X = (GW - GRID_W) / 2;
-    const OFFSET_Y = 170;
+    const OFFSET_Y = 175;
 
     class MainScene extends Phaser.Scene {
         constructor() { super('MainScene'); }
@@ -26,17 +26,16 @@
             this.load.image('hero_Маг', 'assets/hero_mage.png');
             this.load.image('hero_Лучник', 'assets/hero_archer.png');
             this.load.image('hero_Ассасин', 'assets/hero_assassin.png');
-            this.load.image('tile_Red', 'assets/rune_red.png');
-            this.load.image('tile_Blue', 'assets/rune_blue.png');
-            this.load.image('tile_Green', 'assets/rune_green.png');
-            this.load.image('tile_Purple', 'assets/rune_purple.png');
-            this.load.image('tile_Yellow', 'assets/rune_yellow.png');
+            ['Red', 'Blue', 'Green', 'Purple', 'Yellow'].forEach(c => 
+                this.load.image(`tile_${c}`, `assets/rune_${c.toLowerCase()}.png`)
+            );
         }
 
         create() { this.showMenu(); }
 
         showMenu() {
             this.children.removeAll();
+            this.input.removeAllListeners();
             this.add.text(GW/2, 100, "ВЫБЕРИТЕ ГЕРОЯ", { fontSize: '42px', fill: '#ffd700', fontStyle: 'bold' }).setOrigin(0.5);
             ["Воин", "Маг", "Лучник", "Ассасин"].forEach((name, i) => {
                 let x = 300 * i + 150;
@@ -60,10 +59,9 @@
             };
             this.spawnMob();
             
-            // 1. Блокировщик кликов фона (Input Shield)
-            // Он перехватывает все клики "мимо", чтобы они не вызывали обновление сцены
-            this.add.rectangle(GW/2, GH/2, GW, GH, 0x0c0a08).setInteractive().setDepth(-1);
-
+            // ГЛОБАЛЬНЫЙ ЗАПРЕТ КЛИКОВ (кроме тех, что разрешены явно)
+            this.input.setDefaultCursor('default');
+            
             this.createUI(); 
             this.initGrid();
             this.updateUI();
@@ -71,7 +69,7 @@
 
         createUI() {
             // Левая панель
-            this.add.rectangle(150, 450, 280, 860, 0x000000).setStrokeStyle(2, 0xb48c46).setAlpha(0.9);
+            this.add.rectangle(150, 450, 280, 860, 0x000000).setStrokeStyle(2, 0xb48c46).setDepth(0);
             this.add.image(150, 130, `hero_${this.player.job}`).setDisplaySize(160, 160);
             this.hpText = this.add.text(30, 230, "", { fontSize: '18px', fill: '#ff4444', fontStyle: 'bold' });
             this.manaText = this.add.text(30, 300, "", { fontSize: '18px', fill: '#4444ff' });
@@ -80,13 +78,13 @@
             this.manaBar = this.add.graphics();
             
             this.ultBtn = this.add.rectangle(150, 420, 240, 50, 0x440044).setInteractive().setStrokeStyle(2, 0xff00ff);
-            this.add.text(150, 420, "СУПЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
-            this.ultBtn.on('pointerdown', (p, x, y, event) => { event.stopPropagation(); this.useUlt(); });
+            this.add.text(150, 420, "СУПУРЕРУДАР", { fontSize: '20px', fill: '#fff' }).setOrigin(0.5);
+            this.ultBtn.on('pointerdown', (p) => { this.useUlt(); });
 
             this.equipLines = this.add.text(30, 500, "", { fontSize: '15px', lineSpacing: 8, fill: '#aaaaaa' });
 
             // Правая панель
-            this.add.rectangle(GW - 150, 450, 280, 860, 0x000000).setStrokeStyle(2, 0xb48c46).setAlpha(0.9);
+            this.add.rectangle(GW - 150, 450, 280, 860, 0x000000).setStrokeStyle(2, 0xb48c46);
             this.mobIcon = this.add.image(GW - 150, 130, `hero_${this.player.job}`).setDisplaySize(160, 160).setTint(0x333333);
             this.mobHpText = this.add.text(GW - 150, 250, "", { fontSize: '24px', fill: '#ff0000', fontStyle: 'bold' }).setOrigin(0.5);
             this.mobHpBar = this.add.graphics();
@@ -99,18 +97,14 @@
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
 
             let eqS = "ИНВЕНТАРЬ:\n";
-            for(let k in this.player.equip) {
-                let item = this.player.equip[k];
-                eqS += `${item.n}: +${item.atk || 0} Атк / +${item.arm || 0} Бр\n`;
-            }
+            for(let k in this.player.equip) eqS += `${this.player.equip[k].n}: +${this.player.equip[k].atk || 0} Атк\n`;
             this.equipLines.setText(eqS);
 
             this.hpBar.clear().fillStyle(0x330000).fillRect(30, 270, 240, 15).fillStyle(0xff0000).fillRect(30, 270, (this.player.hp/this.player.maxHp)*240, 15);
             this.manaBar.clear().fillStyle(0x000033).fillRect(30, 325, 240, 12).fillStyle(0x4444ff).fillRect(30, 325, (this.player.mana/100)*240, 12);
             this.mobHpBar.clear().fillStyle(0x330000).fillRect(GW - 270, 280, 240, 15).fillStyle(0xff0000).fillRect(GW - 270, 280, (Math.max(0, this.mob.hp)/this.mob.maxHp)*240, 15);
             
-            if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow(this.generateLoot());
-            if(this.player.hp <= 0) location.reload();
+            if(this.mob.hp <= 0 && !this.lootActive) this.showLootWindow();
         }
 
         initGrid() {
@@ -126,28 +120,19 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let tx = OFFSET_X + c * TILE_S + TILE_S/2;
             let ty = OFFSET_Y + r * TILE_S + TILE_S/2;
-            let tile = this.add.image(tx, fromTop ? ty - 600 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive();
+            let tile = this.add.image(tx, fromTop ? ty - 600 : ty, `tile_${type}`).setDisplaySize(62, 62).setInteractive();
             tile.gridR = r; tile.gridC = c; tile.type = type;
             
-            tile.on('pointerdown', (pointer, x, y, event) => {
-                event.stopPropagation(); // Запрещаем клику уходить в фон
-                this.handleTileClick(tile);
-            });
-
+            tile.on('pointerdown', () => this.handleTileClick(tile));
             this.grid[r][c] = tile;
-            if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 400 });
+            if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 300 });
         }
 
         async handleTileClick(tile) {
-            if (!tile || this.isAnimating || this.turn !== "PLAYER" || this.lootActive) return;
-
-            if (!this.selectedTile) { 
-                this.selectedTile = tile; 
-                tile.setTint(0xffff00); 
-            } else {
-                let dR = Math.abs(this.selectedTile.gridR - tile.gridR);
-                let dC = Math.abs(this.selectedTile.gridC - tile.gridC);
-                
+            if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive) return;
+            if (!this.selectedTile) { this.selectedTile = tile; tile.setTint(0xffff00); } 
+            else {
+                let dR = Math.abs(this.selectedTile.gridR - tile.gridR), dC = Math.abs(this.selectedTile.gridC - tile.gridC);
                 if (dR + dC === 1) {
                     await this.swapTiles(this.selectedTile, tile);
                     if (!await this.checkMatches()) await this.swapTiles(this.selectedTile, tile);
@@ -163,24 +148,21 @@
             let r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
             this.grid[r1][c1] = t2; this.grid[r2][c2] = t1;
             t1.gridR = r2; t1.gridC = c2; t2.gridR = r1; t2.gridC = c1;
-            
             return new Promise(res => {
-                this.tweens.add({ targets: t1, x: OFFSET_X + c2 * TILE_S + TILE_S/2, y: OFFSET_Y + r2 * TILE_S + TILE_S/2, duration: 200 });
-                this.tweens.add({ targets: t2, x: OFFSET_X + c1 * TILE_S + TILE_S/2, y: OFFSET_Y + r1 * TILE_S + TILE_S/2, duration: 200, onComplete: () => { this.isAnimating = false; res(); } });
+                this.tweens.add({ targets: t1, x: OFFSET_X+c2*TILE_S+TILE_S/2, y: OFFSET_Y+r2*TILE_S+TILE_S/2, duration: 200 });
+                this.tweens.add({ targets: t2, x: OFFSET_X+c1*TILE_S+TILE_S/2, y: OFFSET_Y+r1*TILE_S+TILE_S/2, duration: 200, onComplete: () => { this.isAnimating = false; res(); } });
             });
         }
 
         async checkMatches() {
             let toRem = new Set();
             for(let r=0; r<8; r++) for(let c=0; c<6; c++) {
-                if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) {
+                if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type)
                     [this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]].forEach(t => toRem.add(t));
-                }
             }
             for(let c=0; c<8; c++) for(let r=0; r<6; r++) {
-                if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) {
+                if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type)
                     [this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]].forEach(t => toRem.add(t));
-                }
             }
             if (toRem.size > 0) {
                 toRem.forEach(t => { this.applyEffect(t.type); this.grid[t.gridR][t.gridC] = null; t.destroy(); });
@@ -196,12 +178,12 @@
                     if(!this.grid[r][c]) empty++;
                     else if(empty > 0) {
                         let t = this.grid[r][c]; this.grid[r+empty][c] = t; this.grid[r][c] = null; t.gridR = r+empty;
-                        this.tweens.add({ targets: t, y: OFFSET_Y + t.gridR * TILE_S + TILE_S/2, duration: 300 });
+                        this.tweens.add({ targets: t, y: OFFSET_Y + t.gridR * TILE_S + TILE_S/2, duration: 250 });
                     }
                 }
                 for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
             }
-            await new Promise(res => this.time.delayedCall(350, res));
+            await new Promise(res => this.time.delayedCall(300, res));
         }
 
         applyEffect(type) {
@@ -213,31 +195,22 @@
             this.updateUI();
         }
 
-        async mobAI() {
-            if (this.mob.hp <= 0) return;
-            this.player.hp -= this.mob.atk * 0.4;
-            this.turn = "PLAYER"; this.updateUI();
-        }
-
         spawnMob() {
             let lvl = this.player.level;
-            this.mob = { name: "Монстр Ур." + lvl, maxHp: 100 + (lvl*60), hp: 100 + (lvl*60), atk: 15 + (lvl*10) };
-            this.turn = "PLAYER";
-            this.lootActive = false;
+            this.mob = { name: "Монстр Ур." + lvl, maxHp: 100+(lvl*60), hp: 100+(lvl*60), atk: 15+(lvl*10) };
+            this.turn = "PLAYER"; this.lootActive = false;
         }
 
-        generateLoot() { return { name: "Артефакт", slot: "ring", val: 5, label: "АТК", statType: "atk", price: 50 }; }
-
-        showLootWindow(loot) {
+        showLootWindow() {
             this.lootActive = true;
-            this.lootContainer = this.add.container(GW/2, GH/2).setDepth(2000);
-            let bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.95).setStrokeStyle(3, 0xffd700);
-            let txt = this.add.text(0, -50, `ПОБЕДА!\n+${loot.val} ${loot.label}`, { fontSize: '24px', fill: '#ffd700' }).setOrigin(0.5);
-            let btn = this.add.rectangle(0, 80, 160, 50, 0x006600).setInteractive();
-            let bTxt = this.add.text(0, 80, "ЗАБРАТЬ").setOrigin(0.5);
+            this.lootContainer = this.add.container(GW/2, GH/2).setDepth(1000);
+            let bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.95).setStrokeStyle(3, 0xffd700).setInteractive(); // Блокирует клики под окном
+            let txt = this.add.text(0, -50, `ПОБЕДА!\nУровень повышен`, { fontSize: '28px', fill: '#ffd700', align: 'center' }).setOrigin(0.5);
+            let btn = this.add.rectangle(0, 80, 180, 60, 0x006600).setInteractive().setStrokeStyle(2, 0xffffff);
+            let bTxt = this.add.text(0, 80, "ПРОДОЛЖИТЬ").setOrigin(0.5);
             this.lootContainer.add([bg, txt, btn, bTxt]);
             btn.on('pointerdown', () => { 
-                this.player.equip[loot.slot].atk = loot.val;
+                this.lootActive = false;
                 this.lootContainer.destroy(); 
                 this.player.level++; 
                 this.spawnMob(); 
@@ -245,7 +218,13 @@
             });
         }
 
-        async useUlt() { if (this.player.mana < 100) return; this.player.mana = 0; this.mob.hp -= 200; this.updateUI(); }
+        async mobAI() {
+            if (this.mob.hp <= 0) return;
+            this.player.hp -= this.mob.atk * 0.4;
+            this.turn = "PLAYER"; this.updateUI();
+        }
+
+        async useUlt() { if (this.player.mana >= 100) { this.player.mana = 0; this.mob.hp -= 200; this.updateUI(); } }
     }
 
     new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: GW, height: GH, scene: [MainScene] });
