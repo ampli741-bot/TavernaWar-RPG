@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Crystal Clear Edition</title>
+    <title>Taverna War</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -22,33 +22,24 @@
             display: flex; flex-direction: column; border: 3px solid var(--border); 
             box-sizing: border-box; z-index: 10; 
         }
+        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
         
-        /* Исправленный контейнер игры */
-        #game-container { 
-            flex-grow: 1; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            background: transparent !important;
-            position: relative;
-        }
-        
+        /* ГЛАВНЫЙ ХАК: заставляем холст Phaser игнорировать светлые фоны рун */
         canvas { 
-            background-color: transparent !important; 
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
+            mix-blend-mode: screen; 
+            filter: contrast(1.2) brightness(1.1);
         }
 
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
         
-        /* ПОРТРЕТ: полная прозрачность */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 10px; 
             border: 2px solid var(--border); 
             background-size: contain; 
             background-repeat: no-repeat;
             background-position: center;
-            background-color: transparent !important; 
+            /* Убираем шахматку на портретах через смешивание */
+            mix-blend-mode: lighten;
         }
 
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
@@ -64,7 +55,7 @@
         #menu-overlay::before { content: ""; position: absolute; inset:0; background: rgba(0,0,0,0.8); z-index: -1; }
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; border-radius: 20px; }
-        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; }
+        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; mix-blend-mode: lighten; }
         
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
         .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
@@ -142,11 +133,7 @@
         document.getElementById('menu-overlay').style.display = 'none';
         const base = { 'warrior':{hp:1600,atk:25,agi:5}, 'mage':{hp:800,atk:65,agi:2}, 'archer':{hp:1000,atk:40,agi:18}, 'assassin':{hp:900,atk:55,agi:14} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, equip: { weapon:{n:"Старая палка",atk:12,arm:0,agi:0,rar:0} } };
-        
-        // Сброс фона перед установкой нового изображения
-        const pPort = document.getElementById('p-portrait');
-        pPort.style.backgroundImage = `url('assets/hero_${key}.png')`;
-        
+        document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.png')`;
         initPhaser(); spawnMob(); refreshUI();
     }
 
@@ -353,15 +340,12 @@
 
     function initPhaser() { 
         phaserGame = new Phaser.Game({ 
-            type: Phaser.AUTO, 
+            type: Phaser.AUTO, // AUTO лучше всего работает с mix-blend-mode
             parent: 'game-container', 
             width: 680, 
             height: 680, 
             scene: GameScene, 
-            backgroundColor: null, // Убираем заливку цветом совсем
-            transparent: true,
-            antialias: true,
-            pixelArt: false
+            transparent: true
         }); 
     }
     </script>
