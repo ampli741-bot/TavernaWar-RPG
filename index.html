@@ -22,21 +22,22 @@
             display: flex; flex-direction: column; border: 3px solid var(--border); 
             box-sizing: border-box; z-index: 10; 
         }
-        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
+        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: none !important; }
         
-        /* Исправление визуала: убираем лишние фоны и добавляем фильтр для четкости */
-        canvas { filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
-        
+        /* Убираем любые тени и фоны с канваса */
+        canvas { background: transparent !important; }
+
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
         
-        /* Портрет без серого фона */
+        /* ПОРТРЕТ: жесткий сброс фона */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 10px; 
             border: 2px solid var(--border); 
             background-size: contain; 
             background-repeat: no-repeat;
             background-position: center;
-            background-color: transparent; 
+            background-color: transparent !important; 
+            background-image: none;
         }
 
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
@@ -334,7 +335,18 @@
             this.isAnimating = false; refreshUI();
         }
     }
-    function initPhaser() { phaserGame = new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680, scene: GameScene, transparent: true }); }
+
+    function initPhaser() { 
+        phaserGame = new Phaser.Game({ 
+            type: Phaser.CANVAS, // Переключил на CANVAS для лучшей работы с прозрачностью в браузере
+            parent: 'game-container', 
+            width: 680, 
+            height: 680, 
+            scene: GameScene, 
+            transparent: true,
+            clearBeforeRender: true // Принудительная очистка фона
+        }); 
+    }
     </script>
 </body>
 </html>
