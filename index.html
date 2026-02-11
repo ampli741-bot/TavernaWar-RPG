@@ -24,19 +24,13 @@
         }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
-        .portrait { width: 140px; height: 140px; margin: 0 auto 10px; border: 2px solid var(--border); background-size: cover; background-position: center; position: relative; overflow: hidden; }
+        .portrait { width: 140px; height: 140px; margin: 0 auto 10px; border: 2px solid var(--border); background-size: cover; background-position: center; position: relative; overflow: hidden; background-color: rgba(255,255,255,0.05); }
         
-        /* Визуальный эффект разреза */
         .slash-fx::after {
-            content: "";
-            position: absolute;
-            top: -100%; left: -100%;
-            width: 300%; height: 45px;
-            background: white;
-            box-shadow: 0 0 15px white;
-            transform: rotate(-45deg);
-            opacity: 0;
-            pointer-events: none;
+            content: ""; position: absolute; top: -100%; left: -100%;
+            width: 300%; height: 45px; background: white;
+            box-shadow: 0 0 15px white; transform: rotate(-45deg);
+            opacity: 0; pointer-events: none;
         }
         .slash-anim::after { animation: slashMove 0.25s ease-out; }
         @keyframes slashMove {
@@ -52,11 +46,13 @@
         .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); margin-top: 10px; border-radius: 5px; }
         .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
         #battle-log { flex-grow: 1; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
+        
         #menu-overlay { position: fixed; inset: 0; background: url('assets/bg.jpg') center/cover; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #menu-overlay::before { content: ""; position: absolute; inset:0; background: rgba(0,0,0,0.8); z-index: -1; }
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; border-radius: 20px; }
         .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; }
+        
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
         .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
         .btn-ultra { width: 100%; margin-top: 10px; padding: 15px; font-size: 18px; background: #300; color: #666; border: 2px solid #333; border-radius: 8px; font-weight: bold; cursor: not-allowed; }
@@ -100,21 +96,9 @@
         <div id="battle-log"></div>
     </div>
 
-    <div id="loot-overlay">
-        <div class="loot-window">
-            <h2 style="color:var(--gold); text-align:center;">ТРОФЕЙ НАЙДЕН</h2>
-            <div id="loot-compare" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:20px 0;"></div>
-            <div style="text-align:center;">
-                <button onclick="takeLoot()">ЭКИПИРОВАТЬ</button>
-                <button onclick="sellLoot()" style="background:#444; color:white;">ПРОДАТЬ (+50💰)</button>
-            </div>
-        </div>
-    </div>
-
     <script>
     const TILE_S = 85; 
     let phaserGame, scene, currentLoot = null;
-    const adjs = ["Древний", "Мифический", "Проклятый", "Тёмный", "Вечный", "Стальной", "Святой", "Забытый", "Ледяной", "Кровавый"];
     const slotNames = { weapon: "Оружие", body: "Доспех", legs: "Поножи", head: "Шлем", ring: "Перстень", necklace: "Амулет", hands: "Перчатки" };
 
     window.app = { 
@@ -128,6 +112,7 @@
         },
         playSlash: (id) => {
             const el = document.getElementById(id);
+            if(!el) return;
             el.classList.remove('slash-anim');
             void el.offsetWidth;
             el.classList.add('slash-anim');
@@ -191,24 +176,6 @@
         if(toExplode.length > 0) { await scene.explodeUnique(toExplode); await scene.refill(); await scene.check(); }
         refreshUI();
     }
-
-    function showLootScreen() {
-        window.app.lootActive = true; currentLoot = generateLoot();
-        let old = window.app.player.equip[currentLoot.slot] || {n:"Пусто", atk:0, arm:0, agi:0, rar:0};
-        document.getElementById('loot-compare').innerHTML = `<div style="background:#222; padding:10px;"><b style="color:var(--rar${old.rar})">${old.n}</b><br>⚔️${old.atk} 🛡️${old.arm}</div><div style="background:#222; padding:10px;"><b style="color:var(--rar${currentLoot.rar})">${currentLoot.n}</b><br>⚔️${currentLoot.atk} 🛡️${currentLoot.arm}</div>`;
-        document.getElementById('loot-overlay').style.display = 'flex';
-    }
-
-    function generateLoot() {
-        const slots = Object.keys(slotNames); const slot = slots[Math.floor(Math.random()*slots.length)];
-        const rar = Math.random()>0.95?3:Math.random()>0.8?2:Math.random()>0.5?1:0;
-        const power = (10 + window.app.player.level * 8) * (1 + rar * 0.5);
-        return { slot, rar, n: `${adjs[Math.floor(Math.random()*adjs.length)]} ${slotNames[slot]}`, atk: Math.floor(slot==='weapon'||slot==='ring'?power:power/4), arm: Math.floor(slot==='body'||slot==='head'?power*2:power/3), agi: Math.floor(Math.random()*5*(rar+1)) };
-    }
-
-    function takeLoot() { window.app.player.equip[currentLoot.slot] = currentLoot; window.app.player.armor = window.app.player.maxArmor; closeLoot(); }
-    function sellLoot() { window.app.player.gold += 50; closeLoot(); }
-    function closeLoot() { document.getElementById('loot-overlay').style.display = 'none'; window.app.player.level++; spawnMob(); }
 
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
@@ -288,20 +255,15 @@
             let unitAtk = Math.floor(p.baseAtk + gearAtk);
 
             if(window.app.turn === "PLAYER") {
-                if(counts.red > 0) { let d = unitAtk * counts.red; m.hp -= d; window.app.log(`Комбо Удар: -${d}`, 'p'); window.app.playSlash('m-portrait'); }
-                if(counts.purple > 0) { let d = Math.floor(unitAtk*1.5) * counts.purple; m.hp -= d; window.app.log(`Комбо КРИТ: -${d}`, 'crit'); window.app.playSlash('m-portrait'); }
+                if(counts.red > 0) { m.hp -= unitAtk * counts.red; window.app.log(`Удар: -${unitAtk * counts.red}`, 'p'); window.app.playSlash('m-portrait'); }
+                if(counts.purple > 0) { m.hp -= Math.floor(unitAtk*1.5)*counts.purple; window.app.log(`Крит: -${Math.floor(unitAtk*1.5)*counts.purple}`, 'crit'); window.app.playSlash('m-portrait'); }
                 if(counts.blue > 0) { p.mana = Math.min(100, p.mana + counts.blue*5); window.app.log(`Мана +${counts.blue*5}%`, 'sys'); }
-                if(counts.green > 0) { p.hp=Math.min(p.maxHp, p.hp+counts.green*15); p.armor=Math.min(p.maxArmor, p.armor+counts.green*10); window.app.log(`Лечение +${counts.green*15}`, 'p'); }
+                if(counts.green > 0) { p.hp=Math.min(p.maxHp, p.hp+counts.green*15); window.app.log(`Лечение +${counts.green*15}`, 'p'); }
                 if(counts.yellow > 0) { p.gold += counts.yellow*2; window.app.log(`Золото +${counts.yellow*2}`, 'sys'); }
             } else {
-                let dmg = (counts.red * Math.floor(m.atk/5)) + (counts.purple * Math.floor(m.atk/3));
-                if(dmg > 0) { 
-                    if(p.armor > 0) { p.armor -= dmg; if(p.armor<0) {p.hp+=p.armor; p.armor=0;}} else p.hp -= dmg; 
-                    window.app.log(`Урон от врага: -${dmg}`, 'm'); window.app.playSlash('p-portrait');
-                }
-                if(counts.blue > 0) m.mana = Math.min(100, m.mana + counts.blue*10);
+                let dmg = counts.red * 15 + counts.purple * 25;
+                if(dmg > 0) { p.hp -= dmg; window.app.log(`Враг бьет: -${dmg}`, 'm'); window.app.playSlash('p-portrait'); }
             }
-            if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
         }
 
@@ -318,8 +280,8 @@
         }
 
         async mobAI() {
-            if(window.app.mob.hp <= 0 || window.app.lootActive) return;
-            let bestMove = null; let maxPoints = -1;
+            if(window.app.mob.hp <= 0) return;
+            let bestMove = null;
             for (let r = 0; r < 8; r++) { for (let c = 0; c < 8; c++) {
                 const directions = [[0, 1], [1, 0]];
                 for (let [dr, dc] of directions) {
@@ -327,24 +289,16 @@
                     if (nr < 8 && nc < 8) {
                         let t1 = this.grid[r][c], t2 = this.grid[nr][nc];
                         this.grid[r][c] = t2; this.grid[nr][nc] = t1;
-                        let matches = this.findMatches();
-                        if (matches.length > 0) {
-                            let pts = matches.length; matches.forEach(m => { if(m.type === 'purple' || m.type === 'red') pts += 2; });
-                            if (pts > maxPoints) { maxPoints = pts; bestMove = {t1, t2}; }
-                        }
+                        if (this.findMatches().length > 0) bestMove = {t1, t2};
                         this.grid[r][c] = t1; this.grid[nr][nc] = t2;
                     }
                 }
             } }
-            if (bestMove) {
-                await this.swap(bestMove.t1, bestMove.t2); await this.check();
-                if(window.app.mob.mana >= 100) { window.app.mob.mana = 0; window.app.log(`ЯРОСТЬ ВРАГА!`, 'crit'); this.time.delayedCall(600, () => this.mobAI()); } 
-                else { window.app.turn = "PLAYER"; }
-            } else { window.app.turn = "PLAYER"; }
-            this.isAnimating = false; refreshUI();
+            if (bestMove) { await this.swap(bestMove.t1, bestMove.t2); await this.check(); }
+            window.app.turn = "PLAYER"; this.isAnimating = false; refreshUI();
         }
     }
-    function initPhaser() { phaserGame = new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680, scene: GameScene, transparent: false }); }
+    function initPhaser() { phaserGame = new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680, scene: GameScene, transparent: true }); }
     </script>
 </body>
 </html>
