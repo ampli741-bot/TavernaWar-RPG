@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War</title>
+    <title>Taverna War: Fixed Graphics</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -24,22 +24,23 @@
         }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
         
-        /* ГЛАВНЫЙ ХАК: заставляем холст Phaser игнорировать светлые фоны рун */
+        /* Исправляем рендер для всего канваса */
         canvas { 
-            mix-blend-mode: screen; 
-            filter: contrast(1.2) brightness(1.1);
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
         }
 
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
         
+        /* ПОРТРЕТЫ: убираем светлую шахматку через multiply/darken */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 10px; 
             border: 2px solid var(--border); 
             background-size: contain; 
             background-repeat: no-repeat;
             background-position: center;
-            /* Убираем шахматку на портретах через смешивание */
-            mix-blend-mode: lighten;
+            background-color: transparent;
+            mix-blend-mode: darken; /* Это "съест" белые клетки шахматки */
         }
 
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
@@ -55,7 +56,7 @@
         #menu-overlay::before { content: ""; position: absolute; inset:0; background: rgba(0,0,0,0.8); z-index: -1; }
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; border-radius: 20px; }
-        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; mix-blend-mode: lighten; }
+        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; mix-blend-mode: darken; }
         
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
         .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
@@ -215,6 +216,14 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let t = this.add.image(c*TILE_S+TILE_S/2, fromTop?-TILE_S:r*TILE_S+TILE_S/2, `t_${type}`).setDisplaySize(TILE_S-4, TILE_S-4).setInteractive();
             t.gridR = r; t.gridC = c; t.type = type;
+            
+            // ТОЧЕЧНАЯ ОЧИСТКА ФОНА
+            if(type === 'yellow') {
+                t.setBlendMode(Phaser.BlendModes.ADD); // Для темной шахматки золота
+            } else {
+                t.setBlendMode(Phaser.BlendModes.MULTIPLY); // Для светлой шахматки остальных рун
+            }
+
             t.on('pointerdown', () => this.handlePointer(t));
             this.grid[r][c] = t;
             if(fromTop) this.tweens.add({targets:t, y:r*TILE_S+TILE_S/2, duration:400});
@@ -340,7 +349,7 @@
 
     function initPhaser() { 
         phaserGame = new Phaser.Game({ 
-            type: Phaser.AUTO, // AUTO лучше всего работает с mix-blend-mode
+            type: Phaser.CANVAS, // CANVAS лучше работает с режимами наложения
             parent: 'game-container', 
             width: 680, 
             height: 680, 
