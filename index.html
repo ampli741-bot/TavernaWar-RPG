@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Fixed Graphics</title>
+    <title>Taverna War: Crystal Clear Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -22,27 +22,9 @@
             display: flex; flex-direction: column; border: 3px solid var(--border); 
             box-sizing: border-box; z-index: 10; 
         }
-        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
-        
-        /* Исправляем рендер для всего канваса */
-        canvas { 
-            image-rendering: -webkit-optimize-contrast;
-            image-rendering: crisp-edges;
-        }
-
+        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
-        
-        /* ПОРТРЕТЫ: убираем светлую шахматку через multiply/darken */
-        .portrait { 
-            width: 140px; height: 140px; margin: 0 auto 10px; 
-            border: 2px solid var(--border); 
-            background-size: contain; 
-            background-repeat: no-repeat;
-            background-position: center;
-            background-color: transparent;
-            mix-blend-mode: darken; /* Это "съест" белые клетки шахматки */
-        }
-
+        .portrait { width: 140px; height: 140px; margin: 0 auto 10px; border: 2px solid var(--border); background-size: cover; background-position: center; }
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 24px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
@@ -51,16 +33,13 @@
         .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); margin-top: 10px; border-radius: 5px; }
         .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
         #battle-log { flex-grow: 1; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
-        
         #menu-overlay { position: fixed; inset: 0; background: url('assets/bg.jpg') center/cover; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #menu-overlay::before { content: ""; position: absolute; inset:0; background: rgba(0,0,0,0.8); z-index: -1; }
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; border-radius: 20px; }
-        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; mix-blend-mode: darken; }
-        
+        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; }
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
         .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
-        
         .btn-ultra { width: 100%; margin-top: 10px; padding: 15px; font-size: 18px; background: #300; color: #666; border: 2px solid #333; border-radius: 8px; font-weight: bold; cursor: not-allowed; }
         .btn-ultra.ready { background: #f00; color: white; border-color: #ffaa00; cursor: pointer; box-shadow: 0 0 15px #f00; }
         button { padding: 12px 25px; cursor: pointer; border: none; font-weight: bold; background: var(--gold); border-radius: 4px; color: black; margin: 5px; font-family: 'Cinzel'; }
@@ -71,10 +50,10 @@
     <div id="menu-overlay">
         <h1 style="color:var(--gold); font-size: 50px; margin-bottom: 30px;">TAVERNA WAR</h1>
         <div class="hero-cards">
-            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/hero_warrior.png"><h3>ВОИН</h3><p>Ульта: Красные + Зеленые</p></div>
-            <div class="hero-card" onclick="startGame('mage')"><img src="assets/hero_mage.png"><h3>МАГ</h3><p>Ульта: Фиол + Желтые</p></div>
-            <div class="hero-card" onclick="startGame('archer')"><img src="assets/hero_archer.png"><h3>ЛУЧНИК</h3><p>Ульта: 4 Линии</p></div>
-            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/hero_assassin.png"><h3>УБИЙЦА</h3><p>Ульта: 30% поля + Удар</p></div>
+            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/w.jpg"><h3>ВОИН</h3><p>Ульта: Красные + Зеленые</p></div>
+            <div class="hero-card" onclick="startGame('mage')"><img src="assets/m.jpg"><h3>МАГ</h3><p>Ульта: Фиол + Желтые</p></div>
+            <div class="hero-card" onclick="startGame('archer')"><img src="assets/А.jpg"><h3>ЛУЧНИК</h3><p>Ульта: 4 Линии</p></div>
+            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/as.jpg"><h3>УБИЙЦА</h3><p>Ульта: 30% поля + Удар</p></div>
         </div>
     </div>
 
@@ -132,22 +111,21 @@
 
     function startGame(key) {
         document.getElementById('menu-overlay').style.display = 'none';
-        const base = { 'warrior':{hp:1600,atk:25,agi:5}, 'mage':{hp:800,atk:65,agi:2}, 'archer':{hp:1000,atk:40,agi:18}, 'assassin':{hp:900,atk:55,agi:14} }[key];
+        const base = { 'warrior':{hp:1600,atk:25,agi:5,img:'w.jpg'}, 'mage':{hp:800,atk:65,agi:2,img:'m.jpg'}, 'archer':{hp:1000,atk:40,agi:18,img:'А.jpg'}, 'assassin':{hp:900,atk:55,agi:14,img:'as.jpg'} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, equip: { weapon:{n:"Старая палка",atk:12,arm:0,agi:0,rar:0} } };
-        document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.png')`;
+        document.getElementById('p-portrait').style.backgroundImage = `url('assets/${base.img}')`;
         initPhaser(); spawnMob(); refreshUI();
     }
 
     function spawnMob() {
         let lvl = window.app.player.level;
         window.app.mob = { name: "Гоблин Ур."+lvl, hp: 200+(lvl*100), maxHp: 200+(lvl*100), atk: 20+(lvl*10), mana: 0 };
-        document.getElementById('m-portrait').style.backgroundImage = `url('assets/hero_assassin.png')`;
         window.app.turn = "PLAYER"; window.app.lootActive = false; refreshUI();
     }
 
     function refreshUI() {
         const p = window.app.player; const m = window.app.mob;
-        if(!p || !m) return;
+        if (!p || !m) return;
         let gearAtk=0, gearArm=0, gearAgi=0, invH = "";
         for(let s in slotNames) { 
             let i = p.equip[s]; if(i) { gearAtk+=i.atk; gearArm+=i.arm; gearAgi+=i.agi; }
@@ -184,7 +162,7 @@
         if(key === 'mage') toExplode = scene.grid.flat().filter(t => t && (t.type === 'purple' || t.type === 'yellow'));
         if(key === 'archer') { for(let i=0; i<4; i++) { let r = Math.floor(Math.random()*8); for(let c=0; c<8; c++) if(scene.grid[r][c]) toExplode.push(scene.grid[r][c]); } }
         if(key === 'assassin') { toExplode = Phaser.Utils.Array.Shuffle(scene.grid.flat().filter(t => t)).slice(0, 20); window.app.mob.hp -= (window.app.player.baseAtk * 2); }
-        if(toExplode.length > 0) { await scene.explodeUnique([...new Set(toExplode)]); await scene.refill(); await scene.check(); }
+        if(toExplode.length > 0) { await scene.explodeUnique(toExplode); await scene.refill(); await scene.check(); }
         refreshUI();
     }
 
@@ -208,7 +186,14 @@
 
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
-        preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
+        preload() { 
+            // Загружаем руны по твоим названиям (1.jpg, 2.jpg и т.д.)
+            this.load.image('t_red', 'assets/1.jpg');
+            this.load.image('t_blue', 'assets/2.jpg');
+            this.load.image('t_green', 'assets/3.jpg');
+            this.load.image('t_purple', 'assets/4.jpg');
+            this.load.image('t_yellow', 'assets/5.jpg');
+        }
         create() { scene = this; this.grid = []; this.isAnimating = false; for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } }
         
         spawnTile(r, c, fromTop=false) {
@@ -216,14 +201,6 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let t = this.add.image(c*TILE_S+TILE_S/2, fromTop?-TILE_S:r*TILE_S+TILE_S/2, `t_${type}`).setDisplaySize(TILE_S-4, TILE_S-4).setInteractive();
             t.gridR = r; t.gridC = c; t.type = type;
-            
-            // ТОЧЕЧНАЯ ОЧИСТКА ФОНА
-            if(type === 'yellow') {
-                t.setBlendMode(Phaser.BlendModes.ADD); // Для темной шахматки золота
-            } else {
-                t.setBlendMode(Phaser.BlendModes.MULTIPLY); // Для светлой шахматки остальных рун
-            }
-
             t.on('pointerdown', () => this.handlePointer(t));
             this.grid[r][c] = t;
             if(fromTop) this.tweens.add({targets:t, y:r*TILE_S+TILE_S/2, duration:400});
@@ -292,8 +269,8 @@
             let unitAtk = Math.floor(p.baseAtk + gearAtk);
 
             if(window.app.turn === "PLAYER") {
-                if(counts.red > 0) { let d = unitAtk * counts.red; m.hp -= d; window.app.log(`Удар: -${d}`, 'p'); }
-                if(counts.purple > 0) { let d = Math.floor(unitAtk*1.5) * counts.purple; m.hp -= d; window.app.log(`КРИТ: -${d}`, 'crit'); }
+                if(counts.red > 0) { let d = unitAtk * counts.red; m.hp -= d; window.app.log(`Комбо Удар: -${d}`, 'p'); }
+                if(counts.purple > 0) { let d = Math.floor(unitAtk*1.5) * counts.purple; m.hp -= d; window.app.log(`Комбо КРИТ: -${d}`, 'crit'); }
                 if(counts.blue > 0) { p.mana = Math.min(100, p.mana + counts.blue*5); window.app.log(`Мана +${counts.blue*5}%`, 'sys'); }
                 if(counts.green > 0) { p.hp=Math.min(p.maxHp, p.hp+counts.green*15); p.armor=Math.min(p.maxArmor, p.armor+counts.green*10); window.app.log(`Лечение +${counts.green*15}`, 'p'); }
                 if(counts.yellow > 0) { p.gold += counts.yellow*2; window.app.log(`Золото +${counts.yellow*2}`, 'sys'); }
@@ -301,8 +278,9 @@
                 let dmg = (counts.red * Math.floor(m.atk/5)) + (counts.purple * Math.floor(m.atk/3));
                 if(dmg > 0) { 
                     if(p.armor > 0) { p.armor -= dmg; if(p.armor<0) {p.hp+=p.armor; p.armor=0;}} else p.hp -= dmg; 
-                    window.app.log(`Враг: -${dmg}`, 'm'); 
+                    window.app.log(`Урон от врага: -${dmg}`, 'm'); 
                 }
+                if(counts.blue > 0) m.mana = Math.min(100, m.mana + counts.blue*10);
             }
             if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
@@ -341,22 +319,13 @@
             } }
             if (bestMove) {
                 await this.swap(bestMove.t1, bestMove.t2); await this.check();
-                window.app.turn = "PLAYER";
+                if(window.app.mob.mana >= 100) { window.app.mob.mana = 0; window.app.log(`ЯРОСТЬ ВРАГА!`, 'crit'); this.time.delayedCall(600, () => this.mobAI()); } 
+                else { window.app.turn = "PLAYER"; }
             } else { window.app.turn = "PLAYER"; }
             this.isAnimating = false; refreshUI();
         }
     }
-
-    function initPhaser() { 
-        phaserGame = new Phaser.Game({ 
-            type: Phaser.CANVAS, // CANVAS лучше работает с режимами наложения
-            parent: 'game-container', 
-            width: 680, 
-            height: 680, 
-            scene: GameScene, 
-            transparent: true
-        }); 
-    }
+    function initPhaser() { phaserGame = new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680, scene: GameScene, transparent: true }); }
     </script>
 </body>
 </html>
