@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Taverna War: No-Overlap Edition</title>
+    <title>Taverna War: Zero-Leak Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -39,7 +39,9 @@
         }
 
         startGame(job) {
+            // ПОЛНАЯ ОЧИСТКА СЦЕНЫ ПЕРЕД СТАРТОМ
             this.children.removeAll();
+            
             const hps = { "Воин": 1400, "Маг": 720, "Лучник": 880, "Ассасин": 800 };
             this.player = {
                 job, hp: hps[job], maxHp: hps[job], mana: 0, gold: 0, level: 1, baseAtk: 45,
@@ -47,8 +49,8 @@
                 equip: { head: null, body: null, legs: null, ring: null, amulet: null, weapon: null }
             };
             
-            this.createUI(); // Создаем один раз!
             this.spawnMob();
+            this.createUI(); // Создаем интерфейс начисто
             this.initGrid();
             this.updateUI();
         }
@@ -67,18 +69,17 @@
         }
 
         createUI() {
-            // Фон панелей
+            // Отрисовка подложек (один раз)
             this.add.rectangle(0,0,366,GH,0x111111).setOrigin(0).setStrokeStyle(2, 0xb48c46);
             this.add.rectangle(910,0,290,GH,0x111111).setOrigin(0).setStrokeStyle(2, 0xb48c46);
             
-            // Игрок
+            // Игрок (текст создается один раз)
             this.pImg = this.add.image(183, 100, `hero_${this.player.job}`).setDisplaySize(160, 160);
             this.hpBar = this.add.graphics();
             this.manaBar = this.add.graphics();
             this.hpTxt = this.add.text(40, 190, "", {fontSize: '20px', fill: '#ff4444', fontStyle: 'bold'});
             this.manaTxt = this.add.text(40, 235, "", {fontSize: '20px', fill: '#4444ff', fontStyle: 'bold'});
             
-            // Инвентарь
             this.invTxts = {};
             const slots = { head: "ГОЛОВА", body: "ТЕЛО", legs: "НОГИ", ring: "КОЛЬЦО", amulet: "АМУЛЕТ", weapon: "ОРУЖИЕ" };
             Object.keys(slots).forEach((k, i) => {
@@ -87,16 +88,15 @@
 
             this.goldTxt = this.add.text(183, 570, "ЗОЛОТО: 0", {fontSize: '22px', fill: '#ffd700'}).setOrigin(0.5);
             
-            // Кнопка Ульты
             this.ultBtnRect = this.add.rectangle(183, 640, 260, 60, 0x440044).setInteractive().setStrokeStyle(2, 0xff00ff);
-            this.add.text(183, 640, "УЛЬТА", {fontSize: '26px'}).setOrigin(0.5);
+            this.ultTxt = this.add.text(183, 640, "УЛЬТА", {fontSize: '26px'}).setOrigin(0.5);
             this.ultBtnRect.on('pointerdown', () => this.executeUlt());
 
-            // Моб
+            // Моб (текст создается один раз)
             this.mHpBar = this.add.graphics();
             this.mTxt = this.add.text(1055, 200, "", {fontSize: '20px', fill: '#ff0000', align: 'center'}).setOrigin(0.5);
             
-            // Лог
+            // Лог (текст создается один раз)
             this.logTexts = [];
             for (let i=0; i<6; i++) {
                 this.logTexts.push(this.add.text(GW/2, 800 + (i*20), "", {fontSize: '16px'}).setOrigin(0.5));
@@ -105,17 +105,19 @@
 
         updateUI() {
             let max = this.player.maxHp + this.player.stats.hpBonus;
+            
+            // Очистка графики перед перерисовкой - ЭТО КРИТИЧНО
             this.hpBar.clear().fillStyle(0xff0000).fillRect(40, 215, (Math.max(0,this.player.hp)/max)*280, 15);
             this.manaBar.clear().fillStyle(0x4444ff).fillRect(40, 260, (this.player.mana/100)*280, 15);
             
+            // setText заменяет старое значение, не наслаивая его
             this.hpTxt.setText(`ХП: ${Math.floor(this.player.hp)} / ${max}`);
             this.manaTxt.setText(`УЛЬТА: ${Math.floor(this.player.mana)}%`);
             this.goldTxt.setText(`ЗОЛОТО: ${this.player.gold}`);
             
-            // Инвентарь
             for(let k in this.invTxts) {
                 let e = this.player.equip[k];
-                let label = this.invTxts[k].text.split(":")[0];
+                let label = k === 'head' ? "ГОЛОВА" : k === 'body' ? "ТЕЛО" : k === 'legs' ? "НОГИ" : k === 'ring' ? "КОЛЬЦО" : k === 'amulet' ? "АМУЛЕТ" : "ОРУЖИЕ";
                 if(e) {
                     this.invTxts[k].setText(`${label}: ${e.grade} (+${e.atk})`).setFill(e.color);
                 } else {
@@ -123,15 +125,14 @@
                 }
             }
 
-            // Моб
             this.mTxt.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
             this.mHpBar.clear().fillStyle(0xff0000).fillRect(930, 230, (Math.max(0,this.mob.hp)/this.mob.maxHp)*250, 15);
             
             if (this.mob.hp <= 0 && !this.lootActive) this.showLoot();
         }
 
-        // --- ОСТАЛЬНАЯ ЛОГИКА (ГРИД, МОБ АЙ, ЛУТ) ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ---
         initGrid() {
+            if (this.grid) this.grid.flat().forEach(t => { if(t) t.destroy(); });
             this.grid = [];
             for (let r=0; r<8; r++) { this.grid[r]=[]; for (let c=0; c<8; c++) this.spawnTile(r, c); }
         }
@@ -283,7 +284,7 @@
             b2.on('pointerdown', () => { this.player.gold += (this.player.level * 50); this.closeLoot(); });
         }
 
-        closeLoot() { this.player.level++; this.lootBox.destroy(); this.spawnMob(); this.updateUI(); }
+        closeLoot() { this.player.level++; if(this.lootBox) this.lootBox.destroy(); this.spawnMob(); this.updateUI(); }
 
         addLog(m, c) {
             this.logTexts.unshift(this.logTexts.pop());
