@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Crystal Clear</title>
+    <title>Taverna War: Fixed Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -11,33 +11,34 @@
         body { margin: 0; background: var(--bg); color: white; display: flex; height: 100vh; overflow: hidden; font-family: 'Verdana', sans-serif; }
         
         #ui-left, #ui-right { 
-            width: 350px; padding: 20px; background: rgba(10, 10, 10, 0.95); 
+            width: 350px; padding: 20px; background: rgba(10, 10, 10, 0.98); 
             border: 2px solid var(--border); display: flex; flex-direction: column; z-index: 10; 
         }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; }
         
-        /* Исправляем портрет: убираем белые края через object-fit и обрезку */
+        /* Исправляем портрет: вытягиваем иконку из угла файла */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 10px; border: 2px solid var(--border);
             overflow: hidden; background: #111; position: relative;
         }
         .portrait img {
-            width: 180%; height: 180%; position: absolute;
-            top: -20%; left: -40%; object-fit: contain;
+            width: 350%; height: 350%; /* Очень сильно увеличиваем */
+            position: absolute;
+            top: -25px; left: -25px; /* Сдвигаем, так как иконка в углу */
+            object-fit: contain;
         }
 
         .bar-bg { width: 100%; height: 24px; background: #222; border: 1px solid #444; margin-top: 5px; position: relative; border-radius: 3px; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 12px; line-height: 24px; font-weight: bold; text-shadow: 1px 1px black; z-index: 5; }
         
-        #battle-log { flex-grow: 1; margin-top: 15px; background: #080808; border: 1px solid #222; padding: 10px; font-size: 11px; overflow-y: auto; color: #888; }
-        .btn-ultra { width: 100%; padding: 15px; margin: 10px 0; background: #200; color: #555; border: 2px solid #333; font-family: 'Cinzel'; cursor: not-allowed; }
+        #battle-log { flex-grow: 1; margin-top: 15px; background: #080808; border: 1px solid #222; padding: 10px; font-size: 11px; overflow-y: auto; color: #888; border-radius: 5px; }
+        .btn-ultra { width: 100%; padding: 15px; margin: 10px 0; background: #300; color: #666; border: 2px solid #444; font-family: 'Cinzel'; font-weight: bold; cursor: not-allowed; }
         .btn-ultra.ready { background: #900; color: white; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px #f00; }
         
         #menu-overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-card { width: 180px; padding: 10px; border: 2px solid var(--border); margin: 10px; text-align: center; cursor: pointer; transition: 0.3s; }
-        .hero-card:hover { border-color: #fff; background: #111; }
-        .hero-card img { width: 100%; height: 120px; object-fit: contain; background: white; }
+        .hero-card { width: 180px; padding: 10px; border: 2px solid var(--border); margin: 10px; text-align: center; cursor: pointer; background: #111; }
+        .hero-card img { width: 80px; height: 80px; object-fit: cover; object-position: top left; }
     </style>
 </head>
 <body>
@@ -57,7 +58,7 @@
         <div class="bar-bg"><div id="p-hp-t" class="bar-text">HP</div><div id="p-hp-f" class="bar-fill" style="background: #d33;"></div></div>
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">MANA</div><div id="p-mn-f" class="bar-fill" style="background: #33d;"></div></div>
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
-        <div style="margin-top:auto; color:var(--gold); font-family: 'Cinzel'; border-top: 1px solid #333; padding-top: 10px;">
+        <div style="margin-top:auto; color:var(--gold); font-family: 'Cinzel'; padding-top: 10px;">
             <div style="display:flex; justify-content: space-between;">АТАКА: <span id="stat-atk">0</span></div>
             <div style="display:flex; justify-content: space-between;">ЗОЛОТО: <span id="gold-val">0</span></div>
         </div>
@@ -66,14 +67,14 @@
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait" style="filter: grayscale(1) brightness(0.5);"></div>
+        <div id="m-portrait" class="portrait" style="filter: brightness(0.4) sepia(1);"></div>
         <h3 id="m-name" style="text-align:center; color:#f44; font-family: 'Cinzel';">ВРАГ</h3>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">HP</div><div id="m-hp-f" class="bar-fill" style="background: #d33;"></div></div>
         <div id="battle-log"></div>
     </div>
 
     <script>
-    const TILE_SIZE = 70; // Реальный размер ячейки
+    const TILE_SIZE = 80; 
     
     let phaserGame, scene;
 
@@ -82,7 +83,6 @@
         const base = { 'warrior':{hp:1600,atk:30,img:'w.jpg'}, 'mage':{hp:800,atk:70,img:'m.jpg'}, 'archer':{hp:1000,atk:45,img:'А.jpg'}, 'assassin':{hp:900,atk:60,img:'as.jpg'} }[key];
         window.app.player = { key, hp:base.hp, maxHp:base.hp, mana:0, gold:0, level:1, baseAtk:base.atk };
         
-        // Установка портрета
         document.getElementById('p-portrait').innerHTML = `<img src="assets/${base.img}">`;
         document.getElementById('m-portrait').innerHTML = `<img src="assets/${base.img}">`;
         
@@ -119,19 +119,13 @@
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
         preload() {
-            // Загружаем картинки
             for(let i=1; i<=5; i++) this.load.image(`t${i}`, `assets/${i}.jpg`);
         }
         create() {
             scene = this; this.grid = []; this.isAnimating = false;
-            // Рисуем сетку для понимания границ
-            let graphics = this.add.graphics();
-            graphics.lineStyle(1, 0x333333, 0.5);
-            for(let i=0; i<=8; i++) {
-                graphics.moveTo(i*TILE_SIZE, 0).lineTo(i*TILE_SIZE, 8*TILE_SIZE);
-                graphics.moveTo(0, i*TILE_SIZE).lineTo(8*TILE_SIZE, i*TILE_SIZE);
-            }
-            graphics.strokePath();
+            
+            // Фон для игрового поля, чтобы скрыть пустоту
+            this.add.rectangle(4 * TILE_SIZE, 4 * TILE_SIZE, 8 * TILE_SIZE, 8 * TILE_SIZE, 0x111111);
 
             for(let r=0; r<8; r++) {
                 this.grid[r] = [];
@@ -144,25 +138,31 @@
             let x = c * TILE_SIZE + TILE_SIZE/2;
             let y = fromTop ? -TILE_SIZE : r * TILE_SIZE + TILE_SIZE/2;
             
+            // Создаем контейнер, чтобы иконку внутри него можно было двигать
             let t = this.add.image(x, y, `t${id}`).setInteractive();
             
-            // ГЛАВНОЕ ИСПРАВЛЕНИЕ:
-            // Мы обрезаем картинку (Crop), оставляя только центр (руну), 
-            // и масштабируем её так, чтобы этот центр заполнил ячейку.
-            t.setCrop(180, 180, 240, 240); // Берем центр 240x240 пикселей из вашей картинки
-            t.setDisplaySize(TILE_SIZE - 4, TILE_SIZE - 4); // Растягиваем этот центр ровно под ячейку
+            // ИСПРАВЛЕНИЕ ДЛЯ КАРТИНОК С РУНОЙ В УГЛУ:
+            // 1. Увеличиваем масштаб (так как иконка маленькая относительно холста)
+            t.setScale(3.5); 
+            // 2. Сдвигаем "центр" отрисовки. Так как ваша руна в левом верхнем углу, 
+            // мы говорим Phaser: "считай центром картинки её левый верхний угол"
+            t.setOrigin(0.18, 0.18); 
+            
+            // Ограничиваем размер, чтобы соседние руны не перекрывались
+            t.setCrop(0, 0, 150, 150); 
+            t.setDisplaySize(TILE_SIZE - 6, TILE_SIZE - 6);
             
             t.gridR = r; t.gridC = c; t.type = id;
             t.on('pointerdown', () => this.handlePointer(t));
             this.grid[r][c] = t;
-            if(fromTop) this.tweens.add({targets:t, y: r*TILE_SIZE + TILE_SIZE/2, duration:300});
+            if(fromTop) this.tweens.add({targets:t, y: r * TILE_SIZE + TILE_SIZE/2, duration:300});
         }
 
         async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER") return;
             if(!this.sel) { 
                 this.sel = t; 
-                this.tweens.add({targets:t, scale: 0.25, duration: 100, yoyo: true});
+                t.setTint(0xffff00);
             } else {
                 let dist = Math.abs(this.sel.gridR - t.gridR) + Math.abs(this.sel.gridC - t.gridC);
                 if(dist === 1) {
@@ -170,6 +170,7 @@
                     if(!await this.check()) await this.swap(this.sel, t);
                     else { window.app.turn = "MOB"; this.time.delayedCall(500, () => this.mobMove()); }
                 }
+                if(this.sel) this.sel.clearTint();
                 this.sel = null;
             }
         }
@@ -181,7 +182,7 @@
             t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
             return new Promise(res => {
                 this.tweens.add({targets:t1, x:c2*TILE_SIZE+TILE_SIZE/2, y:r2*TILE_SIZE+TILE_SIZE/2, duration:200});
-                this.tweens.add({targets:t2, x:c1*TILE_SIZE+TILE_SIZE/2, y:r1*TILE_S+TILE_SIZE/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}});
+                this.tweens.add({targets:t2, x:c1*TILE_SIZE+TILE_SIZE/2, y:r1*TILE_SIZE+TILE_SIZE/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}});
             });
         }
 
@@ -249,9 +250,8 @@
 
         async mobMove() {
             if(window.app.mob.hp <= 0) return;
-            let dmg = window.app.mob.atk;
-            window.app.player.hp -= dmg;
-            window.app.log(`Враг наносит ${dmg} урона`, "#f44");
+            window.app.player.hp -= window.app.mob.atk;
+            window.app.log(`Враг наносит урон`, "#f44");
             window.app.turn = "PLAYER";
             refreshUI();
         }
@@ -261,15 +261,14 @@
         if(window.app.player.mana < 100) return;
         window.app.player.mana = 0;
         window.app.mob.hp -= window.app.player.baseAtk * 5;
-        window.app.log("СУПЕРУДАР!", "#ffd700");
+        window.app.log("УЛЬТРАУДАР!", "#ffd700");
         refreshUI();
     }
 
     function initPhaser() {
         new Phaser.Game({
-            type: Phaser.AUTO, parent: 'game-container', width: 560, height: 560,
-            transparent: true, scene: GameScene, 
-            pixelArt: true // Делаем картинки четче
+            type: Phaser.AUTO, parent: 'game-container', width: 640, height: 640,
+            transparent: true, scene: GameScene
         });
     }
     </script>
