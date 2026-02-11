@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Ultimate Fix</title>
+    <title>Taverna War: Final Skeleton</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         :root { 
@@ -69,8 +69,8 @@
     <div id="ui-right">
         <div id="m-portrait" class="portrait" style="filter: grayscale(1);"></div>
         <h2 id="m-name" style="color:#ff4444; margin:0; text-align:center; font-size: 18px;">ВРАГ</h2>
-        <div class="bar-bg"><div id="m-arm-t" class="bar-text">Броня: 0 / 0</div><div id="m-arm-f" class="bar-fill" style="background: var(--armor);"></div></div>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: #f44;"></div></div>
+        <div class="bar-bg"><div id="m-mn-t" class="bar-text">Мана: 0%</div><div id="m-mn-f" class="bar-fill" style="background: #44f;"></div></div>
         <div id="battle-log"></div>
     </div>
 
@@ -111,7 +111,7 @@
 
     function spawnMob() {
         let lvl = window.app.player.level;
-        window.app.mob = { name: "Гоблин Ур."+lvl, hp: 200+(lvl*100), maxHp: 200+(lvl*100), armor: lvl*30, maxArmor: lvl*30, atk: 20+(lvl*10), mana: 0 };
+        window.app.mob = { name: "Гоблин Ур."+lvl, hp: 200+(lvl*100), maxHp: 200+(lvl*100), atk: 20+(lvl*10), mana: 0 };
         window.app.turn = "PLAYER"; window.app.lootActive = false;
         if(scene) scene.isAnimating = false;
         refreshUI();
@@ -128,6 +128,7 @@
         document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100)+'%';
         document.getElementById('p-arm-t').innerText = `Броня: ${Math.floor(p.armor)}/${p.maxArmor}`;
         document.getElementById('p-arm-f').style.width = p.maxArmor > 0 ? (p.armor/p.maxArmor*100)+'%' : '0%';
+        document.getElementById('p-mn-t').innerText = `Мана: ${p.mana}%`;
         document.getElementById('p-mn-f').style.width = p.mana+'%';
         
         const btnU = document.getElementById('btn-ultra');
@@ -137,9 +138,10 @@
         document.getElementById('stat-dodge').innerText = Math.min(60, p.baseAgi + gearAgi) + "%";
         document.getElementById('gold-val').innerText = p.gold;
 
-        document.getElementById('m-hp-t').innerText = `${Math.floor(m.hp)}/${m.maxHp}`;
+        document.getElementById('m-hp-t').innerText = `HP: ${Math.floor(m.hp)}/${m.maxHp}`;
         document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100)+'%';
-        document.getElementById('m-arm-t').innerText = `Броня: ${Math.floor(m.armor)}/${m.maxArmor}`;
+        document.getElementById('m-mn-t').innerText = `Мана: ${m.mana}%`;
+        document.getElementById('m-mn-f').style.width = m.mana+'%';
 
         let invH = "";
         for(let s in slotNames) { let i = p.equip[s]; invH += `<div class="inv-item"><div><b>${slotNames[s]}:</b> ${i?i.n:'---'}</div><div>${i?'⚔️'+i.atk+' 🛡️'+i.arm:''}</div></div>`; }
@@ -303,6 +305,7 @@
             } else {
                 let dmg = type==='red'? Math.floor(m.atk/5) : type==='purple'? Math.floor(m.atk/3) : 0;
                 if(dmg > 0) { if(p.armor > 0) p.armor -= dmg; else p.hp -= dmg; window.app.log(`Враг бьет: -${dmg}`, 'm'); }
+                if(type==='blue') m.mana = Math.min(100, m.mana+10);
             }
             if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
