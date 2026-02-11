@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Rigid Skeleton</title>
+    <title>Taverna War: Crystal Clear Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -17,66 +17,45 @@
             color: white; display: flex; height: 100vh; overflow: hidden; 
             font-family: 'Verdana', sans-serif; touch-action: none; 
         }
-        /* UI Панели */
         #ui-left, #ui-right { 
             width: 380px; padding: 15px; background: rgba(0, 0, 0, 0.85); 
             display: flex; flex-direction: column; border: 3px solid var(--border); 
             box-sizing: border-box; z-index: 10; 
         }
-        /* Игровой контейнер - СДЕЛАЛ ПОЛНОСТЬЮ ПРОЗРАЧНЫМ */
-        #game-container { 
-            flex-grow: 1; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            background: transparent !important; 
-        }
+        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
+        
+        /* Исправление визуала: убираем лишние фоны и добавляем фильтр для четкости */
+        canvas { filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
         
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
-
-        /* ПОРТРЕТ - УБРАЛ ФОН */
+        
+        /* Портрет без серого фона */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 10px; 
             border: 2px solid var(--border); 
             background-size: contain; 
             background-repeat: no-repeat;
-            background-position: center; 
-            position: relative; 
-            overflow: hidden;
-            background-color: transparent !important; /* Убираем белый/серый квадрат */
-        }
-        
-        /* Эффекты удара */
-        .slash-fx::after {
-            content: ""; position: absolute; top: -100%; left: -100%;
-            width: 300%; height: 45px; background: white;
-            box-shadow: 0 0 15px white; transform: rotate(-45deg);
-            opacity: 0; pointer-events: none;
-        }
-        .slash-anim::after { animation: slashMove 0.25s ease-out; }
-        @keyframes slashMove {
-            0% { top: -100%; left: -100%; opacity: 1; }
-            100% { top: 150%; left: 150%; opacity: 0; }
+            background-position: center;
+            background-color: transparent; 
         }
 
-        /* Полоски статов */
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 24px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
-        
-        /* Инвентарь и логи */
         #inv-box { height: 260px; overflow-y: auto; margin-top: 10px; border-bottom: 1px solid #333; }
         .inv-item { font-size: 12px; margin-bottom: 5px; padding: 8px; background: rgba(255,255,255,0.05); border-left: 4px solid #444; display: flex; justify-content: space-between; align-items: center; }
         .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); margin-top: 10px; border-radius: 5px; }
         .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
         #battle-log { flex-grow: 1; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
         
-        /* Меню */
         #menu-overlay { position: fixed; inset: 0; background: url('assets/bg.jpg') center/cover; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #menu-overlay::before { content: ""; position: absolute; inset:0; background: rgba(0,0,0,0.8); z-index: -1; }
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; border-radius: 20px; }
         .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; }
+        
+        #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
         
         .btn-ultra { width: 100%; margin-top: 10px; padding: 15px; font-size: 18px; background: #300; color: #666; border: 2px solid #333; border-radius: 8px; font-weight: bold; cursor: not-allowed; }
         .btn-ultra.ready { background: #f00; color: white; border-color: #ffaa00; cursor: pointer; box-shadow: 0 0 15px #f00; }
@@ -96,7 +75,7 @@
     </div>
 
     <div id="ui-left">
-        <div id="p-portrait" class="portrait slash-fx"></div>
+        <div id="p-portrait" class="portrait"></div>
         <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0 / 0</div><div id="p-arm-f" class="bar-fill" style="background: #55aaff;"></div></div>
         <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: #f44;"></div></div>
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #44f;"></div></div>
@@ -112,33 +91,38 @@
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait slash-fx" style="filter: sepia(0.5) contrast(1.2);"></div>
+        <div id="m-portrait" class="portrait" style="filter: sepia(0.5) contrast(1.2);"></div>
         <h2 id="m-name" style="color:#ff4444; margin:0; text-align:center; font-size: 20px;">ВРАГ</h2>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: #f44;"></div></div>
         <div class="bar-bg"><div id="m-mn-t" class="bar-text">Мана: 0%</div><div id="m-mn-f" class="bar-fill" style="background: #44f;"></div></div>
         <div id="battle-log"></div>
     </div>
 
+    <div id="loot-overlay">
+        <div class="loot-window">
+            <h2 style="color:var(--gold); text-align:center;">ТРОФЕЙ НАЙДЕН</h2>
+            <div id="loot-compare" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:20px 0;"></div>
+            <div style="text-align:center;">
+                <button onclick="takeLoot()">ЭКИПИРОВАТЬ</button>
+                <button onclick="sellLoot()" style="background:#444; color:white;">ПРОДАТЬ (+50💰)</button>
+            </div>
+        </div>
+    </div>
+
     <script>
     const TILE_S = 85; 
-    let phaserGame, scene;
+    let phaserGame, scene, currentLoot = null;
+    const adjs = ["Древний", "Мифический", "Проклятый", "Тёмный", "Вечный", "Стальной", "Святой", "Забытый", "Ледяной", "Кровавый"];
     const slotNames = { weapon: "Оружие", body: "Доспех", legs: "Поножи", head: "Шлем", ring: "Перстень", necklace: "Амулет", hands: "Перчатки" };
 
     window.app = { 
-        player: null, mob: null, turn: "PLAYER",
+        player: null, mob: null, lootActive: false, turn: "PLAYER",
         log: (msg, type) => {
             const log = document.getElementById('battle-log');
             const entry = document.createElement('div');
             entry.style.color = type==='p'?'#4f4':type==='m'?'#f44':type==='crit'?'#aa44ff':'#ffd700';
             entry.innerText = `> ${msg}`;
             log.prepend(entry);
-        },
-        playSlash: (id) => {
-            const el = document.getElementById(id);
-            if(!el) return;
-            el.classList.remove('slash-anim');
-            void el.offsetWidth;
-            el.classList.add('slash-anim');
         }
     };
 
@@ -152,9 +136,9 @@
 
     function spawnMob() {
         let lvl = window.app.player.level;
-        window.app.mob = { name: "Гоблин", hp: 200+(lvl*100), maxHp: 200+(lvl*100), atk: 20+(lvl*10), mana: 0 };
+        window.app.mob = { name: "Гоблин Ур."+lvl, hp: 200+(lvl*100), maxHp: 200+(lvl*100), atk: 20+(lvl*10), mana: 0 };
         document.getElementById('m-portrait').style.backgroundImage = `url('assets/hero_assassin.png')`;
-        window.app.turn = "PLAYER"; refreshUI();
+        window.app.turn = "PLAYER"; window.app.lootActive = false; refreshUI();
     }
 
     function refreshUI() {
@@ -188,36 +172,45 @@
     }
 
     async function useUltra() {
-        if(window.app.player.mana < 100 || scene.isAnimating) return;
+        if(window.app.player.mana < 100 || window.app.lootActive || scene.isAnimating) return;
         window.app.player.mana = 0; let key = window.app.player.key;
         window.app.log(`УЛЬТА: ${window.app.player.job}!`, 'crit');
         let toExplode = [];
         if(key === 'warrior') toExplode = scene.grid.flat().filter(t => t && (t.type === 'red' || t.type === 'green'));
         if(key === 'mage') toExplode = scene.grid.flat().filter(t => t && (t.type === 'purple' || t.type === 'yellow'));
         if(key === 'archer') { for(let i=0; i<4; i++) { let r = Math.floor(Math.random()*8); for(let c=0; c<8; c++) if(scene.grid[r][c]) toExplode.push(scene.grid[r][c]); } }
-        if(key === 'assassin') { toExplode = Phaser.Utils.Array.Shuffle(scene.grid.flat().filter(t => t)).slice(0, 20); window.app.mob.hp -= (window.app.player.baseAtk * 2); window.app.playSlash('m-portrait'); }
+        if(key === 'assassin') { toExplode = Phaser.Utils.Array.Shuffle(scene.grid.flat().filter(t => t)).slice(0, 20); window.app.mob.hp -= (window.app.player.baseAtk * 2); }
         if(toExplode.length > 0) { await scene.explodeUnique([...new Set(toExplode)]); await scene.refill(); await scene.check(); }
         refreshUI();
     }
 
+    function showLootScreen() {
+        window.app.lootActive = true; currentLoot = generateLoot();
+        let old = window.app.player.equip[currentLoot.slot] || {n:"Пусто", atk:0, arm:0, agi:0, rar:0};
+        document.getElementById('loot-compare').innerHTML = `<div style="background:#222; padding:10px;"><b style="color:var(--rar${old.rar})">${old.n}</b><br>⚔️${old.atk} 🛡️${old.arm}</div><div style="background:#222; padding:10px;"><b style="color:var(--rar${currentLoot.rar})">${currentLoot.n}</b><br>⚔️${currentLoot.atk} 🛡️${currentLoot.arm}</div>`;
+        document.getElementById('loot-overlay').style.display = 'flex';
+    }
+
+    function generateLoot() {
+        const slots = Object.keys(slotNames); const slot = slots[Math.floor(Math.random()*slots.length)];
+        const rar = Math.random()>0.95?3:Math.random()>0.8?2:Math.random()>0.5?1:0;
+        const power = (10 + window.app.player.level * 8) * (1 + rar * 0.5);
+        return { slot, rar, n: `${adjs[Math.floor(Math.random()*adjs.length)]} ${slotNames[slot]}`, atk: Math.floor(slot==='weapon'||slot==='ring'?power:power/4), arm: Math.floor(slot==='body'||slot==='head'?power*2:power/3), agi: Math.floor(Math.random()*5*(rar+1)) };
+    }
+
+    function takeLoot() { window.app.player.equip[currentLoot.slot] = currentLoot; window.app.player.armor = window.app.player.maxArmor; closeLoot(); }
+    function sellLoot() { window.app.player.gold += 50; closeLoot(); }
+    function closeLoot() { document.getElementById('loot-overlay').style.display = 'none'; window.app.player.level++; spawnMob(); }
+
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
-        preload() { 
-            ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => {
-                this.load.image(`t_${c}`, `assets/rune_${c}.png`);
-            });
-        }
-        create() { 
-            scene = this; this.grid = []; this.isAnimating = false; 
-            for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } 
-        }
+        preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
+        create() { scene = this; this.grid = []; this.isAnimating = false; for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } }
         
         spawnTile(r, c, fromTop=false) {
             let types = ['red', 'blue', 'green', 'purple', 'yellow'];
             let type = Phaser.Utils.Array.GetRandom(types);
-            let t = this.add.image(c*TILE_S+TILE_S/2, fromTop?-TILE_S:r*TILE_S+TILE_S/2, `t_${type}`);
-            t.setDisplaySize(TILE_S-6, TILE_S-6);
-            t.setInteractive();
+            let t = this.add.image(c*TILE_S+TILE_S/2, fromTop?-TILE_S:r*TILE_S+TILE_S/2, `t_${type}`).setDisplaySize(TILE_S-4, TILE_S-4).setInteractive();
             t.gridR = r; t.gridC = c; t.type = type;
             t.on('pointerdown', () => this.handlePointer(t));
             this.grid[r][c] = t;
@@ -225,17 +218,25 @@
         }
 
         async handlePointer(t) {
-            if(this.isAnimating || window.app.turn !== "PLAYER") return;
+            if(this.isAnimating || window.app.turn !== "PLAYER" || window.app.lootActive) return;
             if(!this.sel) { this.sel = t; t.setAlpha(0.6); }
             else {
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
-                    await this.swap(this.sel, t);
-                    let m = this.findMatches();
-                    if(m.length > 0) { await this.check(); window.app.turn = "MOB"; this.time.delayedCall(600, () => this.mobAI()); }
-                    else { await this.swap(this.sel, t); }
+                    if (this.checkPotentialMatch(this.sel, t)) {
+                        await this.swap(this.sel, t); await this.check();
+                        window.app.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI());
+                    } else { this.tweens.add({targets: [this.sel, t], x: "+=5", yoyo: true, duration: 50}); }
                 }
                 if(this.sel) this.sel.setAlpha(1); this.sel = null;
             }
+        }
+
+        checkPotentialMatch(t1, t2) {
+            let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
+            this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
+            let hasMatch = this.findMatches().length > 0;
+            this.grid[r1][c1]=t1; this.grid[r2][c2]=t2;
+            return hasMatch;
         }
 
         async swap(t1, t2) {
@@ -243,50 +244,55 @@
             let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
             this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
             t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
-            return new Promise(res => { 
-                this.tweens.add({targets:t1, x:c2*TILE_S+TILE_S/2, y:r2*TILE_S+TILE_S/2, duration:200}); 
-                this.tweens.add({targets:t2, x:c1*TILE_S+TILE_S/2, y:r1*TILE_S+TILE_S/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}}); 
-            });
+            return new Promise(res => { this.tweens.add({targets:t1, x:c2*TILE_S+TILE_S/2, y:r2*TILE_S+TILE_S/2, duration:200}); this.tweens.add({targets:t2, x:c1*TILE_S+TILE_S/2, y:r1*TILE_S+TILE_S/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}}); });
         }
 
         findMatches() {
-            let m = [];
-            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type) m.push(this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]);
-            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type) m.push(this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]);
-            return m;
+            let match = [];
+            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type) match.push(this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]);
+            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type) match.push(this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]);
+            return match;
         }
 
         async check() {
-            let m = this.findMatches();
-            if(m.length > 0) { await this.explodeUnique([...new Set(m)]); await this.refill(); await this.check(); }
+            let match = this.findMatches();
+            if(match.length > 0) { await this.explodeUnique([...new Set(match)]); await this.refill(); await this.check(); return true; }
+            return false;
         }
 
         async explodeUnique(unique) {
             this.isAnimating = true;
             let counts = { red:0, blue:0, green:0, purple:0, yellow:0 };
             unique.forEach(t => { if(t && t.scene) { counts[t.type]++; } });
+
             return new Promise(res => {
-                this.tweens.add({targets:unique, scale:0, alpha:0, duration:200, onComplete:()=>{
+                this.tweens.add({targets:unique, scale:0, duration:200, onComplete:()=>{
                     unique.forEach(t => { if(t && t.scene) { this.grid[t.gridR][t.gridC]=null; t.destroy(); } });
-                    this.applyEffects(counts); res();
+                    this.applySummaryEffect(counts);
+                    this.isAnimating = false; res();
                 }});
             });
         }
 
-        applyEffects(counts) {
+        applySummaryEffect(counts) {
             let p = window.app.player, m = window.app.mob;
             let gearAtk=0; for(let s in p.equip) if(p.equip[s]) gearAtk+=p.equip[s].atk;
-            let unitAtk = p.baseAtk + gearAtk;
+            let unitAtk = Math.floor(p.baseAtk + gearAtk);
+
             if(window.app.turn === "PLAYER") {
-                if(counts.red>0) { m.hp-=unitAtk*counts.red; window.app.playSlash('m-portrait'); }
-                if(counts.purple>0) { m.hp-=unitAtk*2*counts.purple; window.app.playSlash('m-portrait'); }
-                if(counts.blue>0) p.mana=Math.min(100, p.mana+counts.blue*5);
-                if(counts.green>0) p.hp=Math.min(p.maxHp, p.hp+counts.green*20);
-                if(counts.yellow>0) p.gold+=counts.yellow*5;
+                if(counts.red > 0) { let d = unitAtk * counts.red; m.hp -= d; window.app.log(`Удар: -${d}`, 'p'); }
+                if(counts.purple > 0) { let d = Math.floor(unitAtk*1.5) * counts.purple; m.hp -= d; window.app.log(`КРИТ: -${d}`, 'crit'); }
+                if(counts.blue > 0) { p.mana = Math.min(100, p.mana + counts.blue*5); window.app.log(`Мана +${counts.blue*5}%`, 'sys'); }
+                if(counts.green > 0) { p.hp=Math.min(p.maxHp, p.hp+counts.green*15); p.armor=Math.min(p.maxArmor, p.armor+counts.green*10); window.app.log(`Лечение +${counts.green*15}`, 'p'); }
+                if(counts.yellow > 0) { p.gold += counts.yellow*2; window.app.log(`Золото +${counts.yellow*2}`, 'sys'); }
             } else {
-                let dmg = counts.red*20 + counts.purple*30;
-                if(dmg>0) { p.hp-=dmg; window.app.playSlash('p-portrait'); }
+                let dmg = (counts.red * Math.floor(m.atk/5)) + (counts.purple * Math.floor(m.atk/3));
+                if(dmg > 0) { 
+                    if(p.armor > 0) { p.armor -= dmg; if(p.armor<0) {p.hp+=p.armor; p.armor=0;}} else p.hp -= dmg; 
+                    window.app.log(`Враг: -${dmg}`, 'm'); 
+                }
             }
+            if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
         }
 
@@ -295,7 +301,7 @@
                 let empty = 0;
                 for(let r=7; r>=0; r--) {
                     if(!this.grid[r][c]) empty++;
-                    else if(empty > 0) { let t = this.grid[r][c]; this.grid[r+empty][c]=t; this.grid[r][c]=null; t.gridR=r+empty; this.tweens.add({targets:t, y:t.gridR*TILE_S+TILE_S/2, duration:200}); }
+                    else if(empty > 0) { let t = this.grid[r][c]; this.grid[r+empty][c]=t; this.grid[r][c]=null; t.gridR=r+empty; this.tweens.add({targets:t, y:t.gridR*TILE_S+TILE_S/2, duration:250}); }
                 }
                 for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
             }
@@ -303,30 +309,32 @@
         }
 
         async mobAI() {
-            if(window.app.mob.hp <= 0) { spawnMob(); return; }
-            let moves = [];
-            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
-                if(c<7) { /* swap right */ }
-                if(r<7) { /* swap down */ }
-            }
-            // Упрощенный AI: просто взрывает случайные 3 плитки для хода моба если нет ходов
-            let randomMatch = Phaser.Utils.Array.Shuffle(this.grid.flat()).slice(0,3);
-            await this.explodeUnique(randomMatch); await this.refill();
-            window.app.turn = "PLAYER"; this.isAnimating = false;
+            if(window.app.mob.hp <= 0 || window.app.lootActive) return;
+            let bestMove = null; let maxPoints = -1;
+            for (let r = 0; r < 8; r++) { for (let c = 0; c < 8; c++) {
+                const directions = [[0, 1], [1, 0]];
+                for (let [dr, dc] of directions) {
+                    let nr = r + dr, nc = c + dc;
+                    if (nr < 8 && nc < 8) {
+                        let t1 = this.grid[r][c], t2 = this.grid[nr][nc];
+                        this.grid[r][c] = t2; this.grid[nr][nc] = t1;
+                        let matches = this.findMatches();
+                        if (matches.length > 0) {
+                            let pts = matches.length; matches.forEach(m => { if(m.type === 'purple' || m.type === 'red') pts += 2; });
+                            if (pts > maxPoints) { maxPoints = pts; bestMove = {t1, t2}; }
+                        }
+                        this.grid[r][c] = t1; this.grid[nr][nc] = t2;
+                    }
+                }
+            } }
+            if (bestMove) {
+                await this.swap(bestMove.t1, bestMove.t2); await this.check();
+                window.app.turn = "PLAYER";
+            } else { window.app.turn = "PLAYER"; }
+            this.isAnimating = false; refreshUI();
         }
     }
-
-    function initPhaser() { 
-        phaserGame = new Phaser.Game({ 
-            type: Phaser.AUTO, 
-            parent: 'game-container', 
-            width: 680, 
-            height: 680, 
-            transparent: true, // ВАЖНО: прозрачность движка
-            scene: GameScene,
-            pixelArt: true 
-        }); 
-    }
+    function initPhaser() { phaserGame = new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680, scene: GameScene, transparent: true }); }
     </script>
 </body>
 </html>
