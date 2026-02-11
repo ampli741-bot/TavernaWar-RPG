@@ -3,89 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Final Fix</title>
+    <title>Taverna War: Hit Area Fix</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        :root { --gold: #ffd700; --border: #b48c46; --bg: #0c0a08; }
+        :root { --gold: #ffd700; --border: #b48c46; --bg: #050505; }
         body { margin: 0; background: var(--bg); color: white; display: flex; height: 100vh; overflow: hidden; font-family: 'Verdana', sans-serif; }
         
-        /* Боковые панели */
         #ui-left, #ui-right { 
-            width: 320px; padding: 20px; background: rgba(10, 10, 10, 0.95); 
-            border: 1px solid #333; display: flex; flex-direction: column; z-index: 10; 
+            width: 300px; padding: 20px; background: #0a0a0a; 
+            border: 1px solid #222; display: flex; flex-direction: column; z-index: 10; 
         }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; }
         
-        /* ПОРТРЕТЫ: Вырезаем героя из угла файла */
+        /* Портреты: теперь просто центрируем в рамке */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 15px; border: 2px solid var(--border);
-            overflow: hidden; background: #000; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            overflow: hidden; background: #000; display: flex; justify-content: center; align-items: center;
         }
         .portrait img {
-            position: absolute; top: 0; left: 0;
-            width: 250%; height: auto; /* Масштабируем, чтобы лицо заполнило рамку */
-            object-fit: contain; object-position: top left;
+            width: 250%; /* Сильно увеличиваем, чтобы вытащить иконку из угла */
+            transform: translate(-30%, -30%); /* Сдвигаем, чтобы иконка была в центре */
+            object-fit: contain;
         }
 
-        /* Полоски здоровья/маны */
-        .bar-bg { width: 100%; height: 24px; background: #1a1a1a; border: 1px solid #444; margin-top: 10px; position: relative; border-radius: 3px; overflow: hidden; }
-        .bar-fill { height: 100%; width: 100%; transition: width 0.4s ease-out; }
-        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 24px; font-weight: bold; text-shadow: 1px 1px #000; z-index: 5; }
+        .bar-bg { width: 100%; height: 22px; background: #1a1a1a; border: 1px solid #333; margin-top: 8px; position: relative; border-radius: 2px; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
+        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 22px; font-weight: bold; text-shadow: 1px 1px black; z-index: 5; }
         
-        #battle-log { flex-grow: 1; margin-top: 20px; background: #050505; border: 1px solid #222; padding: 12px; font-size: 12px; overflow-y: auto; color: #888; border-radius: 5px; }
+        #battle-log { flex-grow: 1; margin-top: 20px; background: #020202; border: 1px solid #1a1a1a; padding: 10px; font-size: 12px; overflow-y: auto; color: #777; }
         
-        .btn-ultra { width: 100%; padding: 15px; margin: 15px 0; background: #200; color: #555; border: 2px solid #311; font-family: 'Cinzel'; font-weight: bold; transition: 0.3s; }
-        .btn-ultra.ready { background: #800; color: white; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px rgba(255,0,0,0.5); }
+        .btn-ultra { width: 100%; padding: 15px; margin: 15px 0; background: #150000; color: #444; border: 1px solid #300; font-family: 'Cinzel'; font-size: 16px; }
+        .btn-ultra.ready { background: #600; color: #fff; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px #f00; }
         
-        /* Меню выбора */
         #menu-overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-card { width: 160px; padding: 15px; border: 2px solid #333; margin: 10px; text-align: center; cursor: pointer; background: #111; transition: 0.3s; }
-        .hero-card:hover { border-color: var(--gold); transform: scale(1.05); }
-        .hero-card img { width: 100px; height: 100px; object-fit: contain; object-position: top left; }
+        .hero-card { width: 140px; padding: 10px; border: 1px solid #333; margin: 10px; text-align: center; cursor: pointer; background: #111; }
+        .hero-card:hover { border-color: var(--gold); }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-family: 'Cinzel'; font-size: 42px; letter-spacing: 5px;">TAVERNA WAR</h1>
-        <div style="display: flex; gap: 20px;">
-            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/w.jpg"><h3>ВОИН</h3></div>
-            <div class="hero-card" onclick="startGame('mage')"><img src="assets/m.jpg"><h3>МАГ</h3></div>
-            <div class="hero-card" onclick="startGame('archer')"><img src="assets/A.jpg"><h3>ЛУЧНИК</h3></div>
-            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/as.jpg"><h3>УБИЙЦА</h3></div>
+        <h1 style="color:var(--gold); font-family: 'Cinzel'; font-size: 32px; margin-bottom: 30px;">ВЫБЕРИТЕ ГЕРОЯ</h1>
+        <div style="display: flex;">
+            <div class="hero-card" onclick="startGame('warrior')"><h3>ВОИН</h3></div>
+            <div class="hero-card" onclick="startGame('mage')"><h3>МАГ</h3></div>
+            <div class="hero-card" onclick="startGame('archer')"><h3>ЛУЧНИК</h3></div>
+            <div class="hero-card" onclick="startGame('assassin')"><h3>УБИЙЦА</h3></div>
         </div>
     </div>
 
     <div id="ui-left">
         <div id="p-portrait" class="portrait"></div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">HEALTH</div><div id="p-hp-f" class="bar-fill" style="background: linear-gradient(to right, #700, #f22);"></div></div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">MANA</div><div id="p-mn-f" class="bar-fill" style="background: linear-gradient(to right, #007, #22f);"></div></div>
+        <div class="bar-bg"><div id="p-hp-t" class="bar-text">HEALTH</div><div id="p-hp-f" class="bar-fill" style="background: #a22;"></div></div>
+        <div class="bar-bg"><div id="p-mn-t" class="bar-text">MANA</div><div id="p-mn-f" class="bar-fill" style="background: #22a;"></div></div>
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
-        <div style="margin-top:auto; color:var(--gold); border-top: 1px solid #333; padding-top: 15px;">
-            <div style="display:flex; justify-content: space-between;">АТАКА: <span id="stat-atk">0</span></div>
-            <div style="display:flex; justify-content: space-between;">ЗОЛОТО: <span id="gold-val">0</span></div>
+        <div style="margin-top:auto; padding-top:10px; border-top:1px solid #222;">
+            <div style="color:var(--gold)">АТАКА: <span id="stat-atk" style="color:white">0</span></div>
+            <div style="color:var(--gold)">ЗОЛОТО: <span id="gold-val" style="color:white">0</span></div>
         </div>
     </div>
 
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait" style="filter: grayscale(1) brightness(0.5);"></div>
+        <div id="m-portrait" class="portrait" style="filter: brightness(0.3) sepia(1);"></div>
         <h3 id="m-name" style="text-align:center; color:#f44; font-family: 'Cinzel';">ВРАГ</h3>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">HP</div><div id="m-hp-f" class="bar-fill" style="background: #a22;"></div></div>
         <div id="battle-log"></div>
     </div>
 
     <script>
-    const TILE_SIZE = 75; 
-    let phaserGame, scene;
+    const TILE_SIZE = 70;
+    let scene;
 
     window.app = { 
         player: null, mob: null, turn: "PLAYER",
         log: (msg, color) => {
             const log = document.getElementById('battle-log');
-            log.innerHTML = `<div style="color:${color}; margin-bottom:5px;">> ${msg}</div>` + log.innerHTML;
+            log.innerHTML = `<div style="color:${color}">> ${msg}</div>` + log.innerHTML;
         }
     };
 
@@ -94,8 +90,9 @@
         const base = { 'warrior':{hp:1600,atk:30,img:'w.jpg'}, 'mage':{hp:800,atk:70,img:'m.jpg'}, 'archer':{hp:1000,atk:45,img:'A.jpg'}, 'assassin':{hp:900,atk:60,img:'as.jpg'} }[key];
         window.app.player = { key, hp:base.hp, maxHp:base.hp, mana:0, gold:0, level:1, baseAtk:base.atk };
         
-        document.getElementById('p-portrait').innerHTML = `<img src="assets/${base.img}">`;
-        document.getElementById('m-portrait').innerHTML = `<img src="assets/${base.img}">`;
+        const imgPath = `assets/${base.img}`;
+        document.getElementById('p-portrait').innerHTML = `<img src="${imgPath}">`;
+        document.getElementById('m-portrait').innerHTML = `<img src="${imgPath}">`;
         
         initPhaser(); spawnMob(); refreshUI();
     }
@@ -123,14 +120,9 @@
         }
         create() {
             scene = this; this.grid = []; this.isAnimating = false;
-            // Рисуем сетку для визуального порядка
-            let graphics = this.add.graphics();
-            graphics.lineStyle(1, 0x222222);
-            for(let i=0; i<=8; i++) {
-                graphics.moveTo(i*TILE_SIZE, 0).lineTo(i*TILE_SIZE, 8*TILE_SIZE);
-                graphics.moveTo(0, i*TILE_SIZE).lineTo(8*TILE_SIZE, i*TILE_SIZE);
-            }
-            graphics.strokePath();
+            // Рисуем границы игрового поля
+            let g = this.add.graphics().lineStyle(2, 0x1a1a1a);
+            g.strokeRect(0, 0, 8*TILE_SIZE, 8*TILE_SIZE);
 
             for(let r=0; r<8; r++) {
                 this.grid[r] = [];
@@ -140,35 +132,43 @@
 
         spawnTile(r, c, fromTop=false) {
             let id = Math.floor(Math.random()*5)+1;
-            let x = c * TILE_SIZE; // Координата левого края
-            let y = fromTop ? -TILE_SIZE : r * TILE_SIZE; // Координата верхнего края
+            let x = c * TILE_SIZE + TILE_SIZE/2;
+            let y = fromTop ? -TILE_SIZE : r * TILE_SIZE + TILE_SIZE/2;
             
-            let t = this.add.image(x, y, `t${id}`).setInteractive();
+            let t = this.add.image(x, y, `t${id}`);
             
-            // КЛЮЧЕВОЙ МОМЕНТ:
-            t.setOrigin(0, 0); // Берем картинку за верхний левый угол
-            t.setCrop(0, 0, 150, 150); // Вырезаем только 150x150 пикселей из угла (где руна)
-            t.setDisplaySize(TILE_SIZE, TILE_SIZE); // Растягиваем вырезанный кусок на размер ячейки
+            // НОВЫЙ ПОДХОД К ВИЗУАЛУ:
+            // 1. Центрируем картинку по середине ячейки
+            t.setOrigin(0.5, 0.5); 
+            // 2. Увеличиваем масштаб в 3 раза (чтобы иконка из угла выросла до размеров клетки)
+            t.setScale(3.2); 
+            // 3. Смещаем саму текстуру внутри объекта, чтобы "глаз" иконки был в центре
+            t.setCenterAlign(); // Внутренняя функция Phaser для центрирования текстуры
+            
+            // НОВЫЙ ПОДХОД К КЛИКАМ (HIT AREA):
+            // Создаем невидимый квадрат 65x65 строго в центре ячейки. 
+            // Игра будет реагировать только на него, игнорируя прозрачные края картинки.
+            t.setInteractive(new Phaser.Geom.Rectangle(0, 0, 20, 20), Phaser.Geom.Rectangle.Contains);
             
             t.gridR = r; t.gridC = c; t.type = id;
             t.on('pointerdown', () => this.handlePointer(t));
             this.grid[r][c] = t;
-            if(fromTop) this.tweens.add({targets:t, y: r * TILE_SIZE, duration:300});
+            if(fromTop) this.tweens.add({targets:t, y: r * TILE_SIZE + TILE_SIZE/2, duration:300});
         }
 
         async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER") return;
             if(!this.sel) { 
                 this.sel = t; 
-                t.setTint(0xaaaaaa);
+                t.setAlpha(0.5);
             } else {
                 let dist = Math.abs(this.sel.gridR - t.gridR) + Math.abs(this.sel.gridC - t.gridC);
                 if(dist === 1) {
                     await this.swap(this.sel, t);
                     if(!await this.check()) await this.swap(this.sel, t);
-                    else { window.app.turn = "MOB"; this.time.delayedCall(600, () => this.mobMove()); }
+                    else { window.app.turn = "MOB"; this.time.delayedCall(500, () => this.mobMove()); }
                 }
-                this.sel.clearTint(); this.sel = null;
+                this.sel.setAlpha(1); this.sel = null;
             }
         }
 
@@ -178,8 +178,8 @@
             this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
             t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
             return new Promise(res => {
-                this.tweens.add({targets:t1, x:c2*TILE_SIZE, y:r2*TILE_SIZE, duration:200});
-                this.tweens.add({targets:t2, x:c1*TILE_SIZE, y:r1*TILE_SIZE, duration:200, onComplete:()=>{this.isAnimating=false; res();}});
+                this.tweens.add({targets:t1, x:c2*TILE_SIZE+TILE_SIZE/2, y:r2*TILE_SIZE+TILE_SIZE/2, duration:200});
+                this.tweens.add({targets:t2, x:c1*TILE_SIZE+TILE_SIZE/2, y:r1*TILE_SIZE+TILE_SIZE/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}});
             });
         }
 
@@ -214,10 +214,10 @@
             tiles.forEach(t => {
                 if(!t || !t.scene) return;
                 if(t.type === 1) m.hp -= p.baseAtk;
-                if(t.type === 2) p.mana = Math.min(100, p.mana + 10);
-                if(t.type === 3) p.hp = Math.min(p.maxHp, p.hp + 20);
-                if(t.type === 4) m.hp -= p.baseAtk * 2;
-                if(t.type === 5) p.gold += 5;
+                if(t.type === 2) p.mana = Math.min(100, p.mana + 5);
+                if(t.type === 3) p.hp = Math.min(p.maxHp, p.hp + 15);
+                if(t.type === 4) m.hp -= p.baseAtk * 1.5;
+                if(t.type === 5) p.gold += 2;
                 this.grid[t.gridR][t.gridC] = null;
                 t.destroy();
             });
@@ -235,7 +235,7 @@
                                 let t = this.grid[rr][c];
                                 this.grid[r][c] = t; this.grid[rr][c] = null;
                                 t.gridR = r;
-                                this.tweens.add({targets:t, y: r*TILE_SIZE, duration:200});
+                                this.tweens.add({targets:t, y: r*TILE_SIZE+TILE_SIZE/2, duration:200});
                                 break;
                             }
                         }
@@ -243,13 +243,13 @@
                     if(!this.grid[r][c]) this.spawnTile(r, c, true);
                 }
             }
-            await new Promise(r => this.time.delayedCall(300, r));
+            await new Promise(r => this.time.delayedCall(250, r));
         }
 
         async mobMove() {
             if(window.app.mob.hp <= 0) return;
             window.app.player.hp -= window.app.mob.atk;
-            window.app.log(`Враг атакует: -${window.app.mob.atk} HP`, "#f44");
+            window.app.log(`Враг атакует!`, "#f44");
             window.app.turn = "PLAYER";
             refreshUI();
         }
@@ -259,13 +259,13 @@
         if(window.app.player.mana < 100) return;
         window.app.player.mana = 0;
         window.app.mob.hp -= window.app.player.baseAtk * 5;
-        window.app.log("ИСПОЛЬЗОВАН СУПЕРУДАР!", "#ff0");
+        window.app.log("УЛЬТРАУДАР!", "gold");
         refreshUI();
     }
 
     function initPhaser() {
         new Phaser.Game({
-            type: Phaser.AUTO, parent: 'game-container', width: 600, height: 600,
+            type: Phaser.AUTO, parent: 'game-container', width: 560, height: 560,
             transparent: true, scene: GameScene
         });
     }
