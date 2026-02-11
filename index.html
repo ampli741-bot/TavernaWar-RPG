@@ -22,14 +22,26 @@
             display: flex; flex-direction: column; border: 3px solid var(--border); 
             box-sizing: border-box; z-index: 10; 
         }
-        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: none !important; }
         
-        /* Убираем любые тени и фоны с канваса */
-        canvas { background: transparent !important; }
+        /* Исправленный контейнер игры */
+        #game-container { 
+            flex-grow: 1; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            background: transparent !important;
+            position: relative;
+        }
+        
+        canvas { 
+            background-color: transparent !important; 
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+        }
 
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
         
-        /* ПОРТРЕТ: жесткий сброс фона */
+        /* ПОРТРЕТ: полная прозрачность */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 10px; 
             border: 2px solid var(--border); 
@@ -37,7 +49,6 @@
             background-repeat: no-repeat;
             background-position: center;
             background-color: transparent !important; 
-            background-image: none;
         }
 
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
@@ -131,7 +142,11 @@
         document.getElementById('menu-overlay').style.display = 'none';
         const base = { 'warrior':{hp:1600,atk:25,agi:5}, 'mage':{hp:800,atk:65,agi:2}, 'archer':{hp:1000,atk:40,agi:18}, 'assassin':{hp:900,atk:55,agi:14} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, equip: { weapon:{n:"Старая палка",atk:12,arm:0,agi:0,rar:0} } };
-        document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.png')`;
+        
+        // Сброс фона перед установкой нового изображения
+        const pPort = document.getElementById('p-portrait');
+        pPort.style.backgroundImage = `url('assets/hero_${key}.png')`;
+        
         initPhaser(); spawnMob(); refreshUI();
     }
 
@@ -338,13 +353,15 @@
 
     function initPhaser() { 
         phaserGame = new Phaser.Game({ 
-            type: Phaser.CANVAS, // Переключил на CANVAS для лучшей работы с прозрачностью в браузере
+            type: Phaser.AUTO, 
             parent: 'game-container', 
             width: 680, 
             height: 680, 
             scene: GameScene, 
+            backgroundColor: null, // Убираем заливку цветом совсем
             transparent: true,
-            clearBeforeRender: true // Принудительная очистка фона
+            antialias: true,
+            pixelArt: false
         }); 
     }
     </script>
