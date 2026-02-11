@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Ironclad UI</title>
+    <title>Taverna War: Absolute Fix</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; touch-action: none; }
-        canvas { border: 2px solid #b48c46; }
+        #game-container { border: 2px solid #b48c46; }
     </style>
 </head>
 <body>
@@ -46,30 +46,27 @@
 
         startGame(job) {
             this.children.removeAll();
-            // Настройка персонажа (согласно сохраненным механикам)
             const hps = { "Воин": 1400, "Маг": 720, "Лучник": 880, "Ассасин": 800 };
             this.player = {
                 job, maxHp: hps[job], hp: hps[job], arm: 0, mana: 0, gold: 0, level: 1, baseAtk: 25,
                 equip: { head: {n:"Шлем", arm:2}, body: {n:"Броня", arm:5}, legs: {n:"Сапоги", arm:2}, weapon: {n:"Меч", atk:12}, ring: {n:"Кольцо", atk:2}, neck: {n:"Амулет", atk:0} }
             };
             this.spawnMob();
-
-            // 1. ЖЕСТКИЙ БЛОКИРОВЩИК ФОНА
-            // Этот слой поглощает ВСЕ клики, которые не попали в кнопки или плитки
-            this.add.rectangle(GW/2, GH/2, GW, GH, 0x000000, 0.001).setInteractive().setDepth(0);
-
             this.createStaticUI();
             this.initGrid();
             this.updateUI();
 
-            // Запрещаем камере двигаться или дрожать
-            this.cameras.main.setScroll(0, 0);
+            // ФИКС: Вместо того чтобы вешать клики на всё подряд, мы слушаем ОДИН клик по всей сцене 
+            // и вручную проверяем, попали ли мы в плитку. Это исключает "срабатывание везде".
+            this.input.on('pointerdown', (pointer) => {
+                this.processManualClick(pointer.x, pointer.y);
+            });
         }
 
         createStaticUI() {
-            // Рисуем рамки ОДИН раз на слое Depth(1)
-            const leftBox = this.add.rectangle(155, 450, 290, 860, 0x0c0a08).setStrokeStyle(2, 0xb48c46).setDepth(1);
-            const rightBox = this.add.rectangle(GW - 155, 450, 290, 860, 0x0c0a08).setStrokeStyle(2, 0xb48c46).setDepth(1);
+            // Рамки - рисуются ОДИН раз. Depth(1)
+            this.add.rectangle(155, 450, 290, 860, 0x0c0a08).setStrokeStyle(2, 0xb48c46).setDepth(1);
+            this.add.rectangle(GW - 155, 450, 290, 860, 0x0c0a08).setStrokeStyle(2, 0xb48c46).setDepth(1);
             
             this.add.image(155, 140, `hero_${this.player.job}`).setDisplaySize(160, 160).setDepth(2);
             this.hpText = this.add.text(35, 240, "", { fontSize: '19px', fill: '#ff4444', fontStyle: 'bold' }).setDepth(2);
@@ -78,9 +75,9 @@
             this.hpBar = this.add.graphics().setDepth(2);
             this.manaBar = this.add.graphics().setDepth(2);
             
-            this.ultBtn = this.add.rectangle(155, 440, 240, 55, 0x440044).setInteractive().setStrokeStyle(2, 0xff00ff).setDepth(2);
+            this.ultBtnRect = new Phaser.Geom.Rectangle(35, 410, 240, 55); // Границы для ручной проверки
+            this.add.rectangle(155, 440, 240, 55, 0x440044).setStrokeStyle(2, 0xff00ff).setDepth(2);
             this.add.text(155, 440, "СУПЕРУДАР", { fontSize: '22px', fill: '#fff' }).setOrigin(0.5).setDepth(2);
-            this.ultBtn.on('pointerdown', (p, x, y, e) => { e.stopPropagation(); this.useUlt(); });
 
             this.equipLines = this.add.text(35, 520, "", { fontSize: '16px', lineSpacing: 10, fill: '#aaaaaa' }).setDepth(2);
 
@@ -89,12 +86,41 @@
             this.mobHpBar = this.add.graphics().setDepth(2);
         }
 
+        processManualClick(x, y) {
+            if (this.isAnimating || this.turn !== "PLAYER") return;
+
+            // 1. Проверка окна лута (если оно открыто)
+            if (this.lootActive) {
+                if (x > GW/2 - 100 && x < GW/2 + 100 && y > GH/2 + 50 && y < GH/2 + 120) {
+                    this.closeLoot();
+                }
+                return; // Если лут открыт, плитки не кликаются
+            }
+
+            // 2. Проверка ульты
+            if (x > 35 && x < 275 && y > 410 && y < 465) {
+                this.useUlt();
+                return;
+            }
+
+            // 3. Проверка игрового поля (плитки)
+            // Вычисляем колонку и строку по координатам
+            let c = Math.floor((x - OFFSET_X) / TILE_S);
+            let r = Math.floor((y - OFFSET_Y) / TILE_S);
+
+            if (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                let tile = this.grid[r][c];
+                if (tile) this.handleTileClick(tile);
+            }
+            // Если клик не попал ни в одну из зон выше - НИЧЕГО НЕ ПРОИСХОДИТ.
+        }
+
         updateUI() {
-            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)} / ${this.player.maxHp}\nБРОНЯ: ${this.player.arm}`);
+            this.hpText.setText(`ЖИЗНЬ: ${Math.floor(this.player.hp)}\nБРОНЯ: ${this.player.arm}`);
             this.manaText.setText(`МАНА: ${this.player.mana}%`);
             this.goldText.setText(`ЗОЛОТО: ${this.player.gold}`);
             this.mobHpText.setText(`${this.mob.name}\nHP: ${Math.floor(this.mob.hp)}`);
-
+            
             let eqS = "ИНВЕНТАРЬ:\n";
             for(let k in this.player.equip) eqS += `${this.player.equip[k].n}: +${this.player.equip[k].atk || 0} Атк\n`;
             this.equipLines.setText(eqS);
@@ -119,20 +145,13 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let tx = OFFSET_X + c * TILE_S + TILE_S/2;
             let ty = OFFSET_Y + r * TILE_S + TILE_S/2;
-            let tile = this.add.image(tx, fromTop ? ty - 600 : ty, `tile_${type}`).setDisplaySize(64, 64).setInteractive().setDepth(3);
+            let tile = this.add.image(tx, fromTop ? ty - 600 : ty, `tile_${type}`).setDisplaySize(64, 64).setDepth(3);
             tile.gridR = r; tile.gridC = c; tile.type = type;
-            
-            tile.on('pointerdown', (p, x, y, e) => {
-                e.stopPropagation(); // Критично: клик по плитке не уходит в фон
-                this.handleTileClick(tile);
-            });
-
             this.grid[r][c] = tile;
             if (fromTop) this.tweens.add({ targets: tile, y: ty, duration: 350 });
         }
 
         async handleTileClick(tile) {
-            if (this.isAnimating || this.turn !== "PLAYER" || this.lootActive) return;
             if (!this.selectedTile) { 
                 this.selectedTile = tile; 
                 tile.setTint(0xffff00); 
@@ -209,21 +228,19 @@
         showLootWindow() {
             this.lootActive = true;
             this.lootContainer = this.add.container(GW/2, GH/2).setDepth(5000);
-            // Фон окна ТАКЖЕ блокирует клики
-            let bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.98).setStrokeStyle(4, 0xffd700).setInteractive();
-            let txt = this.add.text(0, -50, `ПОБЕДА!\nУровень ${this.player.level}`, { fontSize: '30px', fill: '#ffd700', align: 'center' }).setOrigin(0.5);
-            let btn = this.add.rectangle(0, 80, 200, 60, 0x006600).setInteractive().setStrokeStyle(2, 0xffffff);
-            let bTxt = this.add.text(0, 80, "ВПЕРЕД", { fontSize: '24px' }).setOrigin(0.5);
+            let bg = this.add.rectangle(0, 0, 400, 300, 0x000000, 0.98).setStrokeStyle(4, 0xffd700);
+            let txt = this.add.text(0, -50, `ПОБЕДА!`, { fontSize: '30px', fill: '#ffd700' }).setOrigin(0.5);
+            let btn = this.add.rectangle(0, 80, 200, 60, 0x006600).setStrokeStyle(2, 0xffffff);
+            let bTxt = this.add.text(0, 80, "ДАЛЕЕ").setOrigin(0.5);
             this.lootContainer.add([bg, txt, btn, bTxt]);
-            
-            btn.on('pointerdown', (p, x, y, e) => { 
-                e.stopPropagation();
-                this.lootActive = false;
-                this.lootContainer.destroy(); 
-                this.player.level++; 
-                this.spawnMob(); 
-                this.updateUI(); 
-            });
+        }
+
+        closeLoot() {
+            this.lootActive = false;
+            this.lootContainer.destroy(); 
+            this.player.level++; 
+            this.spawnMob(); 
+            this.updateUI();
         }
 
         async mobAI() {
