@@ -3,78 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Hit Area Fix</title>
+    <title>Taverna War: Clean Assets Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        :root { --gold: #ffd700; --border: #b48c46; --bg: #050505; }
+        :root { --gold: #ffd700; --border: #b48c46; --bg: #0a0a0a; }
         body { margin: 0; background: var(--bg); color: white; display: flex; height: 100vh; overflow: hidden; font-family: 'Verdana', sans-serif; }
         
         #ui-left, #ui-right { 
-            width: 300px; padding: 20px; background: #0a0a0a; 
+            width: 300px; padding: 20px; background: #000; 
             border: 1px solid #222; display: flex; flex-direction: column; z-index: 10; 
         }
-        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #000; }
+        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
         
-        /* Портреты: теперь просто центрируем в рамке */
+        /* Портреты теперь просто выводят обрезанную картинку */
         .portrait { 
             width: 140px; height: 140px; margin: 0 auto 15px; border: 2px solid var(--border);
-            overflow: hidden; background: #000; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; background: #111;
         }
-        .portrait img {
-            width: 250%; /* Сильно увеличиваем, чтобы вытащить иконку из угла */
-            transform: translate(-30%, -30%); /* Сдвигаем, чтобы иконка была в центре */
-            object-fit: contain;
-        }
+        .portrait img { width: 100%; height: 100%; object-fit: cover; }
 
-        .bar-bg { width: 100%; height: 22px; background: #1a1a1a; border: 1px solid #333; margin-top: 8px; position: relative; border-radius: 2px; }
+        .bar-bg { width: 100%; height: 22px; background: #1a1a1a; border: 1px solid #333; margin-top: 8px; position: relative; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 22px; font-weight: bold; text-shadow: 1px 1px black; z-index: 5; }
         
-        #battle-log { flex-grow: 1; margin-top: 20px; background: #020202; border: 1px solid #1a1a1a; padding: 10px; font-size: 12px; overflow-y: auto; color: #777; }
-        
-        .btn-ultra { width: 100%; padding: 15px; margin: 15px 0; background: #150000; color: #444; border: 1px solid #300; font-family: 'Cinzel'; font-size: 16px; }
-        .btn-ultra.ready { background: #600; color: #fff; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px #f00; }
+        #battle-log { flex-grow: 1; margin-top: 20px; background: #050505; border: 1px solid #1a1a1a; padding: 10px; font-size: 12px; overflow-y: auto; color: #888; }
+        .btn-ultra { width: 100%; padding: 15px; margin: 15px 0; background: #200; color: #555; border: 1px solid #400; font-family: 'Cinzel'; cursor: not-allowed; }
+        .btn-ultra.ready { background: #800; color: #fff; border-color: #f00; cursor: pointer; box-shadow: 0 0 10px #f00; }
         
         #menu-overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-card { width: 140px; padding: 10px; border: 1px solid #333; margin: 10px; text-align: center; cursor: pointer; background: #111; }
-        .hero-card:hover { border-color: var(--gold); }
+        .hero-card { width: 130px; padding: 10px; border: 1px solid #333; margin: 10px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .hero-card:hover { border-color: var(--gold); background: #111; }
+        .hero-card img { width: 100%; height: 100px; object-fit: cover; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-family: 'Cinzel'; font-size: 32px; margin-bottom: 30px;">ВЫБЕРИТЕ ГЕРОЯ</h1>
+        <h1 style="color:var(--gold); font-family: 'Cinzel'; letter-spacing: 3px;">TAVERNA WAR</h1>
         <div style="display: flex;">
-            <div class="hero-card" onclick="startGame('warrior')"><h3>ВОИН</h3></div>
-            <div class="hero-card" onclick="startGame('mage')"><h3>МАГ</h3></div>
-            <div class="hero-card" onclick="startGame('archer')"><h3>ЛУЧНИК</h3></div>
-            <div class="hero-card" onclick="startGame('assassin')"><h3>УБИЙЦА</h3></div>
+            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/w.jpg"><h4>ВОИН</h4></div>
+            <div class="hero-card" onclick="startGame('mage')"><img src="assets/m.jpg"><h4>МАГ</h4></div>
+            <div class="hero-card" onclick="startGame('archer')"><img src="assets/A.jpg"><h4>ЛУЧНИК</h4></div>
+            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/as.jpg"><h4>УБИЙЦА</h4></div>
         </div>
     </div>
 
     <div id="ui-left">
         <div id="p-portrait" class="portrait"></div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">HEALTH</div><div id="p-hp-f" class="bar-fill" style="background: #a22;"></div></div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">MANA</div><div id="p-mn-f" class="bar-fill" style="background: #22a;"></div></div>
+        <div class="bar-bg"><div id="p-hp-t" class="bar-text">HEALTH</div><div id="p-hp-f" class="bar-fill" style="background: #c22;"></div></div>
+        <div class="bar-bg"><div id="p-mn-t" class="bar-text">MANA</div><div id="p-mn-f" class="bar-fill" style="background: #22c;"></div></div>
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
-        <div style="margin-top:auto; padding-top:10px; border-top:1px solid #222;">
-            <div style="color:var(--gold)">АТАКА: <span id="stat-atk" style="color:white">0</span></div>
-            <div style="color:var(--gold)">ЗОЛОТО: <span id="gold-val" style="color:white">0</span></div>
+        <div style="margin-top:auto; color:var(--gold); font-family: 'Cinzel';">
+            <div>АТАКА: <span id="stat-atk" style="color:white">0</span></div>
+            <div>ЗОЛОТО: <span id="gold-val" style="color:white">0</span></div>
         </div>
     </div>
 
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait" style="filter: brightness(0.3) sepia(1);"></div>
+        <div id="m-portrait" class="portrait" style="filter: grayscale(1);"></div>
         <h3 id="m-name" style="text-align:center; color:#f44; font-family: 'Cinzel';">ВРАГ</h3>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">HP</div><div id="m-hp-f" class="bar-fill" style="background: #a22;"></div></div>
         <div id="battle-log"></div>
     </div>
 
     <script>
-    const TILE_SIZE = 70;
+    const TILE_SIZE = 70; // Размер клетки
     let scene;
 
     window.app = { 
@@ -90,9 +86,8 @@
         const base = { 'warrior':{hp:1600,atk:30,img:'w.jpg'}, 'mage':{hp:800,atk:70,img:'m.jpg'}, 'archer':{hp:1000,atk:45,img:'A.jpg'}, 'assassin':{hp:900,atk:60,img:'as.jpg'} }[key];
         window.app.player = { key, hp:base.hp, maxHp:base.hp, mana:0, gold:0, level:1, baseAtk:base.atk };
         
-        const imgPath = `assets/${base.img}`;
-        document.getElementById('p-portrait').innerHTML = `<img src="${imgPath}">`;
-        document.getElementById('m-portrait').innerHTML = `<img src="${imgPath}">`;
+        document.getElementById('p-portrait').innerHTML = `<img src="assets/${base.img}">`;
+        document.getElementById('m-portrait').innerHTML = `<img src="assets/${base.img}">`;
         
         initPhaser(); spawnMob(); refreshUI();
     }
@@ -107,7 +102,7 @@
         if (!p || !m) return;
         document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100) + '%';
         document.getElementById('p-mn-f').style.width = p.mana + '%';
-        document.getElementById('btn-ultra').className = 'btn-ultra' + (p.mana>=100?' ready':'');
+        document.getElementById('btn-ultra').className = 'ready' ? (p.mana>=100?'btn-ultra ready':'btn-ultra') : 'btn-ultra';
         document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100) + '%';
         document.getElementById('stat-atk').innerText = p.baseAtk;
         document.getElementById('gold-val').innerText = p.gold;
@@ -120,10 +115,6 @@
         }
         create() {
             scene = this; this.grid = []; this.isAnimating = false;
-            // Рисуем границы игрового поля
-            let g = this.add.graphics().lineStyle(2, 0x1a1a1a);
-            g.strokeRect(0, 0, 8*TILE_SIZE, 8*TILE_SIZE);
-
             for(let r=0; r<8; r++) {
                 this.grid[r] = [];
                 for(let c=0; c<8; c++) this.spawnTile(r, c);
@@ -135,20 +126,9 @@
             let x = c * TILE_SIZE + TILE_SIZE/2;
             let y = fromTop ? -TILE_SIZE : r * TILE_SIZE + TILE_SIZE/2;
             
-            let t = this.add.image(x, y, `t${id}`);
-            
-            // НОВЫЙ ПОДХОД К ВИЗУАЛУ:
-            // 1. Центрируем картинку по середине ячейки
-            t.setOrigin(0.5, 0.5); 
-            // 2. Увеличиваем масштаб в 3 раза (чтобы иконка из угла выросла до размеров клетки)
-            t.setScale(3.2); 
-            // 3. Смещаем саму текстуру внутри объекта, чтобы "глаз" иконки был в центре
-            t.setCenterAlign(); // Внутренняя функция Phaser для центрирования текстуры
-            
-            // НОВЫЙ ПОДХОД К КЛИКАМ (HIT AREA):
-            // Создаем невидимый квадрат 65x65 строго в центре ячейки. 
-            // Игра будет реагировать только на него, игнорируя прозрачные края картинки.
-            t.setInteractive(new Phaser.Geom.Rectangle(0, 0, 20, 20), Phaser.Geom.Rectangle.Contains);
+            // Теперь, когда картинки обрезаны, просто выводим их
+            let t = this.add.image(x, y, `t${id}`).setInteractive();
+            t.setDisplaySize(TILE_SIZE - 4, TILE_SIZE - 4); // Небольшой отступ между плитками
             
             t.gridR = r; t.gridC = c; t.type = id;
             t.on('pointerdown', () => this.handlePointer(t));
@@ -160,7 +140,7 @@
             if(this.isAnimating || window.app.turn !== "PLAYER") return;
             if(!this.sel) { 
                 this.sel = t; 
-                t.setAlpha(0.5);
+                t.setScale(t.scale * 1.1); // Эффект выбора
             } else {
                 let dist = Math.abs(this.sel.gridR - t.gridR) + Math.abs(this.sel.gridC - t.gridC);
                 if(dist === 1) {
@@ -168,7 +148,8 @@
                     if(!await this.check()) await this.swap(this.sel, t);
                     else { window.app.turn = "MOB"; this.time.delayedCall(500, () => this.mobMove()); }
                 }
-                this.sel.setAlpha(1); this.sel = null;
+                this.sel.setScale(this.sel.scale / 1.1);
+                this.sel = null;
             }
         }
 
@@ -215,13 +196,13 @@
                 if(!t || !t.scene) return;
                 if(t.type === 1) m.hp -= p.baseAtk;
                 if(t.type === 2) p.mana = Math.min(100, p.mana + 5);
-                if(t.type === 3) p.hp = Math.min(p.maxHp, p.hp + 15);
+                if(t.type === 3) p.hp = Math.min(p.maxHp, p.hp + 20);
                 if(t.type === 4) m.hp -= p.baseAtk * 1.5;
-                if(t.type === 5) p.gold += 2;
+                if(t.type === 5) p.gold += 5;
                 this.grid[t.gridR][t.gridC] = null;
                 t.destroy();
             });
-            if(m.hp <= 0) { p.level++; spawnMob(); window.app.log("Враг повержен!", "gold"); }
+            if(m.hp <= 0) { p.level++; spawnMob(); window.app.log("Уровень пройден!", "gold"); }
             refreshUI();
             await new Promise(r => this.time.delayedCall(200, r));
         }
@@ -249,7 +230,7 @@
         async mobMove() {
             if(window.app.mob.hp <= 0) return;
             window.app.player.hp -= window.app.mob.atk;
-            window.app.log(`Враг атакует!`, "#f44");
+            window.app.log(`Враг наносит ${window.app.mob.atk} урона`, "#f44");
             window.app.turn = "PLAYER";
             refreshUI();
         }
@@ -259,7 +240,7 @@
         if(window.app.player.mana < 100) return;
         window.app.player.mana = 0;
         window.app.mob.hp -= window.app.player.baseAtk * 5;
-        window.app.log("УЛЬТРАУДАР!", "gold");
+        window.app.log("СУПЕРУДАР!", "gold");
         refreshUI();
     }
 
