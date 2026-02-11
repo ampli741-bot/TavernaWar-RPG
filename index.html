@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Taverna War: Rigid Skeleton</title>
+    <title>Taverna War: Fixed Skeleton</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         body { margin: 0; background: #0c0a08; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
@@ -47,8 +47,8 @@
                 equip: { head: null, body: null, legs: null, ring: null, amulet: null, weapon: null }
             };
             this.spawnMob();
-            this.initGrid();
             this.createUI();
+            this.initGrid();
             this.updateUI();
         }
 
@@ -63,27 +63,6 @@
             };
             this.turn = "PLAYER";
             this.lootActive = false;
-        }
-
-        async executeUlt() {
-            if (this.player.mana < 100 || this.isAnimating) return;
-            this.player.mana = 0; this.isAnimating = true;
-            let toRemove = [];
-            if (this.player.job === "Воин") {
-                this.grid.flat().forEach(t => { if(t && (t.type === 'Red' || t.type === 'Green')) toRemove.push(t); });
-            } else if (this.player.job === "Маг") {
-                this.player.shield = Math.floor(this.player.hp * 0.25);
-                this.grid.flat().forEach(t => { if(t && (t.type === 'Purple' || t.type === 'Yellow')) toRemove.push(t); });
-            } else {
-                toRemove = Phaser.Utils.Array.Shuffle(this.grid.flat().filter(t=>t)).slice(0, 15);
-            }
-            toRemove.forEach(t => this.tweens.add({ targets: t, tint: 0xffffff, duration: 400 }));
-            this.time.delayedCall(500, async () => {
-                toRemove.forEach(t => { if(t) { this.applyEffect(t.type); this.grid[t.gridR][t.gridC] = null; t.destroy(); }});
-                await this.fillEmpty();
-                this.isAnimating = false; this.updateUI();
-                this.time.delayedCall(500, () => this.mobAI());
-            });
         }
 
         initGrid() {
@@ -194,7 +173,11 @@
         createUI() {
             this.add.rectangle(0,0,366,GH,0x111111).setOrigin(0).setStrokeStyle(2, 0xb48c46);
             this.add.rectangle(910,0,290,GH,0x111111).setOrigin(0).setStrokeStyle(2, 0xb48c46);
+            
+            // Фикс "листания" - создаем один раз
+            if (this.pImg) this.pImg.destroy();
             this.pImg = this.add.image(183, 100, `hero_${this.player.job}`).setDisplaySize(160, 160);
+            
             this.hpBar = this.add.graphics();
             this.manaBar = this.add.graphics();
             this.hpTxt = this.add.text(40, 190, "", {fontSize: '20px', fill: '#ff4444', fontStyle: 'bold'});
@@ -207,10 +190,7 @@
             });
 
             this.goldTxt = this.add.text(183, 570, "ЗОЛОТО: 0", {fontSize: '22px', fill: '#ffd700'}).setOrigin(0.5);
-            this.ultBtn = this.add.rectangle(183, 640, 260, 60, 0x440044).setInteractive().setStrokeStyle(2, 0xff00ff);
-            this.add.text(183, 640, "УЛЬТА", {fontSize: '26px'}).setOrigin(0.5);
-            this.ultBtn.on('pointerdown', () => this.executeUlt());
-
+            
             this.mHpBar = this.add.graphics();
             this.mTxt = this.add.text(1055, 200, "", {fontSize: '20px', fill: '#ff0000'}).setOrigin(0.5);
             this.logTexts = [];
