@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Crystal Clear</title>
+    <title>Taverna War: Local Hero Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=MedievalSharp&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -50,7 +50,7 @@
             background: transparent; 
         }
 
-        /* Улучшенные круглые портреты */
+        /* Контейнер для портрета героя */
         .portrait-container {
             width: 240px; height: 240px; margin: 0 auto 15px auto;
             position: relative; 
@@ -64,16 +64,16 @@
 
         .layer-hero {
             width: 100%; height: 100%;
-            background-size: cover;
-            background-position: center top;
+            background-size: cover; /* Картинка заполнит весь круг */
+            background-position: center;
             background-repeat: no-repeat;
             transition: transform 0.3s ease;
         }
 
         .hero-float { animation: heroFloat 5s infinite ease-in-out; }
         @keyframes heroFloat {
-            0%, 100% { transform: scale(1.1) translateY(0); }
-            50% { transform: scale(1.15) translateY(-8px); }
+            0%, 100% { transform: scale(1.0); translateY(0); }
+            50% { transform: scale(1.05) translateY(-5px); }
         }
 
         /* Полоски статуса */
@@ -121,6 +121,7 @@
         </div>
     </div>
 
+    <!-- UI Игрока -->
     <div id="ui-left">
         <div class="portrait-container">
             <div id="p-hero" class="layer-hero hero-float"></div>
@@ -136,8 +137,10 @@
         </div>
     </div>
 
+    <!-- Игровое поле -->
     <div id="game-container"></div>
 
+    <!-- UI Врага -->
     <div id="ui-right">
         <div class="portrait-container">
             <div id="m-hero" class="layer-hero hero-float"></div>
@@ -147,6 +150,7 @@
         <div id="battle-log"></div>
     </div>
 
+    <!-- Окно лута -->
     <div id="loot-overlay">
         <div class="loot-window">
             <h2 style="color:var(--gold); font-family: 'Cinzel'; margin-top:0; font-size:28px;">ТРОФЕЙ ПОБЕДИТЕЛЯ</h2>
@@ -181,12 +185,12 @@
         const base = { 'warrior':{hp:2500,atk:40}, 'mage':{hp:1200,atk:90}, 'archer':{hp:1500,atk:60}, 'assassin':{hp:1300,atk:80} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, equip: { weapon:{n:"Ржавый клинок",atk:5,arm:0,rar:0} } };
         
-        // Стабильный источник изображений (DiceBear)
+        // Пути к картинкам героев
         const portraits = {
-            'warrior': 'https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4',
-            'mage': 'https://api.dicebear.com/7.x/adventurer/svg?seed=Mage&backgroundColor=c0aede',
-            'archer': 'https://api.dicebear.com/7.x/adventurer/svg?seed=Archer&backgroundColor=d1f4be',
-            'assassin': 'https://api.dicebear.com/7.x/adventurer/svg?seed=Shadow&backgroundColor=ffd5dc'
+            'warrior': 'assets/hero_warrior.jpg', // Твой локальный файл
+            'mage': 'https://api.dicebear.com/7.x/adventurer/svg?seed=Mage',
+            'archer': 'https://api.dicebear.com/7.x/adventurer/svg?seed=Archer',
+            'assassin': 'https://api.dicebear.com/7.x/adventurer/svg?seed=Shadow'
         };
 
         const heroEl = document.getElementById('p-hero');
