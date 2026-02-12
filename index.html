@@ -2,207 +2,147 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Gothic Perfection</title>
+    <title>Taverna War: Gothic Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        :root { 
-            --gold: #ffd700; --border: #b48c46; --bg: #0c0a08;
-            --rar0: #b0b0b0; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
-        }
+        :root { --gold: #b48c46; --gold-bright: #ffd700; --bg: #0c0a08; }
+        
         body { 
-            margin: 0; background: #000; 
-            color: white; display: flex; height: 100vh; overflow: hidden; 
-            font-family: 'Verdana', sans-serif; touch-action: none; 
+            margin: 0; background: #000; color: white; 
+            display: flex; height: 100vh; overflow: hidden; 
+            font-family: 'Verdana', sans-serif; 
         }
 
-        /* UI ПАНЕЛИ */
+        /* ПАНЕЛИ UI */
         #ui-left, #ui-right { 
-            width: 320px; padding: 15px; background: rgba(15, 10, 5, 0.95); 
-            display: flex; flex-direction: column; border: 2px solid #332211; 
-            box-shadow: inset 0 0 30px #000; z-index: 10; 
+            width: 320px; padding: 25px; 
+            background: linear-gradient(180deg, #151210 0%, #050505 100%);
+            border: 2px solid #2a2015; box-shadow: inset 0 0 40px #000;
+            display: flex; flex-direction: column; align-items: center;
         }
 
-        /* ИСПРАВЛЕННЫЙ КОНТЕЙНЕР ПОРТРЕТА */
-        .portrait-container {
+        /* ПОРТРЕТ ИЗ СКРИНШОТА */
+        .portrait-wrapper {
             position: relative;
             width: 200px;
             height: 200px;
-            margin: 10px auto 20px;
-            background: #000; /* Убираем белый фон */
-            border: 3px solid #1a1a1a;
-            overflow: visible; /* Чтобы звезды вылезали за края */
+            margin-bottom: 20px;
         }
 
-        .portrait { 
-            width: 100%; height: 100%; 
-            background-size: cover; /* Заполняем весь квадрат */
-            background-position: center;
-            background-repeat: no-repeat;
-            image-rendering: pixelated; /* Если иконки мелкие */
-            border: 1px solid var(--border);
-            box-sizing: border-box;
-        }
-
-        /* Золотые звезды из твоего скриншота */
-        .star-decor {
+        /* Основная рамка */
+        .portrait-frame {
             position: absolute;
-            width: 50px;
-            height: 50px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 0 L62 38 L100 50 L62 62 L50 100 L38 62 L0 50 L38 38 Z" fill="%23ffd700"/></svg>') no-repeat center/contain;
-            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.7));
-            z-index: 15;
+            inset: 0;
+            border: 3px solid #3d3d3d;
+            background: #000; /* Убирает белые поля */
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            z-index: 2;
+            overflow: hidden;
         }
-        .star-tl { top: -25px; left: -25px; }
-        .star-br { bottom: -25px; right: -25px; }
+
+        /* Сама картинка героя */
+        .portrait-img {
+            width: 100%; height: 100%;
+            background-size: 140%; /* Крупный план воина */
+            background-position: center 20%;
+            background-repeat: no-repeat;
+            image-rendering: smooth;
+        }
+
+        /* Золотые звезды в углах */
+        .star-decor {
+            position: absolute; width: 45px; height: 45px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 0 L55 45 L100 50 L55 55 L50 100 L45 55 L0 50 L45 45 Z" fill="%23ffd700"/></svg>') no-repeat center/contain;
+            filter: drop-shadow(0 0 8px var(--gold-bright));
+            z-index: 10;
+        }
+        .star-tl { top: -20px; left: -20px; }
+        .star-br { bottom: -20px; right: -20px; }
 
         /* ИНДИКАТОРЫ */
-        .bar-bg { width: 100%; height: 28px; background: #1a0505; border: 2px solid #3d2b1f; margin-top: 10px; position: relative; border-radius: 2px; }
-        .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
-        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 14px; line-height: 28px; font-weight: 900; text-shadow: 2px 2px 2px black; z-index: 5; }
+        .status-label { width: 100%; font-family: 'Cinzel'; color: var(--gold); font-size: 14px; margin-top: 15px; }
+        .bar-container { 
+            width: 100%; height: 30px; background: #1a1a1a; 
+            border: 1px solid #333; margin-top: 5px; position: relative;
+            box-shadow: inset 0 0 10px #000;
+        }
+        .bar-fill { height: 100%; transition: width 0.4s ease; }
+        .bar-value { 
+            position: absolute; width: 100%; text-align: center; 
+            line-height: 30px; font-weight: bold; text-shadow: 1px 1px 2px #000; 
+        }
 
-        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #221100 0%, #000 100%); }
-        
-        .btn-ultra { 
-            width: 100%; margin-top: 20px; padding: 15px; 
-            font-family: 'Cinzel'; font-size: 18px; 
-            background: linear-gradient(to bottom, #440000, #220000); 
-            color: #777; border: 2px solid #333; cursor: not-allowed; 
+        #game-field { flex-grow: 1; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
+
+        /* МЕНЮ */
+        #menu { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
+            z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; 
         }
-        .btn-ultra.ready { 
-            background: linear-gradient(to bottom, #aa0000, #660000); 
-            color: white; border-color: var(--gold); cursor: pointer; 
-            box-shadow: 0 0 15px #f00; 
+        .hero-opt { 
+            padding: 20px; border: 2px solid var(--gold); background: #111; 
+            margin: 10px; cursor: pointer; width: 180px; text-align: center;
+            font-family: 'Cinzel'; transition: 0.3s;
         }
-        
-        #battle-log { 
-            flex-grow: 1; margin-top: 20px; background: rgba(0,0,0,0.5); 
-            border: 1px solid #2a1a0a; padding: 10px; font-size: 12px; 
-            overflow-y: auto; color: #d4c4a8; font-family: 'Courier New', monospace; 
-        }
-        
-        #menu-overlay { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-card { width: 200px; padding: 20px; border: 2px solid #332211; background: #111; text-align: center; cursor: pointer; margin: 10px; }
-        .hero-card:hover { border-color: var(--gold); background: #1a1510; }
+        .hero-opt:hover { background: #221a10; transform: scale(1.05); }
     </style>
 </head>
 <body>
 
-    <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-size: 45px; font-family: 'Cinzel'; letter-spacing: 5px;">TAVERNA WAR</h1>
-        <div style="display: flex;">
-            <div class="hero-card" onclick="startGame('warrior')">
-                <h3 style="color:var(--gold)">ВОИН</h3>
-                <p style="font-size: 12px; color: #888;">Сила и Ярость</p>
-            </div>
-            <div class="hero-card" onclick="startGame('mage')">
-                <h3 style="color:var(--gold)">МАГ</h3>
-                <p style="font-size: 12px; color: #888;">Тайные Знания</p>
-            </div>
+    <div id="menu">
+        <h1 style="font-family:'Cinzel'; color:var(--gold-bright); font-size: 40px;">ВЫБЕРИ ГЕРОЯ</h1>
+        <div style="display:flex;">
+            <div class="hero-opt" onclick="start('hero_warrior.png')">ВОИН</div>
+            <div class="hero-opt" onclick="start('hero_mage.png')">МАГ</div>
         </div>
     </div>
 
     <div id="ui-left">
-        <div class="portrait-container">
+        <div class="portrait-wrapper">
             <div class="star-decor star-tl"></div>
-            <div id="p-portrait" class="portrait"></div>
+            <div class="portrait-frame">
+                <div id="player-img" class="portrait-img"></div>
+            </div>
             <div class="star-decor star-br"></div>
         </div>
-        <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 100/100</div><div id="p-arm-f" class="bar-fill" style="background: linear-gradient(to right, #224488, #4488ff);"></div></div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">1000/1000</div><div id="p-hp-f" class="bar-fill" style="background: linear-gradient(to right, #660000, #cc2222);"></div></div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: linear-gradient(to right, #000066, #2222cc);"></div></div>
-        <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
-        <div id="battle-log"></div>
+        
+        <div class="status-label">БРОНЯ</div>
+        <div class="bar-container">
+            <div id="p-arm-f" class="bar-fill" style="width:100%; background: linear-gradient(to right, #2c3e50, #4488ff);"></div>
+            <div id="p-arm-v" class="bar-value">100 / 100</div>
+        </div>
+
+        <div class="status-label">ЗДОРОВЬЕ</div>
+        <div class="bar-container">
+            <div id="p-hp-f" class="bar-fill" style="width:100%; background: linear-gradient(to right, #7b0000, #ff2222);"></div>
+            <div id="p-hp-v" class="bar-value">1000 / 1000</div>
+        </div>
     </div>
 
-    <div id="game-container"></div>
+    <div id="game-field"></div>
 
     <div id="ui-right">
-        <div class="portrait-container">
+        <div class="portrait-wrapper">
             <div class="star-decor star-tl"></div>
-            <div id="m-portrait" class="portrait" style="filter: grayscale(0.3) sepia(0.2) brightness(0.8);"></div>
+            <div class="portrait-frame">
+                <div id="enemy-img" class="portrait-img" style="filter: grayscale(0.5) contrast(1.2);"></div>
+            </div>
             <div class="star-decor star-br"></div>
         </div>
-        <h2 id="m-name" style="color:#aa4444; text-align:center; font-family: 'Cinzel'; margin: 0;">ВРАГ</h2>
-        <div class="bar-bg"><div id="m-hp-t" class="bar-text">500/500</div><div id="m-hp-f" class="bar-fill" style="background: linear-gradient(to right, #440000, #aa2222);"></div></div>
+        <h3 style="font-family:'Cinzel'; color:#ff4444;">ТЕМНЫЙ КРЫС</h3>
+        <div class="bar-container">
+            <div id="e-hp-f" class="bar-fill" style="width:100%; background: #aa0000;"></div>
+            <div id="e-hp-v" class="bar-value">500 / 500</div>
+        </div>
     </div>
 
     <script>
-    const TILE_S = 70;
-    let scene;
-
-    window.app = {
-        player: null, mob: null,
-        log: (msg, col) => {
-            const log = document.getElementById('battle-log');
-            log.innerHTML = `<div style="color:${col}; margin-bottom: 5px;">> ${msg}</div>` + log.innerHTML;
+        function start(imgFile) {
+            document.getElementById('menu').style.display = 'none';
+            // Установка иконок
+            document.getElementById('player-img').style.backgroundImage = `url('${imgFile}')`;
+            document.getElementById('enemy-img').style.backgroundImage = `url('hero_assassin.png')`; // Для примера
         }
-    };
-
-    function startGame(key) {
-        document.getElementById('menu-overlay').style.display = 'none';
-        window.app.player = { key, hp: 1000, maxHp: 1000, armor: 100, maxArmor: 100, mana: 0 };
-        window.app.mob = { hp: 500, maxHp: 500 };
-        
-        // Устанавливаем иконку персонажа
-        const pImg = key === 'warrior' ? 'image_1b82d2.png' : 'mage.png'; 
-        document.getElementById('p-portrait').style.backgroundImage = `url('${pImg}')`;
-        document.getElementById('m-portrait').style.backgroundImage = `url('image_1b82d2.png')`; // Для теста враг такой же
-        
-        initPhaser();
-        refreshUI();
-        window.app.log("Битва началась!", "#ffd700");
-    }
-
-    function refreshUI() {
-        const p = window.app.player; const m = window.app.mob;
-        document.getElementById('p-hp-t').innerText = `${p.hp}/${p.maxHp}`;
-        document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100) + "%";
-        document.getElementById('p-arm-t').innerText = `Броня: ${p.armor}`;
-        document.getElementById('p-arm-f').style.width = (p.armor/p.maxArmor*100) + "%";
-        document.getElementById('p-mn-t').innerText = `Мана: ${p.mana}%`;
-        document.getElementById('p-mn-f').style.width = p.mana + "%";
-        document.getElementById('m-hp-t').innerText = `${m.hp}/${m.maxHp}`;
-        document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100) + "%";
-        document.getElementById('btn-ultra').className = 'btn-ultra' + (p.mana>=100?' ready':'');
-    }
-
-    class GameScene extends Phaser.Scene {
-        constructor() { super('GameScene'); }
-        preload() {
-            // Заглушки, если нет твоих файлов
-            this.load.image('r_red', 'https://labs.phaser.io/assets/sprites/gem.png');
-        }
-        create() {
-            scene = this;
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    const x = c * TILE_S + 75;
-                    const y = r * TILE_S + 75;
-                    let rect = this.add.rectangle(x, y, TILE_S-4, TILE_S-4, 0x1a1a1a).setStrokeStyle(1, 0x332211);
-                    this.add.text(x-10, y-10, '?', {fontSize: '20px', color: '#444'});
-                }
-            }
-        }
-    }
-
-    function initPhaser() {
-        new Phaser.Game({
-            type: Phaser.AUTO,
-            parent: 'game-container',
-            width: 600, height: 600,
-            scene: GameScene,
-            transparent: true
-        });
-    }
-
-    function useUltra() {
-        if(window.app.player.mana < 100) return;
-        window.app.player.mana = 0;
-        window.app.log("ИСПОЛЬЗОВАН СУПЕРУДАР!", "#ff0000");
-        refreshUI();
-    }
     </script>
 </body>
 </html>
