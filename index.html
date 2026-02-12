@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Original Colors</title>
+    <title>Taverna War: Character Focus</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=MedievalSharp&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -48,49 +48,59 @@
             opacity: 0.3;
         }
 
-        /* ПЕРСОНАЖ: ОРИГИНАЛЬНЫЕ ЦВЕТА И ЦЕНТРОВКА */
+        /* ПЕРСОНАЖ: УВЕЛИЧЕНИЕ И СКРЫТИЕ ПЕРЕСВЕТОВ */
         .portrait-img {
-            width: 100%; height: 100%;
-            position: absolute; top: 0; left: 0;
+            width: 130%; height: 130%; /* Увеличиваем размер самого холста */
+            position: absolute; 
+            top: -15%; left: -15%; /* Центрируем увеличенный холст */
             background-size: contain; 
             background-repeat: no-repeat;
             background-position: center center;
             z-index: 3;
-            /* Возвращаем оригинальные цвета без пересвета и лишнего контраста */
             filter: brightness(1.0) contrast(1.0) saturate(1.0);
             animation: heroBreathe 8s infinite ease-in-out;
             pointer-events: none;
         }
         
-        /* Индивидуальные настройки масштаба для центровки */
-        .portrait-img.assassin, .portrait-img.archer {
-            transform: scale(0.8); /* Уменьшаем, чтобы не было тесно */
+        /* Индивидуальная настройка для каждого героя: выдвигаем из центра */
+        .portrait-img.warrior {
+            transform: scale(1.3); /* +30% к базе */
+            background-position: center 20%; /* Смещаем чуть вниз, чтобы голова была видна, а лишний верх ушел */
+            --base-scale: 1.3;
         }
         
-        .portrait-img.warrior, .portrait-img.mage {
-            transform: scale(0.9);
+        .portrait-img.mage {
+            transform: scale(1.25);
+            background-position: center 30%;
+            --base-scale: 1.25;
         }
 
-        /* ГЛУБОКАЯ ЧЕРНОТА ПО УГЛАМ (Виньетка без белого) */
+        .portrait-img.archer {
+            transform: scale(1.2);
+            background-position: center 25%;
+            --base-scale: 1.2;
+        }
+
+        .portrait-img.assassin {
+            transform: scale(1.2);
+            background-position: center 35%;
+            --base-scale: 1.2;
+        }
+
+        /* ГЛУБОКАЯ ЧЕРНОТА ПО УГЛАМ */
         .portrait-vignette {
             position: absolute; inset: 0;
-            /* Внутренняя тень создает черноту по краям рамки */
-            box-shadow: inset 0 0 60px 10px rgba(0,0,0,1); 
-            /* Градиент уводит края в полную темноту, центр оставляя чистым */
-            background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 85%, rgba(0,0,0,1) 100%);
+            box-shadow: inset 0 0 70px 15px rgba(0,0,0,1); 
+            background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,1) 100%);
             z-index: 5; pointer-events: none;
         }
 
         @keyframes heroBreathe {
-            0%, 100% { transform: scale(var(--base-scale, 0.9)) translateY(0); }
-            50% { transform: scale(calc(var(--base-scale, 0.9) + 0.03)) translateY(-5px); }
+            0%, 100% { transform: scale(var(--base-scale, 1.2)) translateY(0); }
+            50% { transform: scale(calc(var(--base-scale, 1.2) + 0.05)) translateY(-8px); }
         }
         
-        /* Установка базового масштаба для анимации дыхания */
-        .warrior, .mage { --base-scale: 0.9; }
-        .archer, .assassin { --base-scale: 0.8; }
-
-        /* Остальной UI */
+        /* UI Элементы */
         .bar-bg { width: 100%; height: 26px; background: #1a1111; border: 1px solid #333; margin-top: 6px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 26px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
