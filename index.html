@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Gothic Perfection</title>
+    <title>Taverna War: Gothic Souls</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -17,14 +17,79 @@
             color: white; display: flex; height: 100vh; overflow: hidden; 
             font-family: 'Verdana', sans-serif; touch-action: none; 
         }
+
+        /* СОЧНЫЙ ИНТЕРФЕЙС ГЕРОЕВ */
         #ui-left, #ui-right { 
             width: 380px; padding: 15px; background: rgba(0, 0, 0, 0.85); 
             display: flex; flex-direction: column; border: 3px solid var(--border); 
             box-sizing: border-box; z-index: 10; 
         }
+
+        .portrait-wrapper {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .portrait {
+            width: 140px;
+            height: 140px;
+            border: 2px solid #666;
+            background-size: cover;
+            background-position: center;
+            z-index: 2;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            animation: breath 4s ease-in-out infinite;
+        }
+
+        .portrait-frame {
+            position: absolute;
+            width: 165px;
+            height: 165px;
+            border: 6px solid #444;
+            box-shadow: 0 0 25px rgba(0,0,0,0.5), 0 0 10px var(--gold);
+            z-index: 1;
+            background: linear-gradient(135deg, #222 0%, #111 100%);
+        }
+
+        /* Шипы на рамке персонажа */
+        .portrait-frame::before, .portrait-frame::after {
+            content: ""; position: absolute; width: 24px; height: 24px; background: #555; transform: rotate(45deg); border: 2px solid var(--gold);
+        }
+        .portrait-frame::before { top: -14px; left: -14px; }
+        .portrait-frame::after { bottom: -14px; right: -14px; }
+
+        .mana-glow {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, rgba(68,68,255,0.4) 0%, rgba(0,0,0,0) 70%);
+            z-index: 0;
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        #m-portrait-wrapper .mana-glow {
+            background: radial-gradient(circle, rgba(255,68,68,0.4) 0%, rgba(0,0,0,0) 70%);
+        }
+
+        @keyframes breath {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+        }
+
+        /* ОСТАЛЬНЫЕ СТИЛИ СКЕЛЕТА */
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
-        .portrait { width: 140px; height: 140px; margin: 0 auto 10px; border: 2px solid var(--border); background-size: cover; background-position: center; }
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 24px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
@@ -58,7 +123,11 @@
     </div>
 
     <div id="ui-left">
-        <div id="p-portrait" class="portrait"></div>
+        <div class="portrait-wrapper">
+            <div class="mana-glow"></div>
+            <div class="portrait-frame"></div>
+            <div id="p-portrait" class="portrait"></div>
+        </div>
         <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0 / 0</div><div id="p-arm-f" class="bar-fill" style="background: #55aaff;"></div></div>
         <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: #f44;"></div></div>
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #44f;"></div></div>
@@ -74,7 +143,11 @@
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait" style="filter: sepia(0.5) contrast(1.2);"></div>
+        <div class="portrait-wrapper" id="m-portrait-wrapper">
+            <div class="mana-glow"></div>
+            <div class="portrait-frame"></div>
+            <div id="m-portrait" class="portrait" style="filter: sepia(0.3) contrast(1.1);"></div>
+        </div>
         <h2 id="m-name" style="color:#ff4444; margin:0; text-align:center; font-size: 20px;">ВРАГ</h2>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: #f44;"></div></div>
         <div class="bar-bg"><div id="m-mn-t" class="bar-text">Мана: 0%</div><div id="m-mn-f" class="bar-fill" style="background: #44f;"></div></div>
@@ -94,7 +167,6 @@
 
     <script>
     const TILE_S = 85; 
-    const OFFSET = 5;
     let phaserGame, scene, currentLoot = null;
     const adjs = ["Древний", "Мифический", "Проклятый", "Тёмный", "Вечный", "Стальной", "Святой", "Забытый", "Ледяной", "Кровавый"];
     const slotNames = { weapon: "Оружие", body: "Доспех", legs: "Поножи", head: "Шлем", ring: "Перстень", necklace: "Амулет", hands: "Перчатки" };
@@ -124,11 +196,13 @@
     function spawnMob() {
         let lvl = window.app.player.level;
         window.app.mob = { name: "Гоблин Ур."+lvl, hp: 200+(lvl*100), maxHp: 200+(lvl*100), atk: 20+(lvl*10), mana: 0 };
+        document.getElementById('m-portrait').style.backgroundImage = `url('assets/mob_${Phaser.Utils.Array.GetRandom([1,2,3])}.png')`;
         window.app.turn = "PLAYER"; window.app.lootActive = false; refreshUI();
     }
 
     function refreshUI() {
         const p = window.app.player; const m = window.app.mob;
+        if(!p || !m) return;
         let gearAtk=0, gearArm=0, gearAgi=0, invH = "";
         for(let s in slotNames) { 
             let i = p.equip[s]; if(i) { gearAtk+=i.atk; gearArm+=i.arm; gearAgi+=i.agi; }
@@ -197,32 +271,26 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let x = c * TILE_S + TILE_S/2;
             let y = fromTop ? -TILE_S : r * TILE_S + TILE_S/2;
-            
             let container = this.add.container(x, y);
 
-            // 1. СВЕЧЕНИЕ (Glow)
             let glow = this.add.graphics();
             glow.fillStyle(GLOW_COLORS[type], 0.4);
             glow.fillRoundedRect(-TILE_S/2 - 2, -TILE_S/2 - 2, TILE_S + 4, TILE_S + 4, 14);
 
-            // 2. ПОДЛОЖКА (Убирает просветы)
             let bg = this.add.graphics();
             bg.fillStyle(BG_COLORS[type], 1);
             bg.fillRoundedRect(-TILE_S/2 - 1, -TILE_S/2 - 1, TILE_S + 2, TILE_S + 2, 12);
 
-            // 3. РУНА (С масштабом)
             let img = this.add.image(0, 0, `t_${type}`);
             let zoom = (type === 'red' || type === 'blue' || type === 'purple') ? 2.15 : 1.5;
             img.setDisplaySize(TILE_S * zoom, TILE_S * zoom);
-            if (type === 'yellow') img.y += 4; // Центровка золота
+            if (type === 'yellow') img.y += 4;
 
-            // МАСКА
             let maskShape = this.make.graphics();
             maskShape.fillStyle(0xffffff);
             maskShape.fillRoundedRect(x - TILE_S/2, y - TILE_S/2, TILE_S, TILE_S, 12);
             img.setMask(maskShape.createGeometryMask());
 
-            // 4. ГОТИЧЕСКАЯ РАМКА (Толщина 8)
             let frame = this.add.graphics();
             frame.lineStyle(8, 0x444444, 1);
             frame.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
@@ -231,7 +299,6 @@
             frame.lineStyle(1.5, 0xbc962c, 0.4);
             frame.strokeRoundedRect(-TILE_S/2 + 8, -TILE_S/2 + 8, TILE_S - 16, TILE_S - 16, 6);
 
-            // ШИПЫ
             frame.fillStyle(0x555555, 1);
             const s = TILE_S / 2, sw = 10, sh = 12;
             frame.fillTriangle(0, -s - sh, -sw, -s + 3, sw, -s + 3);
