@@ -33,11 +33,18 @@
         .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); margin-top: 10px; border-radius: 5px; }
         .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
         #battle-log { flex-grow: 1; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
-        #menu-overlay { position: fixed; inset: 0; background: url('assets/bg.jpg') center/cover; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #menu-overlay { position: fixed; inset: 0; background: url('assets/bg.jpg') center/cover; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; perspective: 1000px; }
         #menu-overlay::before { content: ""; position: absolute; inset:0; background: rgba(0,0,0,0.8); z-index: -1; }
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .hero-card { width: 260px; padding: 20px; border: 4px solid var(--border); background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; border-radius: 20px; }
-        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; object-fit: contain; }
+        /* ЭФФЕКТ НАКЛОНА */
+        .hero-card { 
+            width: 260px; padding: 20px; border: 4px solid var(--border); 
+            background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; 
+            border-radius: 20px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+        }
+        .hero-card:hover { transform: scale(1.05) rotateY(10deg) rotateX(5deg); border-color: var(--gold); }
+        .hero-card img { width: 120px; height: 120px; border-radius: 10px; margin-bottom: 10px; pointer-events: none; }
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
         .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
         .btn-ultra { width: 100%; margin-top: 10px; padding: 15px; font-size: 18px; background: #300; color: #666; border: 2px solid #333; border-radius: 8px; font-weight: bold; cursor: not-allowed; }
@@ -50,10 +57,10 @@
     <div id="menu-overlay">
         <h1 style="color:var(--gold); font-size: 50px; margin-bottom: 30px;">TAVERNA WAR</h1>
         <div class="hero-cards">
-            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/hero_warrior.png"><h3>ВОИН</h3><p>Ульта: Красные + Зеленые</p></div>
-            <div class="hero-card" onclick="startGame('mage')"><img src="assets/hero_mage.png"><h3>МАГ</h3><p>Ульта: Фиол + Желтые</p></div>
-            <div class="hero-card" onclick="startGame('archer')"><img src="assets/hero_archer.png"><h3>ЛУЧНИК</h3><p>Ульта: 4 Линии</p></div>
-            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/hero_assassin.png"><h3>УБИЙЦА</h3><p>Ульта: 30% поля + Удар</p></div>
+            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/warrior.png"><h3>ВОИН</h3><p>Ульта: Красные + Зеленые</p></div>
+            <div class="hero-card" onclick="startGame('mage')"><img src="assets/mage.png"><h3>МАГ</h3><p>Ульта: Фиол + Желтые</p></div>
+            <div class="hero-card" onclick="startGame('archer')"><img src="assets/archer.png"><h3>ЛУЧНИК</h3><p>Ульта: 4 Линии</p></div>
+            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/assassin.png"><h3>УБИЙЦА</h3><p>Ульта: 30% поля + Удар</p></div>
         </div>
     </div>
 
@@ -117,7 +124,7 @@
         document.getElementById('menu-overlay').style.display = 'none';
         const base = { 'warrior':{hp:1600,atk:25,agi:5}, 'mage':{hp:800,atk:65,agi:2}, 'archer':{hp:1000,atk:40,agi:18}, 'assassin':{hp:900,atk:55,agi:14} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, equip: { weapon:{n:"Старая палка",atk:12,arm:0,agi:0,rar:0} } };
-        document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.png')`;
+        document.getElementById('p-portrait').style.backgroundImage = `url('assets/${key}.png')`;
         initPhaser(); spawnMob(); refreshUI();
     }
 
@@ -244,6 +251,17 @@
             container.maskShape = maskShape;
             container.setSize(TILE_S, TILE_S).setInteractive();
             container.on('pointerdown', () => this.handlePointer(container));
+
+            // ЭФФЕКТ ДЫХАНИЯ (Пульсация)
+            this.tweens.add({
+                targets: container,
+                scaleX: 1.03,
+                scaleY: 1.03,
+                duration: 800 + Math.random() * 400,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
 
             this.grid[r][c] = container;
             if(fromTop) this.tweens.add({targets: container, y: r*TILE_S+TILE_S/2, duration: 400});
