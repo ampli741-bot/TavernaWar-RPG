@@ -41,6 +41,7 @@
             box-sizing: border-box; z-index: 10;
             backdrop-filter: blur(15px);
             border-right: 2px solid rgba(255,215,0,0.2);
+            perspective: 1000px; /* Важно для 3D наклона */
         }
         #ui-right { border-right: none; border-left: 2px solid rgba(255,215,0,0.2); }
 
@@ -50,71 +51,43 @@
             background: transparent; 
         }
 
-        /* --- ЭФФЕКТ ЖИВОГО ПОРТРЕТА 2.0 (PARALLAX & GLOW) --- */
-        .portrait-container {
+        /* --- ЭФФЕКТ 3D НАКЛОНА (TILT EFFECT) --- */
+        .portrait-wrapper {
             width: 240px; height: 240px; margin: 0 auto 15px auto;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .portrait-container {
+            width: 100%; height: 100%;
             position: relative; 
             border-radius: 50%;
             border: 4px solid var(--gold);
-            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
             background: #000;
             overflow: hidden;
-            flex-shrink: 0;
-            cursor: none; /* Скрываем курсор для чистоты эффекта */
+            transition: transform 0.1s ease-out; /* Плавный возврат */
+            transform-style: preserve-3d;
         }
 
         .layer-hero {
-            width: 130%; height: 130%; 
+            width: 100%; height: 100%; 
             position: absolute;
-            top: -15%; left: -15%;
             background-size: cover;
             background-position: center;
-            transition: transform 0.1s ease-out; /* Быстрая реакция */
             pointer-events: none;
             filter: saturate(1.1) contrast(1.1);
         }
 
-        /* Магический блик, который следует за мышкой */
+        /* Магический переливающийся блик */
         .shine-layer {
             position: absolute;
             inset: 0;
-            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
-                        rgba(255,255,255,0.4) 0%, 
-                        rgba(255,255,255,0) 60%);
+            background: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 200%;
+            background-position: var(--shine-x, 0%) var(--shine-y, 0%);
             mix-blend-mode: overlay;
             pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .portrait-container:hover .shine-layer { opacity: 1; }
-
-        /* Эффект дыхания всей области */
-        .portrait-container::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            box-shadow: inset 0 0 40px rgba(0,0,0,0.7);
-            pointer-events: none;
-        }
-
-        @keyframes heroBreathe {
-            0%, 100% { filter: brightness(1) contrast(1); }
-            50% { filter: brightness(1.2) contrast(1.1); }
-        }
-        .layer-hero { animation: heroBreathe 4s infinite ease-in-out; }
-
-        /* Кастомный курсор-искорка */
-        .magic-cursor {
-            width: 10px; height: 10px;
-            background: white;
-            border-radius: 50%;
-            position: fixed;
-            pointer-events: none;
-            z-index: 1000;
-            box-shadow: 0 0 15px 5px var(--gold);
-            transform: translate(-50%, -50%);
-            display: none;
         }
 
         /* Полоски статуса */
@@ -148,11 +121,9 @@
 <body>
 
     <div id="background-layer"></div>
-    <div id="magic-cursor" class="magic-cursor"></div>
 
     <div id="menu-overlay">
         <h1 style="color:var(--gold); font-family: 'Cinzel'; font-size: 64px; margin-bottom: 10px; text-shadow: 0 0 20px rgba(255,215,0,0.4);">TAVERNA WAR</h1>
-        <p style="color: #aaa; letter-spacing: 4px; margin-bottom: 40px; font-size: 14px;">ВЫБЕРИТЕ СВОЙ ПУТЬ</p>
         <div style="display:flex;">
             <div class="hero-card" onclick="startGame('warrior')"><h3 style="color:#f44; margin:0; font-family:'Cinzel';">ВОИН</h3></div>
             <div class="hero-card" onclick="startGame('mage')"><h3 style="color:#48f; margin:0; font-family:'Cinzel';">МАГ</h3></div>
@@ -165,9 +136,11 @@
 
     <!-- UI Игрока -->
     <div id="ui-left">
-        <div class="portrait-container" onmousemove="handlePortraitFX(event, 'p-hero', this)" onmouseleave="resetPortraitFX('p-hero', this)">
-            <div id="p-hero" class="layer-hero"></div>
-            <div class="shine-layer"></div>
+        <div class="portrait-wrapper" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
+            <div class="portrait-container">
+                <div id="p-hero" class="layer-hero"></div>
+                <div class="shine-layer"></div>
+            </div>
         </div>
         <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0</div><div id="p-arm-f" class="bar-fill" style="background: linear-gradient(to right, #246, #48b); width: 0%;"></div></div>
         <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: linear-gradient(to right, #711, #b22); width: 100%;"></div></div>
@@ -185,9 +158,11 @@
 
     <!-- UI Врага -->
     <div id="ui-right">
-        <div class="portrait-container" onmousemove="handlePortraitFX(event, 'm-hero', this)" onmouseleave="resetPortraitFX('m-hero', this)">
-            <div id="m-hero" class="layer-hero"></div>
-            <div class="shine-layer"></div>
+        <div class="portrait-wrapper" onmousemove="handleTilt(event, this)" onmouseleave="resetTilt(this)">
+            <div class="portrait-container">
+                <div id="m-hero" class="layer-hero"></div>
+                <div class="shine-layer"></div>
+            </div>
         </div>
         <h3 id="m-name" style="color:#f44; text-align:center; font-family:'Cinzel'; margin:15px 0; font-size:20px; letter-spacing:1px;">ВРАГ</h3>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: linear-gradient(to right, #711, #b22); width: 100%;"></div></div>
@@ -211,6 +186,32 @@
     const slotNames = { weapon: "Оружие", body: "Доспех", head: "Шлем", ring: "Перстень" };
     const BG_COLORS = { red: 0x4a1010, blue: 0x102a4a, green: 0x104a1a, purple: 0x3a104a, yellow: 0x4a3a10 };
 
+    /* --- ЛОГИКА 3D НАКЛОНА --- */
+    function handleTilt(e, wrapper) {
+        const container = wrapper.querySelector('.portrait-container');
+        const rect = wrapper.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Вычисляем угол наклона (макс 20 градусов)
+        const rotateX = (centerY - y) / 6;
+        const rotateY = (x - centerX) / 6;
+        
+        container.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+        
+        // Двигаем блик
+        container.style.setProperty('--shine-x', (x / rect.width) * 100 + '%');
+        container.style.setProperty('--shine-y', (y / rect.height) * 100 + '%');
+    }
+
+    function resetTilt(wrapper) {
+        const container = wrapper.querySelector('.portrait-container');
+        container.style.transform = `rotateX(0deg) rotateY(0deg) scale(1)`;
+    }
+
     window.app = { 
         player: null, mob: null, lootActive: false, turn: "PLAYER",
         log: (msg, type) => {
@@ -218,64 +219,26 @@
             const entry = document.createElement('div');
             entry.style.color = type==='p'?'#4f4':type==='m'?'#f44':type==='crit'?'#a4f':'#fd0';
             entry.style.marginBottom = '5px';
-            entry.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
             entry.innerText = `[${new Date().toLocaleTimeString([], {minute: '2-digit', second:'2-digit'})}] ${msg}`;
             log.prepend(entry);
         }
     };
-
-    /* --- НОВЫЙ ЭФФЕКТ: СЛЕДОВАНИЕ ЗА КУРСОРОМ И БЛИК --- */
-    const magicCursor = document.getElementById('magic-cursor');
-    
-    function handlePortraitFX(e, heroId, container) {
-        const hero = document.getElementById(heroId);
-        const rect = container.getBoundingClientRect();
-        
-        // Координаты от -0.5 до 0.5
-        const x = (e.clientX - rect.left) / rect.width - 0.5;
-        const y = (e.clientY - rect.top) / rect.height - 0.5;
-        
-        // Параллакс эффект для героя (небольшое смещение)
-        const moveX = x * 35;
-        const moveY = y * 35;
-        hero.style.transform = `translate(${moveX}px, ${moveY}px)`;
-
-        // Передаем координаты в CSS для блика
-        container.style.setProperty('--mouse-x', (x + 0.5) * 100 + '%');
-        container.style.setProperty('--mouse-y', (y + 0.5) * 100 + '%');
-
-        // Управление магическим курсором
-        magicCursor.style.display = 'block';
-        magicCursor.style.left = e.clientX + 'px';
-        magicCursor.style.top = e.clientY + 'px';
-    }
-
-    function resetPortraitFX(heroId, container) {
-        const hero = document.getElementById(heroId);
-        hero.style.transform = `translate(0, 0)`;
-        magicCursor.style.display = 'none';
-    }
-
-    // Общий обработчик движения мыши для курсора-искорки везде
-    document.addEventListener('mousemove', (e) => {
-        if (e.target.closest('.portrait-container')) return; // Портрет сам справляется
-        magicCursor.style.display = 'none'; // Вне портрета скрываем искорку, если нужно
-    });
 
     function startGame(key) {
         document.getElementById('menu-overlay').style.display = 'none';
         const base = { 'warrior':{hp:2500,atk:40}, 'mage':{hp:1200,atk:90}, 'archer':{hp:1500,atk:60}, 'assassin':{hp:1300,atk:80} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, equip: { weapon:{n:"Ржавый клинок",atk:5,arm:0,rar:0} } };
         
+        // Твои изображения героев
         const portraits = {
-            'warrior': 'https://images.unsplash.com/photo-1599508704512-2f19efd1e35f?q=80&w=400', // Mock images for demo
-            'mage': 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=400',
-            'archer': 'https://images.unsplash.com/photo-1605142859862-978be7eba909?q=80&w=400',
-            'assassin': 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=400'
+            'warrior': 'https://i.ibb.co/6R8rY7L/warrior.png',
+            'mage': 'https://i.ibb.co/mS6S6L7/mage.png',
+            'archer': 'https://i.ibb.co/vYV5j2w/archer.png',
+            'assassin': 'https://i.ibb.co/r2M6yv0/assassin.png'
         };
 
         const heroEl = document.getElementById('p-hero');
-        heroEl.style.backgroundImage = `url('${portraits[key] || 'https://via.placeholder.com/400?text=Hero'}')`;
+        heroEl.style.backgroundImage = `url('${portraits[key]}')`;
         
         initPhaser(); spawnMob(); refreshUI();
     }
@@ -437,13 +400,13 @@
 
             if(window.app.turn === "PLAYER") {
                 if(counts.red > 0) { m.hp -= unitAtk * counts.red; window.app.log(`Атака: -${unitAtk * counts.red}`, 'p'); }
-                if(counts.purple > 0) { m.hp -= unitAtk*3 * counts.purple; window.app.log(`КРИТИЧЕСКИЙ УДАР: -${Math.floor(unitAtk*3 * counts.purple)}`, 'crit'); }
+                if(counts.purple > 0) { m.hp -= unitAtk*3 * counts.purple; window.app.log(`КРИТ: -${Math.floor(unitAtk*3 * counts.purple)}`, 'crit'); }
                 if(counts.blue > 0) p.mana = Math.min(100, p.mana + counts.blue*15);
                 if(counts.green > 0) { p.hp=Math.min(p.maxHp, p.hp+counts.green*50); p.armor=Math.min(p.maxArmor, p.armor+counts.green*30); }
                 if(counts.yellow > 0) p.gold += counts.yellow*20;
             } else {
                 let dmg = (counts.red * 50) + (counts.purple * 80);
-                if(dmg > 0) { if(p.armor > 0) { p.armor -= dmg; if(p.armor<0) {p.hp+=p.armor; p.armor=0;}} else p.hp -= dmg; window.app.log(`Враг наносит урон: -${Math.floor(dmg)}`, 'm'); }
+                if(dmg > 0) { if(p.armor > 0) { p.armor -= dmg; if(p.armor<0) {p.hp+=p.armor; p.armor=0;}} else p.hp -= dmg; window.app.log(`Враг: -${Math.floor(dmg)}`, 'm'); }
             }
             if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
