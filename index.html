@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Gothic Steel Edition</title>
+    <title>Taverna War: Gothic Glow</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -17,7 +17,7 @@
             font-family: 'Verdana', sans-serif; touch-action: none; 
         }
         #ui-left, #ui-right { 
-            width: 380px; padding: 15px; background: rgba(0, 0, 0, 0.9); 
+            width: 360px; padding: 15px; background: rgba(0, 0, 0, 0.9); 
             display: flex; flex-direction: column; border: 3px solid var(--border); 
             box-sizing: border-box; z-index: 10; 
         }
@@ -92,9 +92,16 @@
     const OFFSET = 5;
     let phaserGame, scene, currentLoot = null;
 
-    const COLORS = {
+    // Глубокие фоновые цвета
+    const BG_COLORS = {
         red: 0x3d0a0a, blue: 0x0a1a2f, green: 0x0a240a,
         purple: 0x220a35, yellow: 0x2d2405
+    };
+
+    // Яркие цвета для свечения рамки
+    const GLOW_COLORS = {
+        red: 0xff0000, blue: 0x00aaff, green: 0x00ff00,
+        purple: 0xaa00ff, yellow: 0xffaa00
     };
 
     window.app = { 
@@ -160,14 +167,20 @@
             
             let container = this.add.container(x, y);
 
-            // 1. ПОДЛОЖКА
+            // 1. СВЕЧЕНИЕ (Глоу под цвет плитки)
+            let glow = this.add.graphics();
+            glow.fillStyle(GLOW_COLORS[type], 0.3);
+            glow.fillRoundedRect(-TILE_S/2 - 4, -TILE_S/2 - 4, TILE_S + 8, TILE_S + 8, 14);
+
+            // 2. ПОДЛОЖКА
             let bg = this.add.graphics();
-            bg.fillStyle(COLORS[type], 1);
+            bg.fillStyle(BG_COLORS[type], 1);
             bg.fillRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 12);
 
-            // 2. РУНА С ПЕРСОНАЛЬНЫМ ЗУМОМ
+            // 3. РУНА (Увеличенная)
             let img = this.add.image(0, 0, `t_${type}`);
-            let zoom = (type === 'red' || type === 'blue' || type === 'purple') ? 1.85 : 1.4;
+            // Синие, красные, фиолетовые теперь еще больше (2.1), чтобы точно скрыть края
+            let zoom = (type === 'red' || type === 'blue' || type === 'purple') ? 2.1 : 1.45;
             img.setDisplaySize(TILE_S * zoom, TILE_S * zoom);
 
             // Маска
@@ -176,16 +189,17 @@
             maskShape.fillRoundedRect(x - TILE_S/2, y - TILE_S/2, TILE_S, TILE_S, 12);
             img.setMask(maskShape.createGeometryMask());
 
-            // 3. ГОТИЧЕСКАЯ СТАЛЬНАЯ РАМКА
+            // 4. ГОТИЧЕСКАЯ РАМКА
             let frame = this.add.graphics();
-            frame.lineStyle(6, 0x444444, 1); // Оружейный металл
+            frame.lineStyle(6, 0x444444, 1);
             frame.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
             
-            frame.lineStyle(2, 0x666666, 0.8); // Фаска
+            frame.lineStyle(2, 0x666666, 0.8);
             frame.strokeRoundedRect(-TILE_S/2 + 2, -TILE_S/2 + 2, TILE_S - 4, TILE_S - 4, 8);
 
-            frame.lineStyle(1.5, 0xbc962c, 0.4); // Золотой акцент (еле заметно внизу)
-            frame.strokeRoundedRect(-TILE_S/2 + 6, -TILE_S/2 + 6, TILE_S - 12, TILE_S - 12, 6);
+            // Желтая (золотая) кайма опущена ниже и сделана тоньше
+            frame.lineStyle(1.2, 0xbc962c, 0.6);
+            frame.strokeRoundedRect(-TILE_S/2 + 7, -TILE_S/2 + 7, TILE_S - 14, TILE_S - 14, 6);
 
             // Шипы
             frame.fillStyle(0x555555, 1);
@@ -195,7 +209,7 @@
             frame.fillTriangle(-s - sh, 0, -s + 2, -sw, -s + 2, sw);
             frame.fillTriangle(s + sh, 0, s - 2, -sw, s - 2, sw);
 
-            container.add([bg, img, frame]);
+            container.add([glow, bg, img, frame]);
             container.maskShape = maskShape;
             container.gridR = r; container.gridC = c; container.type = type;
             container.setSize(TILE_S, TILE_S);
@@ -203,7 +217,7 @@
             container.on('pointerdown', () => this.handlePointer(container));
 
             this.grid[r][c] = container;
-            if(fromTop) this.tweens.add({targets: container, y: r*(TILE_S+OFFSET)+TILE_S/2, duration:400});
+            if(fromTop) this.tweens.add({targets: container, y: r*(TILE_S+OFFSET)+TILE_S/2, duration: 400});
         }
 
         update() {
@@ -292,7 +306,7 @@
     function initPhaser() {
         new Phaser.Game({
             type: Phaser.AUTO, parent: 'game-container',
-            width: 720, height: 720, scene: GameScene, transparent: true
+            width: 740, height: 740, scene: GameScene, transparent: true
         });
     }
 
