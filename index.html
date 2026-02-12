@@ -10,6 +10,8 @@
         :root { 
             --gold: #ffd700; --border: #b48c46; --bg: #0c0a08;
             --rar0: #b0b0b0; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
+            /* Цвет заднего фона для маскировки шахматки */
+            --mask-bg: #1a1510; 
         }
         body { 
             margin: 0; background: var(--bg); color: white; 
@@ -19,7 +21,7 @@
         }
 
         #ui-left, #ui-right { 
-            width: 340px; padding: 20px; background: rgba(0, 0, 0, 0.92); 
+            width: 340px; padding: 20px; background: rgba(0, 0, 0, 0.95); 
             display: flex; flex-direction: column; border: 2px solid var(--border); 
             box-sizing: border-box; z-index: 10; backdrop-filter: blur(15px);
             box-shadow: inset 0 0 50px rgba(0,0,0,1);
@@ -28,98 +30,102 @@
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; margin: 5px 0; text-align: center; }
 
-        /* УЛУЧШЕННЫЕ ПОРТРЕТЫ ПО РЕФЕРЕНСУ */
+        /* ПОРТРЕТЫ С МАСКИРОВКОЙ ШАХМАТКИ */
         .portrait-box {
             position: relative; 
-            width: 240px; 
-            height: 240px; 
+            width: 260px; 
+            height: 260px; 
             margin: 10px auto;
-            border: 3px solid #b48c46; 
-            background: radial-gradient(circle, #331111 0%, #000 100%); 
-            box-shadow: 0 0 30px rgba(0,0,0,0.9), inset 0 0 20px rgba(180, 140, 70, 0.3);
-            border-radius: 2px;
+            border: 3px solid var(--border); 
+            /* Основной фон - темный градиент */
+            background: radial-gradient(circle, #442211 0%, #151210 100%); 
+            box-shadow: 0 0 30px rgba(0,0,0,0.9);
+            border-radius: 4px;
             overflow: hidden;
         }
 
-        /* Декоративные искры по углам (как на скрине) */
+        /* Декоративные искры */
         .portrait-box::before, .portrait-box::after {
             content: '✦'; position: absolute; color: var(--gold); 
-            font-size: 20px; text-shadow: 0 0 10px var(--gold); z-index: 5;
+            font-size: 24px; text-shadow: 0 0 10px var(--gold); z-index: 10;
         }
-        .portrait-box::before { top: 5px; left: 5px; }
-        .portrait-box::after { bottom: 5px; right: 5px; }
+        .portrait-box::before { top: 5px; left: 10px; }
+        .portrait-box::after { bottom: 5px; right: 10px; }
 
         .portrait-img { 
             width: 100%; height: 100%; 
-            background-size: 140%; /* Делаем героя крупнее */
-            background-position: center 20%; 
+            background-size: 150%; 
+            background-position: center 15%; 
             background-repeat: no-repeat;
+            /* КЛЮЧЕВОЙ МОМЕНТ: Смешиваем картинку с фоном, чтобы убрать белую шахматку */
+            background-blend-mode: multiply; 
+            background-color: #eee; /* Подложка для фильтрации */
             transition: transform 0.3s ease;
         }
         
         .portrait-label {
-            position: absolute; bottom: 10px; width: 100%;
+            position: absolute; bottom: 15px; width: 100%;
             text-align: center; font-family: 'Cinzel';
-            color: #fff; text-shadow: 0 0 8px #000, 0 0 4px #f00;
-            font-size: 18px; letter-spacing: 2px; font-weight: bold;
-            pointer-events: none; z-index: 4;
+            color: #fff; text-shadow: 0 0 10px #000, 0 0 5px var(--gold);
+            font-size: 20px; letter-spacing: 3px; font-weight: bold;
+            pointer-events: none; z-index: 11;
         }
 
         /* Прогресс-бары */
-        .bar-wrap { width: 100%; height: 26px; background: #1a1111; border: 1px solid #444; margin-top: 8px; position: relative; border-radius: 2px; overflow: hidden; }
-        .bar-fill { height: 100%; width: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 26px; font-weight: bold; text-shadow: 1px 1px 2px black; z-index: 5; text-transform: uppercase; }
+        .bar-wrap { width: 100%; height: 28px; background: #1a1111; border: 1px solid #444; margin-top: 10px; position: relative; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.4s ease; }
+        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 12px; line-height: 28px; font-weight: bold; text-shadow: 1px 1px 2px black; z-index: 5; }
 
-        #battle-log { flex-grow: 1; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #3d2f1e; padding: 10px; font-size: 11px; overflow-y: auto; color: #ccc; font-family: monospace; }
+        #battle-log { flex-grow: 1; margin-top: 15px; background: rgba(0,0,0,0.8); border: 1px solid #3d2f1e; padding: 12px; font-size: 12px; overflow-y: auto; color: #ddd; font-family: 'Verdana'; }
 
         .btn-ultra { 
             width: 100%; padding: 15px; margin-top: 15px; font-size: 18px; 
-            background: #1a0505; color: #444; border: 2px solid #322; cursor: not-allowed; transition: 0.3s;
+            background: #1a0505; color: #555; border: 2px solid #322; cursor: not-allowed; transition: 0.4s;
         }
         .btn-ultra.ready { 
-            background: linear-gradient(to bottom, #900, #400); color: white; border-color: var(--gold); cursor: pointer; 
-            box-shadow: 0 0 20px rgba(255,0,0,0.6); animation: glow 2s infinite; 
+            background: linear-gradient(to bottom, #b00, #500); color: white; border-color: var(--gold); cursor: pointer; 
+            box-shadow: 0 0 25px rgba(255,0,0,0.7); animation: glowPulse 2s infinite; 
         }
-        @keyframes glow { 0%, 100% { box-shadow: 0 0 10px #900; } 50% { box-shadow: 0 0 25px #f00; } }
+        @keyframes glowPulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
 
-        /* Меню */
-        #menu-overlay, #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-selection { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        /* Меню выбора */
+        #menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .hero-selection { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
         .hero-card { 
-            width: 200px; padding: 15px; border: 2px solid #3d2f1e; 
+            width: 220px; padding: 15px; border: 2px solid #3d2f1e; 
             background: #0f0c0a; text-align: center; cursor: pointer; transition: 0.3s; 
         }
-        .hero-card:hover { border-color: var(--gold); transform: scale(1.05); box-shadow: 0 0 20px rgba(180,140,70,0.4); }
-        .hero-card img { width: 100%; height: 180px; object-fit: cover; border-bottom: 2px solid #3d2f1e; margin-bottom: 10px; }
+        .hero-card:hover { border-color: var(--gold); transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,1); }
+        .hero-card img { 
+            width: 100%; height: 220px; object-fit: cover; border-bottom: 2px solid #3d2f1e; 
+            background: #1a1510; /* Скрываем шахматку в меню */
+        }
 
-        .loot-window { background: #151210; padding: 40px; border: 3px solid var(--gold); text-align: center; box-shadow: 0 0 100px rgba(0,0,0,1); }
-        .btn-action { padding: 12px 30px; background: var(--gold); border: none; font-family: 'Cinzel'; cursor: pointer; font-weight: bold; margin: 10px; font-size: 16px; }
+        #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .loot-window { background: #151210; padding: 40px; border: 3px solid var(--gold); text-align: center; max-width: 500px; }
+        .btn-action { padding: 12px 30px; background: var(--gold); border: none; font-family: 'Cinzel'; cursor: pointer; font-weight: bold; margin: 10px; }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-size: 48px; margin-bottom: 40px; text-shadow: 0 0 20px rgba(255,215,0,0.5);">TAVERNA WAR</h1>
+        <h1 style="color:var(--gold); font-size: 56px; margin-bottom: 50px; text-shadow: 0 0 30px rgba(255,215,0,0.4);">TAVERNA WAR</h1>
         <div class="hero-selection">
             <div class="hero-card" onclick="startWith('warrior')">
                 <img src="assets/hero_warrior.png" onerror="this.src='https://placehold.co/200x300/211/fff?text=WARRIOR'">
                 <h3>ВОИН</h3>
-                <p style="font-size:10px; color:#777;">КРАСНЫЕ / ЗЕЛЕНЫЕ</p>
             </div>
             <div class="hero-card" onclick="startWith('mage')">
                 <img src="assets/hero_mage.png" onerror="this.src='https://placehold.co/200x300/112/fff?text=MAGE'">
                 <h3>МАГ</h3>
-                <p style="font-size:10px; color:#777;">ФИОЛЕТОВЫЕ / ЖЕЛТЫЕ</p>
             </div>
             <div class="hero-card" onclick="startWith('archer')">
                 <img src="assets/hero_archer.png" onerror="this.src='https://placehold.co/200x300/121/fff?text=ARCHER'">
                 <h3>ЛУЧНИК</h3>
-                <p style="font-size:10px; color:#777;">ЗАЛП ПО РЯДАМ</p>
             </div>
             <div class="hero-card" onclick="startWith('assassin')">
                 <img src="assets/hero_assassin.png" onerror="this.src='https://placehold.co/200x300/111/fff?text=ASSASSIN'">
                 <h3>УБИЙЦА</h3>
-                <p style="font-size:10px; color:#777;">ТОЧЕЧНЫЕ ВЗРЫВЫ</p>
             </div>
         </div>
     </div>
@@ -131,9 +137,9 @@
             <div id="p-label" class="portrait-label">WARRIOR</div>
         </div>
         
-        <div class="bar-wrap"><div id="p-arm-txt" class="bar-text">БРОНЯ: 0</div><div id="p-arm-fill" class="bar-fill" style="background:linear-gradient(90deg, #1a4dff, #4da6ff);"></div></div>
-        <div class="bar-wrap"><div id="p-hp-txt" class="bar-text">ЗДОРОВЬЕ: 0/0</div><div id="p-hp-fill" class="bar-fill" style="background:linear-gradient(90deg, #b30000, #ff3333);"></div></div>
-        <div class="bar-wrap"><div id="p-mn-txt" class="bar-text">МАНА: 0%</div><div id="p-mn-fill" class="bar-fill" style="background:linear-gradient(90deg, #4400cc, #9933ff);"></div></div>
+        <div class="bar-wrap"><div id="p-arm-txt" class="bar-text">БРОНЯ: 0</div><div id="p-arm-fill" class="bar-fill" style="background:linear-gradient(90deg, #1e3a8a, #3b82f6);"></div></div>
+        <div class="bar-wrap"><div id="p-hp-txt" class="bar-text">ЗДОРОВЬЕ: 0/0</div><div id="p-hp-fill" class="bar-fill" style="background:linear-gradient(90deg, #7f1d1d, #ef4444);"></div></div>
+        <div class="bar-wrap"><div id="p-mn-txt" class="bar-text">МАНА: 0%</div><div id="p-mn-fill" class="bar-fill" style="background:linear-gradient(90deg, #4c1d95, #8b5cf6);"></div></div>
         
         <button id="btn-ultra" class="btn-ultra" onclick="activateUltra()">СУПЕРУДАР</button>
         <div id="battle-log"></div>
@@ -143,28 +149,27 @@
 
     <!-- UI Врага -->
     <div id="ui-right">
-        <div class="portrait-box" style="border-color: #ff4444;">
-            <div id="m-portrait" class="portrait-img" style="filter: brightness(0.6) sepia(0.4) hue-rotate(-30deg);"></div>
-            <div id="m-label" class="portrait-label" style="color:#ff4444; text-shadow: 0 0 10px #f00;">ENEMY</div>
+        <div class="portrait-box" style="border-color: #7f1d1d;">
+            <div id="m-portrait" class="portrait-img" style="filter: brightness(0.7) sepia(0.2); background-blend-mode: multiply;"></div>
+            <div id="m-label" class="portrait-label" style="color:#ef4444;">ENEMY</div>
         </div>
         
-        <div class="bar-wrap"><div id="m-hp-txt" class="bar-text">ЗДОРОВЬЕ: 0/0</div><div id="m-hp-fill" class="bar-fill" style="background:linear-gradient(90deg, #660000, #cc0000);"></div></div>
+        <div class="bar-wrap"><div id="m-hp-txt" class="bar-text">ЗДОРОВЬЕ: 0/0</div><div id="m-hp-fill" class="bar-fill" style="background:linear-gradient(90deg, #450a0a, #991b1b);"></div></div>
         
-        <div style="margin-top:20px; padding:15px; background:rgba(0,0,0,0.5); border:1px solid #3d2f1e; border-radius:2px;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>УРОН:</span><b id="stat-atk" style="color:var(--gold)">0</b></div>
+        <div style="margin-top:20px; padding:15px; background:rgba(20,15,10,0.8); border:1px solid #3d2f1e;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>АТАКА:</span><b id="stat-atk" style="color:var(--gold)">0</b></div>
             <div style="display:flex; justify-content:space-between"><span>ЗОЛОТО:</span><b id="stat-gold" style="color:var(--gold)">0</b></div>
         </div>
         
-        <h3 style="margin-top:25px; border-bottom:1px solid var(--border); padding-bottom:5px; font-size:14px; color:var(--gold);">СНАРЯЖЕНИЕ</h3>
-        <div id="inventory" style="font-size:12px; color:#999; padding:10px 0; font-style: italic;"></div>
+        <h3 style="margin-top:25px; border-bottom:1px solid var(--border); padding-bottom:5px; font-size:14px; color:var(--gold);">ИНВЕНТАРЬ</h3>
+        <div id="inventory" style="font-size:13px; color:#aaa; padding:10px 0;"></div>
     </div>
 
     <div id="loot-overlay" style="display:none;">
         <div class="loot-window">
             <h2 style="color:var(--gold); font-size: 32px;">ПОБЕДА!</h2>
-            <p id="loot-text" style="font-size:18px; margin:25px 0; color: #ccc;">Вы получили новый уровень и ценный трофей!</p>
-            <button class="btn-action" onclick="claimLoot()">ВЗЯТЬ НАГРАДУ</button>
-            <button class="btn-action" onclick="scrapLoot()" style="background:#333; color:#aaa;">ПРОДАТЬ (+50💰)</button>
+            <p id="loot-text" style="font-size:18px; margin:25px 0;">Трофей найден!</p>
+            <button class="btn-action" onclick="claimLoot()">ЗАБРАТЬ</button>
         </div>
     </div>
 
@@ -179,8 +184,8 @@
             const logBox = document.getElementById('battle-log');
             const line = document.createElement('div');
             line.style.borderLeft = side === 'p' ? '3px solid #4f4' : side === 'm' ? '3px solid #f44' : '3px solid #ffd700';
-            line.style.paddingLeft = '8px';
-            line.style.marginBottom = '4px';
+            line.style.paddingLeft = '10px';
+            line.style.marginBottom = '6px';
             line.innerText = msg;
             logBox.prepend(line);
         }
@@ -191,8 +196,8 @@
         const config = { warrior: [1600, 35], mage: [850, 75], archer: [1050, 55], assassin: [950, 65] }[job];
         
         window.gameData.p = {
-            job, hp: config[0], maxHp: config[0], armor: 0, maxArmor: 350, mana: 0, gold: 0, atk: config[1], level: 1,
-            item: "Ржавый клинок"
+            job, hp: config[0], maxHp: config[0], armor: 0, maxArmor: 400, mana: 0, gold: 0, atk: config[1], level: 1,
+            item: "Простой меч"
         };
 
         const pImg = document.getElementById('p-portrait');
@@ -206,13 +211,12 @@
     function spawnEnemy() {
         const lv = window.gameData.p.level;
         window.gameData.m = { 
-            name: "СТРАЖ " + lv, 
-            hp: 400 + lv * 250, 
-            maxHp: 400 + lv * 250, 
-            atk: 30 + lv * 15 
+            name: "БОСС ЭТАЖА " + lv, 
+            hp: 500 + lv * 300, 
+            maxHp: 500 + lv * 300, 
+            atk: 35 + lv * 15 
         };
         document.getElementById('m-label').innerText = window.gameData.m.name;
-        // Случайный монстр из ассетов 1-5.jpg
         const randImg = Math.ceil(Math.random() * 5);
         document.getElementById('m-portrait').style.backgroundImage = `url('assets/${randImg}.jpg')`;
         window.gameData.turn = "PLAYER";
@@ -243,7 +247,7 @@
         if(window.gameData.p.mana < 100 || window.gameData.isBusy) return;
         window.gameData.p.mana = 0;
         const job = window.gameData.p.job;
-        window.gameData.log("ИСПОЛЬЗОВАНА СУПЕРСПОСОБНОСТЬ!", 'crit');
+        window.gameData.log("УЛЬТИМАТИВНЫЙ НАВЫК!", 'crit');
 
         let toBurst = [];
         const grid = gameScene.board;
@@ -274,17 +278,14 @@
             const g = this.make.graphics({x:0, y:0, add:false});
             Object.entries(GEM_TYPES).forEach(([name, color]) => {
                 g.clear();
-                // Фон плашки камня
-                g.fillStyle(0x1a1a1a, 0.9);
-                g.fillRoundedRect(4, 4, 72, 72, 10);
-                // Оправа
-                g.lineStyle(2, 0x3d2f1e, 1);
-                g.strokeRoundedRect(4, 4, 72, 72, 10);
-                // Светящийся символ
-                g.lineStyle(3, color, 1);
-                g.strokeCircle(40, 40, 18);
-                g.fillStyle(color, 0.3);
-                g.fillCircle(40, 40, 10);
+                g.fillStyle(0x1a1510, 0.95);
+                g.fillRoundedRect(5, 5, 70, 70, 12);
+                g.lineStyle(2, 0x4d3d2a, 1);
+                g.strokeRoundedRect(5, 5, 70, 70, 12);
+                g.lineStyle(4, color, 1);
+                g.strokeCircle(40, 40, 20);
+                g.fillStyle(color, 0.4);
+                g.fillCircle(40, 40, 12);
                 g.generateTexture(`gem_${name}`, 80, 80);
             });
         }
@@ -310,12 +311,12 @@
             gem.on('pointerdown', () => this.onGemClick(gem));
             
             this.board[r][c] = gem;
-            if(anim) this.tweens.add({targets: gem, y: r*TILE_SIZE + TILE_SIZE/2, duration: 300, ease: 'Back.easeOut'});
+            if(anim) this.tweens.add({targets: gem, y: r*TILE_SIZE + TILE_SIZE/2, duration: 350, ease: 'Cubic.easeOut'});
         }
 
         async onGemClick(gem) {
             if(this.isBusy || window.gameData.turn !== "PLAYER") return;
-            if(!this.selected) { this.selected = gem; gem.setScale(1.1); }
+            if(!this.selected) { this.selected = gem; gem.setScale(1.15); }
             else {
                 let dist = Math.abs(gem.r - this.selected.r) + Math.abs(gem.c - this.selected.c);
                 if(dist === 1) {
@@ -323,7 +324,7 @@
                     if(!await this.matchCheck()) await this.swap(this.selected, gem);
                     else { 
                         window.gameData.turn = "MOB"; 
-                        this.time.delayedCall(800, () => this.mobMove()); 
+                        this.time.delayedCall(1000, () => this.mobMove()); 
                     }
                 }
                 if(this.selected) this.selected.setScale(1); this.selected = null;
@@ -336,8 +337,8 @@
             this.board[r1][c1]=g2; this.board[r2][c2]=g1;
             g1.r=r2; g1.c=c2; g2.r=r1; g2.c=c1;
             return new Promise(res => {
-                this.tweens.add({targets:g1, x:c2*TILE_SIZE+TILE_SIZE/2, y:r2*TILE_SIZE+TILE_SIZE/2, duration:250, ease:'Power2'});
-                this.tweens.add({targets:g2, x:c1*TILE_SIZE+TILE_SIZE/2, y:r1*TILE_SIZE+TILE_SIZE/2, duration:250, ease:'Power2', onComplete:()=>{this.isBusy=false; res();}});
+                this.tweens.add({targets:g1, x:c2*TILE_SIZE+TILE_SIZE/2, y:r2*TILE_SIZE+TILE_SIZE/2, duration:200});
+                this.tweens.add({targets:g2, x:c1*TILE_SIZE+TILE_SIZE/2, y:r1*TILE_SIZE+TILE_SIZE/2, duration:200, onComplete:()=>{this.isBusy=false; res();}});
             });
         }
 
@@ -366,21 +367,20 @@
             let c = { red:0, blue:0, green:0, purple:0, yellow:0 };
             list.forEach(t => { if(this.board[t.r][t.c]) { c[t.type]++; this.board[t.r][t.c] = null; t.destroy(); } });
             this.processRules(c);
-            await new Promise(res => this.time.delayedCall(150, res));
+            await new Promise(res => this.time.delayedCall(100, res));
         }
 
         processRules(c) {
             const p = window.gameData.p; const m = window.gameData.m;
             if(window.gameData.turn === "PLAYER") {
-                if(c.red) { m.hp -= p.atk * c.red; window.gameData.log(`Удар: -${p.atk*c.red}`, 'p'); }
-                if(c.purple) { m.hp -= Math.floor(p.atk * 2 * c.purple); window.gameData.log(`Магия: -${Math.floor(p.atk*2*c.purple)}`, 'p'); }
-                if(c.blue) p.mana = Math.min(100, p.mana + c.blue * 10);
-                if(c.green) { p.hp = Math.min(p.maxHp, p.hp + c.green*25); p.armor = Math.min(p.maxArmor, p.armor + c.green*15); }
-                if(c.yellow) p.gold += c.yellow * 3;
+                if(c.red) m.hp -= p.atk * c.red;
+                if(c.purple) m.hp -= p.atk * 2 * c.purple;
+                if(c.blue) p.mana = Math.min(100, p.mana + c.blue * 12);
+                if(c.green) { p.hp = Math.min(p.maxHp, p.hp + c.green*30); p.armor = Math.min(p.maxArmor, p.armor + c.green*20); }
+                if(c.yellow) p.gold += c.yellow * 5;
             } else {
-                let dmg = c.red * 25 + c.purple * 40;
+                let dmg = c.red * 30 + c.purple * 50;
                 if(p.armor > 0) { p.armor -= dmg; if(p.armor<0) { p.hp += p.armor; p.armor=0; } } else p.hp -= dmg;
-                window.gameData.log(`Враг атакует: -${dmg}`, 'm');
             }
             if(m.hp <= 0) this.handleVictory();
             refreshUI();
@@ -394,7 +394,7 @@
                     else if(gaps > 0) {
                         let t = this.board[r][c]; this.board[r+gaps][c] = t; this.board[r][c] = null;
                         t.r = r+gaps;
-                        this.tweens.add({targets: t, y: t.r*TILE_SIZE + TILE_SIZE/2, duration: 250});
+                        this.tweens.add({targets: t, y: t.r*TILE_SIZE + TILE_SIZE/2, duration: 300});
                     }
                 }
                 for(let i=0; i<gaps; i++) this.addGem(i, c, true);
@@ -412,21 +412,15 @@
         }
 
         handleVictory() {
-            document.getElementById('loot-text').innerText = `Враг повержен! Вы нашли древний артефакт (+${25+window.gameData.p.level*10} урона)`;
             document.getElementById('loot-overlay').style.display = 'flex';
         }
     }
 
     function claimLoot() {
-        window.gameData.p.atk += (25 + window.gameData.p.level * 10);
-        window.gameData.p.item = "Артефакт " + window.gameData.m.name;
-        continueProgress();
-    }
-    function scrapLoot() { window.gameData.p.gold += 50; continueProgress(); }
-    function continueProgress() {
-        document.getElementById('loot-overlay').style.display = 'none';
+        window.gameData.p.atk += 30;
         window.gameData.p.level++;
         window.gameData.p.hp = window.gameData.p.maxHp;
+        document.getElementById('loot-overlay').style.display = 'none';
         spawnEnemy();
     }
 
