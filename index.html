@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Local Hero Edition</title>
+    <title>Taverna War: Alive Heroes</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=MedievalSharp&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -50,35 +50,42 @@
             background: transparent; 
         }
 
-        /* Контейнер для портрета героя с улучшенным дизайном */
+        /* --- ЭФФЕКТ ЖИВОГО ПОРТРЕТА --- */
         .portrait-container {
             width: 240px; height: 240px; margin: 0 auto 15px auto;
             position: relative; 
             border-radius: 50%;
             border: 4px solid var(--gold);
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.2), inset 0 0 30px rgba(0,0,0,0.9);
-            background: #111;
+            /* Магическое свечение вокруг */
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.15), inset 0 0 40px rgba(0,0,0,0.8);
+            background: #000;
             overflow: hidden;
             flex-shrink: 0;
-            perspective: 1000px;
+            cursor: crosshair;
+            animation: borderGlow 4s infinite ease-in-out;
         }
 
-        /* Слой с самой картинкой для параллакса */
+        @keyframes borderGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.2), inset 0 0 40px rgba(0,0,0,0.8); }
+            50% { box-shadow: 0 0 35px rgba(255, 215, 0, 0.4), inset 0 0 40px rgba(0,0,0,0.8); }
+        }
+
         .layer-hero {
-            width: 120%; height: 120%; /* Больше контейнера для движения */
+            width: 140%; height: 140%; /* Запас для движения */
             position: absolute;
-            top: -10%; left: -10%;
+            top: -20%; left: -20%;
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            transition: transform 0.1s ease-out; /* Плавное следование за курсором */
+            transition: transform 0.15s ease-out; /* Плавное следование за курсором */
             pointer-events: none;
+            /* Эффект дыхания */
+            animation: heroBreathe 5s infinite ease-in-out;
         }
 
-        .hero-float { animation: heroFloat 6s infinite ease-in-out; }
-        @keyframes heroFloat {
-            0%, 100% { filter: brightness(1) contrast(1); }
-            50% { filter: brightness(1.2) contrast(1.1); }
+        @keyframes heroBreathe {
+            0%, 100% { filter: brightness(1) contrast(1); transform: scale(1); }
+            50% { filter: brightness(1.15) contrast(1.05); transform: scale(1.02); }
         }
 
         /* Полоски статуса */
@@ -128,8 +135,8 @@
 
     <!-- UI Игрока -->
     <div id="ui-left">
-        <div class="portrait-container" onmousemove="parallax(event, 'p-hero')" onmouseleave="resetParallax('p-hero')">
-            <div id="p-hero" class="layer-hero hero-float"></div>
+        <div class="portrait-container" onmousemove="followCursor(event, 'p-hero')" onmouseleave="resetFollow('p-hero')">
+            <div id="p-hero" class="layer-hero"></div>
         </div>
         <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0</div><div id="p-arm-f" class="bar-fill" style="background: linear-gradient(to right, #246, #48b); width: 0%;"></div></div>
         <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: linear-gradient(to right, #711, #b22); width: 100%;"></div></div>
@@ -147,8 +154,8 @@
 
     <!-- UI Врага -->
     <div id="ui-right">
-        <div class="portrait-container" onmousemove="parallax(event, 'm-hero')" onmouseleave="resetParallax('m-hero')">
-            <div id="m-hero" class="layer-hero hero-float"></div>
+        <div class="portrait-container" onmousemove="followCursor(event, 'm-hero')" onmouseleave="resetFollow('m-hero')">
+            <div id="m-hero" class="layer-hero"></div>
         </div>
         <h3 id="m-name" style="color:#f44; text-align:center; font-family:'Cinzel'; margin:15px 0; font-size:20px; letter-spacing:1px;">ВРАГ</h3>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: linear-gradient(to right, #711, #b22); width: 100%;"></div></div>
@@ -185,21 +192,25 @@
         }
     };
 
-    /* Функция параллакса для "вау-эффекта" */
-    function parallax(e, id) {
+    /* --- НОВЫЙ ЭФФЕКТ: СЛЕДОВАНИЕ ЗА КУРСОРОМ --- */
+    function followCursor(e, id) {
         const el = document.getElementById(id);
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const dx = (x - rect.width/2) / (rect.width/2);
-        const dy = (y - rect.height/2) / (rect.height/2);
-        // Смещаем картинку в противоположную сторону движения мыши для глубины
-        el.style.transform = `translate(${dx * -15}px, ${dy * -15}px) scale(1.1)`;
+        
+        // Получаем относительные координаты мыши внутри круга (от -1 до 1)
+        const mouseX = (e.clientX - rect.left) / rect.width - 0.5;
+        const mouseY = (e.clientY - rect.top) / rect.height - 0.5;
+        
+        // Сдвигаем картинку. Сила сдвига 40px (поскольку картинка 140% размера)
+        const moveX = mouseX * 40;
+        const moveY = mouseY * 40;
+        
+        el.style.transform = `translate(${moveX}px, ${moveY}px)`;
     }
 
-    function resetParallax(id) {
+    function resetFollow(id) {
         const el = document.getElementById(id);
-        el.style.transform = `translate(0, 0) scale(1)`;
+        el.style.transform = `translate(0px, 0px)`;
     }
 
     function startGame(key) {
@@ -207,8 +218,6 @@
         const base = { 'warrior':{hp:2500,atk:40}, 'mage':{hp:1200,atk:90}, 'archer':{hp:1500,atk:60}, 'assassin':{hp:1300,atk:80} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, equip: { weapon:{n:"Ржавый клинок",atk:5,arm:0,rar:0} } };
         
-        // Используем ваши локальные файлы. Заметьте исправление опечатки: assasin -> assassin если нужно, 
-        // но в вашем списке имен файлов написано "hero_assasin.jpg" (одна 's'), поэтому использую как на картинке.
         const portraits = {
             'warrior': 'assets/hero_warrior.jpg',
             'mage': 'assets/hero_mage.jpg',
@@ -226,7 +235,6 @@
         let lvl = window.app.player.level;
         window.app.mob = { name: "Враг Ур."+lvl, hp: 600+(lvl*300), maxHp: 600+(lvl*300), atk: 35+(lvl*12) };
         document.getElementById('m-name').innerText = window.app.mob.name;
-        // Для врагов оставляем процедурные аватары
         document.getElementById('m-hero').style.backgroundImage = `url('https://api.dicebear.com/7.x/bottts/svg?seed=Enemy${lvl}${Math.random()}')`;
         window.app.turn = "PLAYER"; window.app.lootActive = false; refreshUI();
     }
