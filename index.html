@@ -27,16 +27,16 @@
 
         /* ИСПРАВЛЕННЫЙ ПОРТРЕТ: ЯРКИЙ ГЕРОЙ БЕЗ ФОНА */
         .portrait-wrapper {
-            width: 240px; height: 280px; margin: 0 auto 15px;
+            width: 280px; height: 320px; margin: 0 auto 15px;
             position: relative; background: #000;
             border: 3px solid var(--border);
             border-radius: 8px; overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
         }
 
         /* Слой-заплатка (черный силуэт под героем) */
         .portrait-bg-fill {
-            position: absolute; inset: 0;
+            position: absolute; inset: -5%;
             background-size: 110%; background-position: center;
             filter: brightness(0); /* Полностью черный */
             z-index: 1;
@@ -47,15 +47,15 @@
             background-size: cover; background-position: center;
             position: relative; z-index: 2;
             /* Возвращаем яркость персонажу */
-            filter: brightness(1.1) contrast(1.1);
-            /* Маска, которая плавно "растворяет" края в черный цвет */
-            -webkit-mask-image: radial-gradient(circle, black 40%, transparent 95%);
-            mask-image: radial-gradient(circle, black 40%, transparent 95%);
+            filter: brightness(1.15) contrast(1.1);
+            /* Маска, которая плавно "растворяет" края в черный цвет, не трогая центр */
+            -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 90%);
+            mask-image: radial-gradient(circle, rgba(0,0,0,1) 45%, rgba(0,0,0,0) 90%);
         }
 
         .portrait-glow {
             position: absolute; inset: 0;
-            background: radial-gradient(circle, rgba(180, 140, 70, 0.15) 0%, transparent 80%);
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.05) 0%, transparent 70%);
             z-index: 3; pointer-events: none;
         }
 
@@ -90,10 +90,10 @@
     <div id="menu-overlay">
         <h1 style="color:var(--gold); font-size: 40px; margin-bottom: 30px; font-family: 'Cinzel'; letter-spacing: 5px;">TAVERNA WAR</h1>
         <div class="hero-cards">
-            <div class="hero-card" onclick="startGame('warrior')"><img src="assets/hero_warrior.png"><h3>ВОИН</h3></div>
-            <div class="hero-card" onclick="startGame('mage')"><img src="assets/hero_mage.png"><h3>МАГ</h3></div>
-            <div class="hero-card" onclick="startGame('archer')"><img src="assets/hero_archer.png"><h3>ЛУЧНИК</h3></div>
-            <div class="hero-card" onclick="startGame('assassin')"><img src="assets/hero_assassin.png"><h3>УБИЙЦА</h3></div>
+            <div class="hero-card" onclick="startGame('warrior')"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=warrior"><h3>ВОИН</h3></div>
+            <div class="hero-card" onclick="startGame('mage')"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=mage"><h3>МАГ</h3></div>
+            <div class="hero-card" onclick="startGame('archer')"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=archer"><h3>ЛУЧНИК</h3></div>
+            <div class="hero-card" onclick="startGame('assassin')"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=assassin"><h3>УБИЙЦА</h3></div>
         </div>
     </div>
 
@@ -161,6 +161,7 @@
         const base = { 'warrior':{hp:1600,atk:25}, 'mage':{hp:800,atk:65}, 'archer':{hp:1000,atk:40}, 'assassin':{hp:900,atk:55} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, equip: { weapon:{n:"Кинжал",atk:10,arm:0,rar:0} } };
         
+        // ВАЖНО: Мы используем ассеты по ключевым именам
         const url = `url('assets/hero_${key}.png')`;
         document.getElementById('p-portrait').style.backgroundImage = url;
         document.getElementById('p-portrait-bg').style.backgroundImage = url;
@@ -237,8 +238,13 @@
 
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
-        preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
-        create() { scene = this; this.grid = []; this.isAnimating = false; for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } }
+        preload() { 
+            ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); 
+        }
+        create() { 
+            scene = this; this.grid = []; this.isAnimating = false; 
+            for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } 
+        }
         
         spawnTile(r, c, fromTop=false) {
             let types = ['red', 'blue', 'green', 'purple', 'yellow'];
@@ -262,19 +268,11 @@
             let img = this.add.image(0, 0, `t_${type}`);
             img.setDisplaySize(TILE_S * 0.7, TILE_S * 0.7);
 
-            // РАМКА И ШИПЫ
+            // РАМКА
             let frame = this.add.graphics();
             frame.lineStyle(3, 0x444444, 1);
             frame.strokeRoundedRect(-TILE_S/2 + 3, -TILE_S/2 + 3, TILE_S - 6, TILE_S - 6, 8);
             
-            // Угловые акценты (шипы)
-            frame.fillStyle(0x666666, 1);
-            const d = TILE_S/2 - 2;
-            frame.fillTriangle(-d, -d, -d+10, -d, -d, -d+10);
-            frame.fillTriangle(d, -d, d-10, -d, d, -d+10);
-            frame.fillTriangle(-d, d, -d+10, d, -d, d-10);
-            frame.fillTriangle(d, d, d-10, d, d, d-10);
-
             container.add([glow, bg, img, frame]);
             container.gridR = r; container.gridC = c; container.type = type;
             container.setSize(TILE_S, TILE_S).setInteractive();
