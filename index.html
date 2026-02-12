@@ -1,148 +1,73 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Taverna War: Gothic Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
-    <style>
-        :root { --gold: #b48c46; --gold-bright: #ffd700; --bg: #0c0a08; }
-        
-        body { 
-            margin: 0; background: #000; color: white; 
-            display: flex; height: 100vh; overflow: hidden; 
-            font-family: 'Verdana', sans-serif; 
-        }
+<style>
+    /* ПОРТРЕТ: Исправляем "шахматку" и масштаб */
+    .portrait-container {
+        position: relative;
+        width: 200px;
+        height: 200px;
+        margin: 0 auto;
+        background: #000; /* Черный фон уберет яркость шахматки */
+        border: 2px solid #333;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        overflow: visible; /* Чтобы звезды вылезали за края */
+    }
 
-        /* ПАНЕЛИ UI */
-        #ui-left, #ui-right { 
-            width: 320px; padding: 25px; 
-            background: linear-gradient(180deg, #151210 0%, #050505 100%);
-            border: 2px solid #2a2015; box-shadow: inset 0 0 40px #000;
-            display: flex; flex-direction: column; align-items: center;
-        }
+    .portrait { 
+        width: 100%; 
+        height: 100%; 
+        /* background-size: 160% растягивает героя, чтобы не было пустых полей */
+        background-size: 160%; 
+        background-position: center 15%; /* Центрируем по лицу воина */
+        background-repeat: no-repeat;
+        border: 1px solid #b48c46;
+        box-sizing: border-box;
+    }
 
-        /* ПОРТРЕТ ИЗ СКРИНШОТА */
-        .portrait-wrapper {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            margin-bottom: 20px;
-        }
+    /* ЗВЕЗДЫ: 4-конечные как в image_1b28f7.png */
+    .star-decor {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 0 L56 44 L100 50 L56 56 L50 100 L44 56 L0 50 L44 44 Z" fill="%23ffd700"/></svg>') no-repeat center/contain;
+        filter: drop-shadow(0 0 10px #ffd700);
+        z-index: 20;
+    }
+    .star-tl { top: -20px; left: -20px; }
+    .star-br { bottom: -20px; right: -20px; }
 
-        /* Основная рамка */
-        .portrait-frame {
-            position: absolute;
-            inset: 0;
-            border: 3px solid #3d3d3d;
-            background: #000; /* Убирает белые поля */
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
-            z-index: 2;
-            overflow: hidden;
-        }
+    /* Полоска брони как в image_1953da.png */
+    .armor-bar {
+        width: 100%;
+        background: #1a1510;
+        border: 1px solid #332211;
+        height: 25px;
+        margin-top: 10px;
+        text-align: center;
+        color: white;
+        font-weight: bold;
+        line-height: 25px;
+    }
+</style>
 
-        /* Сама картинка героя */
-        .portrait-img {
-            width: 100%; height: 100%;
-            background-size: 140%; /* Крупный план воина */
-            background-position: center 20%;
-            background-repeat: no-repeat;
-            image-rendering: smooth;
-        }
-
-        /* Золотые звезды в углах */
-        .star-decor {
-            position: absolute; width: 45px; height: 45px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 0 L55 45 L100 50 L55 55 L50 100 L45 55 L0 50 L45 45 Z" fill="%23ffd700"/></svg>') no-repeat center/contain;
-            filter: drop-shadow(0 0 8px var(--gold-bright));
-            z-index: 10;
-        }
-        .star-tl { top: -20px; left: -20px; }
-        .star-br { bottom: -20px; right: -20px; }
-
-        /* ИНДИКАТОРЫ */
-        .status-label { width: 100%; font-family: 'Cinzel'; color: var(--gold); font-size: 14px; margin-top: 15px; }
-        .bar-container { 
-            width: 100%; height: 30px; background: #1a1a1a; 
-            border: 1px solid #333; margin-top: 5px; position: relative;
-            box-shadow: inset 0 0 10px #000;
-        }
-        .bar-fill { height: 100%; transition: width 0.4s ease; }
-        .bar-value { 
-            position: absolute; width: 100%; text-align: center; 
-            line-height: 30px; font-weight: bold; text-shadow: 1px 1px 2px #000; 
-        }
-
-        #game-field { flex-grow: 1; background: radial-gradient(circle, #1a1a1a 0%, #000 100%); }
-
-        /* МЕНЮ */
-        #menu { 
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95); 
-            z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; 
-        }
-        .hero-opt { 
-            padding: 20px; border: 2px solid var(--gold); background: #111; 
-            margin: 10px; cursor: pointer; width: 180px; text-align: center;
-            font-family: 'Cinzel'; transition: 0.3s;
-        }
-        .hero-opt:hover { background: #221a10; transform: scale(1.05); }
-    </style>
-</head>
-<body>
-
-    <div id="menu">
-        <h1 style="font-family:'Cinzel'; color:var(--gold-bright); font-size: 40px;">ВЫБЕРИ ГЕРОЯ</h1>
-        <div style="display:flex;">
-            <div class="hero-opt" onclick="start('hero_warrior.png')">ВОИН</div>
-            <div class="hero-opt" onclick="start('hero_mage.png')">МАГ</div>
-        </div>
+<div id="ui-left">
+    <div class="portrait-container">
+        <div class="star-decor star-tl"></div>
+        <div id="p-portrait" class="portrait" style="background-image: url('assets/hero_warrior.png');"></div>
+        <div class="star-decor star-br"></div>
     </div>
+    <div class="armor-bar">Броня: 0 / 6</div>
+</div>
 
-    <div id="ui-left">
-        <div class="portrait-wrapper">
-            <div class="star-decor star-tl"></div>
-            <div class="portrait-frame">
-                <div id="player-img" class="portrait-img"></div>
-            </div>
-            <div class="star-decor star-br"></div>
-        </div>
-        
-        <div class="status-label">БРОНЯ</div>
-        <div class="bar-container">
-            <div id="p-arm-f" class="bar-fill" style="width:100%; background: linear-gradient(to right, #2c3e50, #4488ff);"></div>
-            <div id="p-arm-v" class="bar-value">100 / 100</div>
-        </div>
+<script>
+    // Пути к твоим файлам из скриншота image_1b8e7a.png
+    const assets = {
+        warrior: 'assets/hero_warrior.png',
+        mage: 'assets/hero_mage.png',
+        archer: 'assets/hero_archer.png',
+        assassin: 'assets/hero_assassin.png'
+    };
 
-        <div class="status-label">ЗДОРОВЬЕ</div>
-        <div class="bar-container">
-            <div id="p-hp-f" class="bar-fill" style="width:100%; background: linear-gradient(to right, #7b0000, #ff2222);"></div>
-            <div id="p-hp-v" class="bar-value">1000 / 1000</div>
-        </div>
-    </div>
-
-    <div id="game-field"></div>
-
-    <div id="ui-right">
-        <div class="portrait-wrapper">
-            <div class="star-decor star-tl"></div>
-            <div class="portrait-frame">
-                <div id="enemy-img" class="portrait-img" style="filter: grayscale(0.5) contrast(1.2);"></div>
-            </div>
-            <div class="star-decor star-br"></div>
-        </div>
-        <h3 style="font-family:'Cinzel'; color:#ff4444;">ТЕМНЫЙ КРЫС</h3>
-        <div class="bar-container">
-            <div id="e-hp-f" class="bar-fill" style="width:100%; background: #aa0000;"></div>
-            <div id="e-hp-v" class="bar-value">500 / 500</div>
-        </div>
-    </div>
-
-    <script>
-        function start(imgFile) {
-            document.getElementById('menu').style.display = 'none';
-            // Установка иконок
-            document.getElementById('player-img').style.backgroundImage = `url('${imgFile}')`;
-            document.getElementById('enemy-img').style.backgroundImage = `url('hero_assassin.png')`; // Для примера
-        }
-    </script>
-</body>
-</html>
+    function setHero(type) {
+        const img = document.getElementById('p-portrait');
+        img.style.backgroundImage = `url('${assets[type]}')`;
+    }
+</script>
