@@ -10,11 +10,11 @@
         :root { 
             --gold: #ffd700; 
             --border: #b48c46; 
-            --bg-glass: rgba(15, 12, 10, 0.85); /* Semi-transparent panel background */
+            --bg-glass: rgba(15, 12, 10, 0.85); /* Полупрозрачный фон панелей */
             --rar0: #b0b0b0; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
         }
         
-        /* Main background layer */
+        /* Основной фоновый слой */
         #background-layer {
             position: fixed;
             inset: 0;
@@ -35,7 +35,7 @@
             background: #000;
         }
 
-        /* UI Panels */
+        /* UI Панели */
         #ui-left, #ui-right { 
             width: 360px; padding: 15px; 
             background: var(--bg-glass);
@@ -52,14 +52,15 @@
             background: transparent; 
         }
 
-        /* Portraits */
+        /* Круглые портреты */
         .portrait-container {
-            width: 100%; height: 350px; margin-bottom: 15px;
+            width: 280px; height: 280px; margin: 0 auto 20px auto;
             position: relative; overflow: hidden;
             background: rgba(0,0,0,0.4);
-            border-radius: 10px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-            border: 1px solid rgba(255,215,0,0.1);
+            border-radius: 50%; /* Делаем контейнер круглым */
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.9), 0 0 15px rgba(255,215,0,0.2);
+            border: 3px solid rgba(255,215,0,0.3);
+            flex-shrink: 0;
         }
 
         .layer-hero {
@@ -68,17 +69,16 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            /* New 3D effect style: no mask, full image with slight glow */
             filter: drop-shadow(0 0 10px rgba(255, 68, 0, 0.3));
         }
 
         .hero-float { animation: heroFloat 4s infinite ease-in-out; }
         @keyframes heroFloat {
-            0%, 100% { transform: translateY(0) scale(1.02); }
-            50% { transform: translateY(-8px) scale(1.05); }
+            0%, 100% { transform: translateY(0) scale(1.05); }
+            50% { transform: translateY(-10px) scale(1.08); }
         }
 
-        /* Status Bars */
+        /* Полоски статуса */
         .bar-bg { width: 100%; height: 22px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.1); margin-top: 6px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 22px; font-weight: bold; text-shadow: 1px 1px 2px black; z-index: 5; }
@@ -179,9 +179,9 @@
         const base = { 'warrior':{hp:2500,atk:40}, 'mage':{hp:1200,atk:90}, 'archer':{hp:1500,atk:60}, 'assassin':{hp:1300,atk:80} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, equip: { weapon:{n:"Ржавый клинок",atk:5,arm:0,rar:0} } };
         
-        // Update hero image to the new Warrior style
+        // Используем твой новый круглый арт для воина
         if(key === 'warrior') {
-            document.getElementById('p-hero').style.backgroundImage = `url('https://files.oaiusercontent.com/file-K1XNlq8775fU1HwF0P84tG?se=2025-02-12T18%3A22%3A18Z&sp=r&sv=2024-08-04&sr=b&rscc=max-age%3D604800%2C%20immutable%2C%20private&rscd=attachment%3B%20filename%3Db4e8d38b-b8c7-434f-9e32-212be7d963f4.webp&sig=mFhHlMOf%2BjvS19B1A2gY6Y9864230%2By9j3pW%2Be/r5Xk%3D')`;
+            document.getElementById('p-hero').style.backgroundImage = `url('https://files.oaiusercontent.com/file-90E177l6iY2Yv2p4Iq796Q?se=2025-02-12T18%3A31%3A32Z&sp=r&sv=2024-08-04&sr=b&rscc=max-age%3D604800%2C%20immutable%2C%20private&rscd=attachment%3B%20filename%3D4511ed3d-3686-48c9-947b-11881ecb4c80.webp&sig=6wLpT1r99C/jM9k5oG/A7E6pW/jO2z3Xp8i3S3I1P/M%3D')`;
         } else {
             document.getElementById('p-hero').style.backgroundImage = `url('https://api.dicebear.com/7.x/adventurer/svg?seed=${key}')`;
         }
