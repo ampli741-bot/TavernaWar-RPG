@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Perfect Runes</title>
+    <title>Taverna War: Gothic Steel Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -12,9 +12,8 @@
             --rar0: #b0b0b0; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
         }
         body { 
-            margin: 0; 
-            background: var(--bg); 
-            color: white; display: flex; height: 100vh; overflow: hidden; 
+            margin: 0; background: var(--bg); color: white; 
+            display: flex; height: 100vh; overflow: hidden; 
             font-family: 'Verdana', sans-serif; touch-action: none; 
         }
         #ui-left, #ui-right { 
@@ -46,7 +45,7 @@
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold);">ВЫБЕРИТЕ ГЕРОЯ</h1>
+        <h1 style="color:var(--gold); font-size: 40px;">TAVERNA WAR</h1>
         <div class="hero-cards">
             <div class="hero-card" onclick="startGame('warrior')"><h3>ВОИН</h3></div>
             <div class="hero-card" onclick="startGame('mage')"><h3>МАГ</h3></div>
@@ -89,16 +88,13 @@
     </div>
 
     <script>
-    const TILE_S = 80; // Размер клетки чуть уменьшил для зазоров между шипами
-    const OFFSET = 4;  // Зазор
+    const TILE_S = 85; 
+    const OFFSET = 5;
     let phaserGame, scene, currentLoot = null;
 
     const COLORS = {
-        red: 0x440000,
-        blue: 0x002244,
-        green: 0x003311,
-        purple: 0x330044,
-        yellow: 0x443300
+        red: 0x3d0a0a, blue: 0x0a1a2f, green: 0x0a240a,
+        purple: 0x220a35, yellow: 0x2d2405
     };
 
     window.app = { 
@@ -136,21 +132,14 @@
         document.getElementById('gold-val').innerText = p.gold;
     }
 
-    function showLootScreen() {
-        window.app.lootActive = true; 
-        document.getElementById('loot-overlay').style.display = 'flex';
-    }
+    function showLootScreen() { window.app.lootActive = true; document.getElementById('loot-overlay').style.display = 'flex'; }
     function takeLoot() { closeLoot(); }
     function sellLoot() { window.app.player.gold += 50; closeLoot(); }
     function closeLoot() { document.getElementById('loot-overlay').style.display = 'none'; window.app.player.level++; spawnMob(); }
 
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
-        preload() {
-            ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => {
-                this.load.image(`t_${c}`, `assets/rune_${c}.png`);
-            });
-        }
+        preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
         
         create() { 
             scene = this; 
@@ -166,93 +155,77 @@
             let types = ['red', 'blue', 'green', 'purple', 'yellow'];
             let type = Phaser.Utils.Array.GetRandom(types);
             
-            let x = c * (TILE_S + OFFSET) + TILE_S/2;
+            let x = c * (TILE_S + OFFSET) + TILE_S/2 + 10;
             let y = fromTop ? -TILE_S : r * (TILE_S + OFFSET) + TILE_S/2;
             
             let container = this.add.container(x, y);
 
-            // 1. ФОН ПЛИТКИ (Цветной градиент вместо белого)
+            // 1. ПОДЛОЖКА
             let bg = this.add.graphics();
             bg.fillStyle(COLORS[type], 1);
-            bg.fillRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 8);
+            bg.fillRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 12);
 
-            // 2. РУНА С МАСКОЙ (Зум х1.6 чтобы обрезать края оригинала)
+            // 2. РУНА С ПЕРСОНАЛЬНЫМ ЗУМОМ
             let img = this.add.image(0, 0, `t_${type}`);
-            img.setDisplaySize(TILE_S * 1.6, TILE_S * 1.6); 
-            
-            // Создаем маску, чтобы картинка не вылезала за пределы квадрата
+            let zoom = (type === 'red' || type === 'blue' || type === 'purple') ? 1.85 : 1.4;
+            img.setDisplaySize(TILE_S * zoom, TILE_S * zoom);
+
+            // Маска
             let maskShape = this.make.graphics();
             maskShape.fillStyle(0xffffff);
-            maskShape.fillRoundedRect(x - TILE_S/2, y - TILE_S/2, TILE_S, TILE_S, 8);
+            maskShape.fillRoundedRect(x - TILE_S/2, y - TILE_S/2, TILE_S, TILE_S, 12);
             img.setMask(maskShape.createGeometryMask());
 
-            // 3. ЖЕСТКАЯ РАМКА С ШИПАМИ
+            // 3. ГОТИЧЕСКАЯ СТАЛЬНАЯ РАМКА
             let frame = this.add.graphics();
+            frame.lineStyle(6, 0x444444, 1); // Оружейный металл
+            frame.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
             
-            // Внешний контур (Металл)
-            frame.lineStyle(4, 0x222222, 1);
-            frame.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 8);
-            
-            // Внутренний золотой кант
-            frame.lineStyle(2, 0xbc962c, 0.7);
-            frame.strokeRoundedRect(-TILE_S/2 + 4, -TILE_S/2 + 4, TILE_S - 8, TILE_S - 8, 4);
+            frame.lineStyle(2, 0x666666, 0.8); // Фаска
+            frame.strokeRoundedRect(-TILE_S/2 + 2, -TILE_S/2 + 2, TILE_S - 4, TILE_S - 4, 8);
 
-            // Отрисовка шипов (строго по осям)
-            frame.fillStyle(0x333333, 1);
-            const s = TILE_S / 2;
-            const spw = 8; // ширина шипа
-            const sph = 10; // высота шипа
+            frame.lineStyle(1.5, 0xbc962c, 0.4); // Золотой акцент (еле заметно внизу)
+            frame.strokeRoundedRect(-TILE_S/2 + 6, -TILE_S/2 + 6, TILE_S - 12, TILE_S - 12, 6);
 
-            // Шипы (верх, низ, лево, право)
-            frame.fillTriangle(0, -s - sph, -spw, -s + 2, spw, -s + 2);
-            frame.fillTriangle(0, s + sph, -spw, s - 2, spw, s - 2);
-            frame.fillTriangle(-s - sph, 0, -s + 2, -spw, -s + 2, spw);
-            frame.fillTriangle(s + sph, 0, s - 2, -spw, s - 2, spw);
+            // Шипы
+            frame.fillStyle(0x555555, 1);
+            const s = TILE_S / 2, sw = 10, sh = 12;
+            frame.fillTriangle(0, -s - sh, -sw, -s + 2, sw, -s + 2);
+            frame.fillTriangle(0, s + sh, -sw, s - 2, sw, s - 2);
+            frame.fillTriangle(-s - sh, 0, -s + 2, -sw, -s + 2, sw);
+            frame.fillTriangle(s + sh, 0, s - 2, -sw, s - 2, sw);
 
             container.add([bg, img, frame]);
-            container.img = img; // Ссылка для анимаций
-            container.maskShape = maskShape; // Для перемещения маски
-            
+            container.maskShape = maskShape;
             container.gridR = r; container.gridC = c; container.type = type;
             container.setSize(TILE_S, TILE_S);
             container.setInteractive();
             container.on('pointerdown', () => this.handlePointer(container));
 
             this.grid[r][c] = container;
-            if(fromTop) this.tweens.add({targets:container, y: r*(TILE_S+OFFSET)+TILE_S/2, duration:400});
+            if(fromTop) this.tweens.add({targets: container, y: r*(TILE_S+OFFSET)+TILE_S/2, duration:400});
         }
 
-        // Обновление позиции маски при движении контейнера
         update() {
-            for(let r=0; r<8; r++) {
-                for(let c=0; c<8; c++) {
-                    let t = this.grid[r][c];
-                    if(t && t.maskShape) {
-                        t.maskShape.clear();
-                        t.maskShape.fillStyle(0xffffff);
-                        t.maskShape.fillRoundedRect(t.x - TILE_S/2, t.y - TILE_S/2, TILE_S, TILE_S, 8);
-                    }
+            for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                let t = this.grid[r][c];
+                if(t && t.maskShape) {
+                    t.maskShape.clear(); t.maskShape.fillStyle(0xffffff);
+                    t.maskShape.fillRoundedRect(t.x - TILE_S/2, t.y - TILE_S/2, TILE_S, TILE_S, 12);
                 }
             }
         }
 
         async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER") return;
-            if(!this.sel) { 
-                this.sel = t; 
-                t.setScale(1.1); 
-            } else {
+            if(!this.sel) { this.sel = t; t.setScale(1.1); }
+            else {
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
                     await this.swap(this.sel, t);
-                    if(!await this.check()) {
-                        await this.swap(this.sel, t);
-                    } else {
-                        window.app.turn = "MOB";
-                        this.time.delayedCall(600, () => this.mobAI());
-                    }
+                    if(!await this.check()) await this.swap(this.sel, t);
+                    else { window.app.turn = "MOB"; this.time.delayedCall(600, () => this.mobAI()); }
                 }
-                if(this.sel) this.sel.setScale(1);
-                this.sel = null;
+                if(this.sel) this.sel.setScale(1); this.sel = null;
             }
         }
 
@@ -261,34 +234,16 @@
             let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
             this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
             t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
-            
             return new Promise(res => {
-                this.tweens.add({
-                    targets: t1, 
-                    x: c2*(TILE_S+OFFSET)+TILE_S/2, y: r2*(TILE_S+OFFSET)+TILE_S/2, 
-                    duration: 200
-                });
-                this.tweens.add({
-                    targets: t2, 
-                    x: c1*(TILE_S+OFFSET)+TILE_S/2, y: r1*(TILE_S+OFFSET)+TILE_S/2, 
-                    duration: 200, 
-                    onComplete: () => { this.isAnimating=false; res(); }
-                });
+                this.tweens.add({targets: t1, x: c2*(TILE_S+OFFSET)+TILE_S/2+10, y: r2*(TILE_S+OFFSET)+TILE_S/2, duration: 200});
+                this.tweens.add({targets: t2, x: c1*(TILE_S+OFFSET)+TILE_S/2+10, y: r1*(TILE_S+OFFSET)+TILE_S/2, duration: 200, onComplete: () => { this.isAnimating=false; res(); }});
             });
         }
 
         findMatches() {
             let m = [];
-            for(let r=0; r<8; r++) for(let c=0; c<6; c++) {
-                if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2]) {
-                    if(this.grid[r][c].type === this.grid[r][c+1].type && this.grid[r][c].type === this.grid[r][c+2].type) m.push(this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]);
-                }
-            }
-            for(let c=0; c<8; c++) for(let r=0; r<6; r++) {
-                if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c]) {
-                    if(this.grid[r][c].type === this.grid[r+1][c].type && this.grid[r][c].type === this.grid[r+2][c].type) m.push(this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]);
-                }
-            }
+            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2]) if(this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type) m.push(this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]);
+            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c]) if(this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type) m.push(this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]);
             return m;
         }
 
@@ -296,23 +251,18 @@
             let matches = [...new Set(this.findMatches())];
             if(matches.length > 0) {
                 this.isAnimating = true;
-                // Эффект удара
-                matches.forEach(t => {
-                    if(t.type === 'red' || t.type === 'purple') window.app.mob.hp -= 10;
-                    if(t.type === 'blue') window.app.player.mana = Math.min(100, window.app.player.mana + 5);
+                matches.forEach(t => { 
+                    if(t.type==='red'||t.type==='purple') window.app.mob.hp -= 20;
+                    if(t.type==='blue') window.app.player.mana = Math.min(100, window.app.player.mana + 5);
                 });
-                
                 await new Promise(res => {
                     this.tweens.add({targets: matches, scale: 0, alpha: 0, duration: 200, onComplete: () => {
-                        matches.forEach(t => { this.grid[t.gridR][t.gridC] = null; t.destroy(); });
-                        res();
+                        matches.forEach(t => { this.grid[t.gridR][t.gridC]=null; t.destroy(); }); res();
                     }});
                 });
-                await this.refill();
-                await this.check();
+                await this.refill(); await this.check();
                 if(window.app.mob.hp <= 0) showLootScreen();
-                refreshUI();
-                return true;
+                refreshUI(); return true;
             }
             return false;
         }
@@ -323,11 +273,8 @@
                 for(let r=7; r>=0; r--) {
                     if(!this.grid[r][c]) empty++;
                     else if(empty > 0) {
-                        let t = this.grid[r][c];
-                        this.grid[r+empty][c] = t;
-                        this.grid[r][c] = null;
-                        t.gridR = r+empty;
-                        this.tweens.add({targets: t, y: t.gridR*(TILE_S+OFFSET)+TILE_S/2, duration: 200});
+                        let t = this.grid[r][c]; this.grid[r+empty][c] = t; this.grid[r][c] = null;
+                        t.gridR = r+empty; this.tweens.add({targets: t, y: t.gridR*(TILE_S+OFFSET)+TILE_S/2, duration: 200});
                     }
                 }
                 for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
@@ -337,29 +284,21 @@
 
         mobAI() {
             if(window.app.lootActive) return;
-            // Простейшая имитация хода врага
             window.app.player.hp -= window.app.mob.atk / 5;
-            window.app.turn = "PLAYER";
-            refreshUI();
+            window.app.turn = "PLAYER"; refreshUI();
         }
     }
 
     function initPhaser() {
         new Phaser.Game({
-            type: Phaser.AUTO,
-            parent: 'game-container',
-            width: 680,
-            height: 680,
-            scene: GameScene,
-            transparent: true
+            type: Phaser.AUTO, parent: 'game-container',
+            width: 720, height: 720, scene: GameScene, transparent: true
         });
     }
 
     function useUltra() {
         if(window.app.player.mana < 100) return;
-        window.app.player.mana = 0;
-        window.app.log("ИСПОЛЬЗОВАН СУПЕРУДАР!", 'crit');
-        refreshUI();
+        window.app.player.mana = 0; window.app.log("УЛЬТРА ПРИМЕНЕНА!", 'crit'); refreshUI();
     }
     </script>
 </body>
