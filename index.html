@@ -25,7 +25,7 @@
 
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #1a0a0a 0%, #000 100%); }
 
-        /* ЖИВОЙ ПОРТРЕТ: БЕЗ БЕЛОГО ФОНА */
+        /* ПЕРЕРАБОТАННЫЙ ПОРТРЕТ: ГОТИЧЕСКИЙ КОНТРАСТ И ГЛУБОКАЯ ТЕНЬ */
         .portrait-container {
             width: 280px; height: 320px; margin: 0 auto 15px;
             position: relative; perspective: 1200px;
@@ -33,68 +33,79 @@
 
         .portrait-wrapper {
             width: 100%; height: 100%;
-            position: relative; background: #050505;
+            position: relative; background: #000;
             border: 3px solid var(--border);
             border-radius: 15px; overflow: hidden;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.9), inset 0 0 30px #000;
+            box-shadow: 0 20px 50px rgba(0,0,0,1);
             transition: transform 0.15s ease-out;
             transform-style: preserve-3d;
         }
 
-        /* Динамическая аура за персонажем */
         .portrait-aura {
-            position: absolute; inset: -30%;
-            background: radial-gradient(circle, rgba(255, 68, 0, 0.2) 0%, transparent 70%);
+            position: absolute; inset: -20%;
+            background: radial-gradient(circle, rgba(255, 68, 0, 0.15) 0%, transparent 65%);
             animation: auraPulse 5s infinite ease-in-out;
             z-index: 1;
         }
 
-        /* Слой с персонажем: МАСКИРОВКА ФОНА */
+        /* ОСНОВНОЙ ПЕРСОНАЖ: ЦЕНТРОВКА И КОНТРАСТ */
         .portrait-img {
-            width: 120%; height: 120%;
-            position: absolute; top: -10%; left: -10%;
-            background-size: cover; background-position: center;
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            background-size: contain; /* Изменено с cover для лучшей подгонки */
+            background-repeat: no-repeat;
+            background-position: center bottom;
             z-index: 3;
-            filter: brightness(1.1) contrast(1.1) drop-shadow(0 0 15px rgba(0,0,0,1));
+            /* Повышенная контрастность и насыщенность, затемнение углов через фильтры */
+            filter: brightness(0.9) contrast(1.4) saturate(1.2) drop-shadow(0 0 20px rgba(0,0,0,0.8));
             animation: heroBreathe 8s infinite ease-in-out;
-            /* Ключевое: Маска, которая плавно скрывает края картинки и любые белые артефакты */
-            -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 75%);
-            mask-image: radial-gradient(circle at center, black 30%, transparent 75%);
+            /* Усиленная маска для растворения в темноте */
+            -webkit-mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 85%);
+            mask-image: radial-gradient(circle at 50% 40%, black 20%, transparent 85%);
+        }
+        
+        /* Специфические правки размеров для Ассасина и Лучника */
+        .portrait-img.assassin, .portrait-img.archer {
+            transform: scale(0.85);
+            background-position: center center;
+        }
+        
+        .portrait-img.warrior, .portrait-img.mage {
+            transform: scale(0.95);
         }
 
-        /* Виньетка поверх всего для глубины */
+        /* Глубокая виньетка поверх для черноты по углам */
         .portrait-vignette {
             position: absolute; inset: 0;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
+            box-shadow: inset 0 0 80px 20px rgba(0,0,0,1);
             z-index: 5; pointer-events: none;
             border-radius: 12px;
         }
 
-        /* Эффект блика на стекле/доспехах */
         .portrait-sheen {
             position: absolute; inset: 0;
-            background: linear-gradient(135deg, transparent 40%, rgba(255,215,0,0.05) 50%, transparent 60%);
-            background-size: 250% 250%;
-            animation: sheenMove 10s infinite linear;
+            background: linear-gradient(135deg, transparent 45%, rgba(255,215,0,0.08) 50%, transparent 55%);
+            background-size: 300% 300%;
+            animation: sheenMove 12s infinite linear;
             z-index: 4; pointer-events: none;
         }
 
         @keyframes heroBreathe {
-            0%, 100% { transform: scale(1) translateY(0); }
-            50% { transform: scale(1.04) translateY(-8px); }
+            0%, 100% { transform: scale(0.98) translateY(0); }
+            50% { transform: scale(1.02) translateY(-5px); }
         }
 
         @keyframes auraPulse {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.3); }
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
         }
 
         @keyframes sheenMove {
-            0% { background-position: -200% -200%; }
-            100% { background-position: 200% 200%; }
+            0% { background-position: -150% -150%; }
+            100% { background-position: 150% 150%; }
         }
 
-        /* Интерфейсные элементы */
+        /* Остальной UI */
         .bar-bg { width: 100%; height: 26px; background: #1a1111; border: 1px solid #333; margin-top: 6px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 26px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
@@ -136,7 +147,7 @@
     <div id="ui-left">
         <div class="portrait-container" onmousemove="parallaxEffect(event, 'p-wrapper')" onmouseleave="resetParallax('p-wrapper')">
             <div id="p-wrapper" class="portrait-wrapper">
-                <div class="portrait-aura"></div>
+                <div id="p-aura" class="portrait-aura"></div>
                 <div id="p-portrait" class="portrait-img"></div>
                 <div class="portrait-sheen"></div>
                 <div class="portrait-vignette"></div>
@@ -159,7 +170,7 @@
         <div class="portrait-container" onmousemove="parallaxEffect(event, 'm-wrapper')" onmouseleave="resetParallax('m-wrapper')">
             <div id="m-wrapper" class="portrait-wrapper" style="border-color: #833;">
                 <div class="portrait-aura" style="background: radial-gradient(circle, rgba(150, 0, 0, 0.25) 0%, transparent 70%);"></div>
-                <div id="m-portrait" class="portrait-img"></div>
+                <div id="m-portrait" class="portrait-img mage"></div> <!-- Враги используют центровку мага по дефолту -->
                 <div class="portrait-sheen"></div>
                 <div class="portrait-vignette"></div>
             </div>
@@ -203,8 +214,8 @@
     function parallaxEffect(e, id) {
         const el = document.getElementById(id);
         const rect = el.getBoundingClientRect();
-        const x = (e.clientX - rect.left - rect.width/2) / 12;
-        const y = (e.clientY - rect.top - rect.height/2) / 12;
+        const x = (e.clientX - rect.left - rect.width/2) / 15;
+        const y = (e.clientY - rect.top - rect.height/2) / 15;
         el.style.transform = `rotateY(${x}deg) rotateX(${-y}deg) scale(1.02)`;
     }
     function resetParallax(id) {
@@ -216,8 +227,14 @@
         const base = { 'warrior':{hp:2200,atk:35}, 'mage':{hp:1000,atk:80}, 'archer':{hp:1300,atk:55}, 'assassin':{hp:1100,atk:70} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, equip: { weapon:{n:"Старый меч",atk:12,arm:0,rar:0} } };
         
-        // Используем ваши отличные портреты
-        document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.png')`;
+        const portraitEl = document.getElementById('p-portrait');
+        portraitEl.style.backgroundImage = `url('assets/hero_${key}.png')`;
+        // Применяем CSS классы для специфических размеров
+        portraitEl.className = 'portrait-img ' + key;
+        
+        // Цвет ауры под класс
+        const auraColor = {warrior:'rgba(255,50,0,0.2)', mage:'rgba(0,100,255,0.2)', archer:'rgba(0,255,100,0.2)', assassin:'rgba(150,0,255,0.2)'}[key];
+        document.getElementById('p-aura').style.background = `radial-gradient(circle, ${auraColor} 0%, transparent 70%)`;
         
         initPhaser(); spawnMob(); refreshUI();
     }
