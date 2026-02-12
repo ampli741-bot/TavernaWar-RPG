@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taverna War: Crystal Clear Edition</title>
+    <title>Taverna War: Gothic Spike Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
@@ -186,21 +186,68 @@
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
         preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
-        create() { scene = this; this.grid = []; this.isAnimating = false; for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } }
         
+        create() { 
+            scene = this; 
+            this.grid = []; 
+            this.isAnimating = false; 
+            for(let r=0; r<8; r++) { 
+                this.grid[r] = []; 
+                for(let c=0; c<8; c++) this.spawnTile(r, c); 
+            } 
+        }
+
         spawnTile(r, c, fromTop=false) {
             let types = ['red', 'blue', 'green', 'purple', 'yellow'];
             let type = Phaser.Utils.Array.GetRandom(types);
-            let t = this.add.image(c*TILE_S+TILE_S/2, fromTop?-TILE_S:r*TILE_S+TILE_S/2, `t_${type}`).setDisplaySize(TILE_S-4, TILE_S-4).setInteractive();
-            t.gridR = r; t.gridC = c; t.type = type;
-            t.on('pointerdown', () => this.handlePointer(t));
-            this.grid[r][c] = t;
-            if(fromTop) this.tweens.add({targets:t, y:r*TILE_S+TILE_S/2, duration:400});
+            
+            // СОЗДАЕМ КОНТЕЙНЕР
+            let x = c * TILE_S + TILE_S / 2;
+            let y = fromTop ? -TILE_S : r * TILE_S + TILE_S / 2;
+            let container = this.add.container(x, y);
+
+            // 1. Темная подложка (убирает белый фон)
+            let bg = this.add.graphics();
+            bg.fillStyle(0x0a0a0a, 1);
+            bg.fillRoundedRect(-TILE_S/2+4, -TILE_S/2+4, TILE_S-8, TILE_S-8, 10);
+
+            // 2. Сама руна (твоя картинка)
+            let img = this.add.image(0, 0, `t_${type}`).setDisplaySize(TILE_S-15, TILE_S-15);
+
+            // 3. ГОТИЧЕСКАЯ РАМКА С ШИПАМИ (рисуем программно)
+            let frame = this.add.graphics();
+            // Основной металл
+            frame.lineStyle(4, 0x222222, 1);
+            frame.strokeRect(-TILE_S/2+2, -TILE_S/2+2, TILE_S-4, TILE_S-4);
+            // Золотая внутренняя кайма
+            frame.lineStyle(2, 0xbc962c, 0.7);
+            frame.strokeRect(-TILE_S/2+6, -TILE_S/2+6, TILE_S-12, TILE_S-12);
+            // ШИПЫ (по 2 на каждой стороне)
+            frame.fillStyle(0x444444, 1);
+            const spikeSize = 8;
+            // Верхние шипы
+            frame.fillTriangle(-15, -TILE_S/2, 0, -TILE_S/2-spikeSize, 15, -TILE_S/2);
+            // Нижние
+            frame.fillTriangle(-15, TILE_S/2, 0, TILE_S/2+spikeSize, 15, TILE_S/2);
+            // Левые
+            frame.fillTriangle(-TILE_S/2, -15, -TILE_S/2-spikeSize, 0, -TILE_S/2, 15);
+            // Правые
+            frame.fillTriangle(TILE_S/2, -15, TILE_S/2+spikeSize, 0, TILE_S/2, 15);
+
+            container.add([bg, img, frame]);
+            container.gridR = r; container.gridC = c; container.type = type;
+            
+            container.setSize(TILE_S, TILE_S);
+            container.setInteractive();
+            container.on('pointerdown', () => this.handlePointer(container));
+
+            this.grid[r][c] = container;
+            if(fromTop) this.tweens.add({targets:container, y:r*TILE_S+TILE_S/2, duration:400});
         }
 
         async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER" || window.app.lootActive) return;
-            if(!this.sel) { this.sel = t; t.setAlpha(0.6); }
+            if(!this.sel) { this.sel = t; t.setScale(1.1); t.setAlpha(0.8); }
             else {
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
                     if (this.checkPotentialMatch(this.sel, t)) {
@@ -208,7 +255,8 @@
                         window.app.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI());
                     } else { this.tweens.add({targets: [this.sel, t], x: "+=5", yoyo: true, duration: 50}); }
                 }
-                if(this.sel) this.sel.setAlpha(1); this.sel = null;
+                if(this.sel) { this.sel.setScale(1); this.sel.setAlpha(1); }
+                this.sel = null;
             }
         }
 
@@ -225,7 +273,10 @@
             let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
             this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
             t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
-            return new Promise(res => { this.tweens.add({targets:t1, x:c2*TILE_S+TILE_S/2, y:r2*TILE_S+TILE_S/2, duration:200}); this.tweens.add({targets:t2, x:c1*TILE_S+TILE_S/2, y:r1*TILE_S+TILE_S/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}}); });
+            return new Promise(res => { 
+                this.tweens.add({targets:t1, x:c2*TILE_S+TILE_S/2, y:r2*TILE_S+TILE_S/2, duration:200}); 
+                this.tweens.add({targets:t2, x:c1*TILE_S+TILE_S/2, y:r1*TILE_S+TILE_S/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}}); 
+            });
         }
 
         findMatches() {
@@ -247,7 +298,7 @@
             unique.forEach(t => { if(t && t.scene) { counts[t.type]++; } });
 
             return new Promise(res => {
-                this.tweens.add({targets:unique, scale:0, duration:200, onComplete:()=>{
+                this.tweens.add({targets:unique, scale:0, alpha:0, duration:250, onComplete:()=>{
                     unique.forEach(t => { if(t && t.scene) { this.grid[t.gridR][t.gridC]=null; t.destroy(); } });
                     this.applySummaryEffect(counts);
                     this.isAnimating = false; res();
@@ -299,6 +350,7 @@
                     let nr = r + dr, nc = c + dc;
                     if (nr < 8 && nc < 8) {
                         let t1 = this.grid[r][c], t2 = this.grid[nr][nc];
+                        if(!t1 || !t2) continue;
                         this.grid[r][c] = t2; this.grid[nr][nc] = t1;
                         let matches = this.findMatches();
                         if (matches.length > 0) {
