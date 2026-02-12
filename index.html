@@ -10,18 +10,18 @@
         :root { 
             --gold: #ffd700; 
             --border: #b48c46; 
-            --bg-glass: rgba(15, 12, 10, 0.85); /* Полупрозрачный фон панелей */
+            --bg-glass: rgba(15, 12, 10, 0.85); /* Semi-transparent panel background */
             --rar0: #b0b0b0; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
         }
         
-        /* ГЛАВНЫЙ ФОН - УСТАНАВЛИВАЕТ ЦВЕТ ВМЕСТО "ШАШЕК" */
+        /* Main background layer */
         #background-layer {
             position: fixed;
             inset: 0;
-            background-color: #0d0d0d; /* Черный фон, чтобы не было прозрачности браузера */
+            background-color: #0d0d0d;
             background-image: 
                 linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.9)),
-                url('https://images.unsplash.com/photo-1514373941175-0a141072bbc8?auto=format&fit=crop&q=80&w=2000'); /* ССЫЛКА НА ВАШ ФОН */
+                url('https://images.unsplash.com/photo-1514373941175-0a141072bbc8?auto=format&fit=crop&q=80&w=2000');
             background-size: cover;
             background-position: center;
             z-index: -1;
@@ -32,16 +32,16 @@
             color: white; 
             display: flex; height: 100vh; overflow: hidden; 
             font-family: 'MedievalSharp', cursive; touch-action: none; 
-            background: #000; /* Резервный фон */
+            background: #000;
         }
 
-        /* ПАНЕЛИ ИНТЕРФЕЙСА */
+        /* UI Panels */
         #ui-left, #ui-right { 
             width: 360px; padding: 15px; 
             background: var(--bg-glass);
             display: flex; flex-direction: column; 
             box-sizing: border-box; z-index: 10;
-            backdrop-filter: blur(10px); /* Эффект матового стекла */
+            backdrop-filter: blur(10px);
             border-right: 1px solid rgba(255,215,0,0.15);
         }
         #ui-right { border-right: none; border-left: 1px solid rgba(255,215,0,0.15); }
@@ -52,32 +52,33 @@
             background: transparent; 
         }
 
-        /* ПОРТРЕТЫ */
+        /* Portraits */
         .portrait-container {
             width: 100%; height: 350px; margin-bottom: 15px;
             position: relative; overflow: hidden;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0,0,0,0.4);
             border-radius: 10px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,215,0,0.1);
         }
 
         .layer-hero {
             position: absolute; inset: 0;
             z-index: 2;
-            background-size: contain;
-            background-position: center bottom;
+            background-size: cover;
+            background-position: center;
             background-repeat: no-repeat;
-            /* Плавное исчезновение героя внизу (в прозрачность) */
-            -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-            mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+            /* New 3D effect style: no mask, full image with slight glow */
+            filter: drop-shadow(0 0 10px rgba(255, 68, 0, 0.3));
         }
 
         .hero-float { animation: heroFloat 4s infinite ease-in-out; }
         @keyframes heroFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-12px); }
+            0%, 100% { transform: translateY(0) scale(1.02); }
+            50% { transform: translateY(-8px) scale(1.05); }
         }
 
-        /* ПОЛОСКИ СТАТУСА */
+        /* Status Bars */
         .bar-bg { width: 100%; height: 22px; background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.1); margin-top: 6px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 22px; font-weight: bold; text-shadow: 1px 1px 2px black; z-index: 5; }
@@ -104,7 +105,6 @@
 </head>
 <body>
 
-    <!-- СЛОЙ С ФОНОМ, КОТОРЫЙ УБИРАЕТ ШАШКИ -->
     <div id="background-layer"></div>
 
     <div id="menu-overlay">
@@ -178,7 +178,14 @@
         document.getElementById('menu-overlay').style.display = 'none';
         const base = { 'warrior':{hp:2500,atk:40}, 'mage':{hp:1200,atk:90}, 'archer':{hp:1500,atk:60}, 'assassin':{hp:1300,atk:80} }[key];
         window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, equip: { weapon:{n:"Ржавый клинок",atk:5,arm:0,rar:0} } };
-        document.getElementById('p-hero').style.backgroundImage = `url('https://api.dicebear.com/7.x/adventurer/svg?seed=${key}')`;
+        
+        // Update hero image to the new Warrior style
+        if(key === 'warrior') {
+            document.getElementById('p-hero').style.backgroundImage = `url('https://files.oaiusercontent.com/file-K1XNlq8775fU1HwF0P84tG?se=2025-02-12T18%3A22%3A18Z&sp=r&sv=2024-08-04&sr=b&rscc=max-age%3D604800%2C%20immutable%2C%20private&rscd=attachment%3B%20filename%3Db4e8d38b-b8c7-434f-9e32-212be7d963f4.webp&sig=mFhHlMOf%2BjvS19B1A2gY6Y9864230%2By9j3pW%2Be/r5Xk%3D')`;
+        } else {
+            document.getElementById('p-hero').style.backgroundImage = `url('https://api.dicebear.com/7.x/adventurer/svg?seed=${key}')`;
+        }
+        
         initPhaser(); spawnMob(); refreshUI();
     }
 
