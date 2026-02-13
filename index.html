@@ -72,7 +72,17 @@ const App = () => {
     // Выход
     newMap[GRID_SIZE - 2][GRID_SIZE - 2] = TILE_TYPES.EXIT;
     setMap(newMap);
-    setPlayer(prev => ({ ...prev, x: 1, y: 1, hp: 100, gold: 0 }));
+    setPlayer({
+      x: 1,
+      y: 1,
+      hp: 100,
+      maxHp: 100,
+      gold: 0,
+      attack: 10,
+      defense: 5,
+      level: 1,
+      exp: 0
+    });
     setIsGameOver(false);
     setMessage("Исследуйте подземелье!");
   }, []);
@@ -82,54 +92,62 @@ const App = () => {
   }, [initGame]);
 
   // Механика движения и взаимодействия
-  const movePlayer = (dx, dy) => {
+  const movePlayer = useCallback((dx, dy) => {
     if (isGameOver) return;
 
-    const newX = player.x + dx;
-    const newY = player.y + dy;
-    const targetTile = map[newY][newX];
+    setPlayer(prev => {
+      const newX = prev.x + dx;
+      const newY = prev.y + dy;
 
-    if (targetTile === TILE_TYPES.WALL) {
-      setMessage("Там стена!");
-      return;
-    }
+      // Проверка границ и стен
+      if (newY < 0 || newY >= GRID_SIZE || newX < 0 || newX >= GRID_SIZE) return prev;
+      
+      const targetTile = map[newY][newX];
+      if (targetTile === TILE_TYPES.WALL) {
+        setMessage("Там стена!");
+        return prev;
+      }
 
-    let updatedPlayer = { ...player, x: newX, y: newY };
-    let updatedMap = [...map.map(row => [...row])];
+      let updatedPlayer = { ...prev, x: newX, y: newY };
+      let updatedMap = [...map.map(row => [...row])];
 
-    if (targetTile === TILE_TYPES.GOLD) {
-      const foundGold = Math.floor(Math.random() * 10) + 5;
-      updatedPlayer.gold += foundGold;
-      setMessage(`Вы нашли ${foundGold} золота!`);
-      updatedMap[newY][newX] = TILE_TYPES.EMPTY;
-    } else if (targetTile === TILE_TYPES.ENEMY) {
-      const damage = Math.max(5, 20 - player.defense);
-      updatedPlayer.hp -= damage;
-      updatedPlayer.gold += 15;
-      setMessage(`Битва! Вы потеряли ${damage} HP и получили 15 золота.`);
-      updatedMap[newY][newX] = TILE_TYPES.EMPTY;
-    } else if (targetTile === TILE_TYPES.HEAL) {
-      updatedPlayer.hp = Math.min(updatedPlayer.maxHp, updatedPlayer.hp + 20);
-      setMessage("Вы нашли зелье лечения! +20 HP");
-      updatedMap[newY][newX] = TILE_TYPES.EMPTY;
-    } else if (targetTile === TILE_TYPES.EXIT) {
-      setMessage("Уровень пройден! Вы нашли выход.");
-      setIsGameOver(true);
-    }
+      if (targetTile === TILE_TYPES.GOLD) {
+        const foundGold = Math.floor(Math.random() * 10) + 5;
+        updatedPlayer.gold += foundGold;
+        setMessage(`Вы нашли ${foundGold} золота!`);
+        updatedMap[newY][newX] = TILE_TYPES.EMPTY;
+      } else if (targetTile === TILE_TYPES.ENEMY) {
+        const damage = Math.max(5, 20 - prev.defense);
+        updatedPlayer.hp -= damage;
+        updatedPlayer.gold += 15;
+        setMessage(`Битва! Вы потеряли ${damage} HP и получили 15 золота.`);
+        updatedMap[newY][newX] = TILE_TYPES.EMPTY;
+      } else if (targetTile === TILE_TYPES.HEAL) {
+        updatedPlayer.hp = Math.min(prev.maxHp, prev.hp + 20);
+        setMessage("Вы нашли зелье лечения! +20 HP");
+        updatedMap[newY][newX] = TILE_TYPES.EMPTY;
+      } else if (targetTile === TILE_TYPES.EXIT) {
+        setMessage("Уровень пройден! Вы нашли выход.");
+        setIsGameOver(true);
+      }
 
-    if (updatedPlayer.hp <= 0) {
-      updatedPlayer.hp = 0;
-      setIsGameOver(true);
-      setMessage("Вы погибли в подземелье...");
-    }
+      if (updatedPlayer.hp <= 0) {
+        updatedPlayer.hp = 0;
+        setIsGameOver(true);
+        setMessage("Вы погибли в подземелье...");
+      }
 
-    setPlayer(updatedPlayer);
-    setMap(updatedMap);
-  };
+      setMap(updatedMap);
+      return updatedPlayer;
+    });
+  }, [map, isGameOver]);
 
   // Обработка клавиш
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+      }
       switch (e.key) {
         case 'ArrowUp': movePlayer(0, -1); break;
         case 'ArrowDown': movePlayer(0, 1); break;
@@ -140,7 +158,9 @@ const App = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [player, map, isGameOver]);
+  }, [movePlayer]);
+
+  if (map.length === 0) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Загрузка...</div>;
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col items-center font-sans">
@@ -217,8 +237,8 @@ const App = () => {
                   
                   {/* Игрок */}
                   {player.x === x && player.y === y && (
-                    <div className="absolute inset-0 flex items-center justify-center z-10 transition-all duration-200">
-                      <div className="w-4/5 h-4/5 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg border-2 border-white/20">
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <div className="w-4/5 h-4/5 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg border-2 border-white/20 transition-all duration-200">
                         <User size="80%" className="text-white" />
                       </div>
                     </div>
@@ -239,11 +259,11 @@ const App = () => {
             {/* Мобильное управление */}
             <div className="grid grid-cols-3 gap-2">
               <div />
-              <button onClick={() => movePlayer(0, -1)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg"><ChevronUp /></button>
+              <button onClick={() => movePlayer(0, -1)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronUp /></button>
               <div />
-              <button onClick={() => movePlayer(-1, 0)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg"><ChevronLeft /></button>
-              <button onClick={() => movePlayer(0, 1)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg"><ChevronDown /></button>
-              <button onClick={() => movePlayer(1, 0)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg"><ChevronRight /></button>
+              <button onClick={() => movePlayer(-1, 0)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronLeft /></button>
+              <button onClick={() => movePlayer(0, 1)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronDown /></button>
+              <button onClick={() => movePlayer(1, 0)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronRight /></button>
             </div>
 
             {isGameOver && (
