@@ -160,31 +160,35 @@ const App = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [movePlayer]);
 
-  if (map.length === 0) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Загрузка...</div>;
+  if (map.length === 0) return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+      Загрузка...
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col items-center font-sans">
-      <h1 className="text-3xl font-bold mb-4 flex items-center gap-2">
+      <h1 className="text-3xl font-bold mb-4 flex items-center gap-2 text-amber-500">
         <Skull className="text-red-500" /> Dungeon Crawler
       </h1>
 
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Панель игрока */}
-        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 h-fit">
+        <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 h-fit shadow-lg">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+            <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-inner">
               <User size={28} />
             </div>
             <div>
-              <p className="font-bold text-xl">Герой</p>
+              <p className="font-bold text-xl uppercase tracking-wider">Герой</p>
               <p className="text-sm text-slate-400">Уровень {player.level}</p>
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
-              <div className="flex justify-between mb-1 text-sm">
-                <span className="flex items-center gap-1"><Heart size={14} className="text-red-500" /> HP</span>
+              <div className="flex justify-between mb-1 text-sm font-semibold">
+                <span className="flex items-center gap-1 text-red-400"><Heart size={14} /> HP</span>
                 <span>{player.hp}/{player.maxHp}</span>
               </div>
               <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
@@ -195,17 +199,17 @@ const App = () => {
               </div>
             </div>
 
-            <div className="flex justify-between p-2 bg-slate-700/50 rounded-lg">
-              <span className="flex items-center gap-2"><Coins size={18} className="text-yellow-500" /> Золото</span>
-              <span className="font-mono text-yellow-400">{player.gold}</span>
+            <div className="flex justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+              <span className="flex items-center gap-2 text-yellow-500 font-semibold"><Coins size={18} /> Золото</span>
+              <span className="font-mono text-xl text-yellow-400">{player.gold}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-sm text-slate-300">
-              <div className="flex items-center gap-2 bg-slate-700/30 p-2 rounded">
-                <Sword size={16} /> Атк: {player.attack}
+              <div className="flex items-center gap-2 bg-slate-700/50 p-2 rounded border border-slate-600/30">
+                <Sword size={16} className="text-orange-400" /> Атк: {player.attack}
               </div>
-              <div className="flex items-center gap-2 bg-slate-700/30 p-2 rounded">
-                <Shield size={16} /> Защ: {player.defense}
+              <div className="flex items-center gap-2 bg-slate-700/50 p-2 rounded border border-slate-600/30">
+                <Shield size={16} className="text-blue-400" /> Защ: {player.defense}
               </div>
             </div>
           </div>
@@ -214,31 +218,29 @@ const App = () => {
         {/* Игровое поле */}
         <div className="md:col-span-2 flex flex-col items-center">
           <div 
-            className="grid bg-slate-950 border-4 border-slate-800 rounded shadow-2xl overflow-hidden"
+            className="grid bg-slate-950 border-4 border-slate-800 rounded shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
             style={{ 
               gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))`,
-              width: 'min(90vw, 500px)',
-              height: 'min(90vw, 500px)'
+              width: 'min(90vw, 450px)',
+              height: 'min(90vw, 450px)'
             }}
           >
             {map.map((row, y) => 
               row.map((tile, x) => (
                 <div 
                   key={`${x}-${y}`}
-                  className="relative flex items-center justify-center border-[0.5px] border-slate-800/30"
+                  className="relative flex items-center justify-center border-[0.5px] border-slate-800/20"
                   style={{ aspectRatio: '1/1' }}
                 >
-                  {/* Отрисовка плиток */}
-                  {tile === TILE_TYPES.WALL && <div className="w-full h-full bg-slate-800 shadow-inner" />}
+                  {tile === TILE_TYPES.WALL && <div className="w-full h-full bg-slate-800/80 shadow-inner" />}
                   {tile === TILE_TYPES.GOLD && <Coins className="text-yellow-500 animate-pulse" size="60%" />}
                   {tile === TILE_TYPES.ENEMY && <Skull className="text-red-600" size="60%" />}
                   {tile === TILE_TYPES.HEAL && <Heart className="text-green-500" size="60%" />}
                   {tile === TILE_TYPES.EXIT && <MapIcon className="text-blue-400" size="70%" />}
                   
-                  {/* Игрок */}
                   {player.x === x && player.y === y && (
-                    <div className="absolute inset-0 flex items-center justify-center z-10">
-                      <div className="w-4/5 h-4/5 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg border-2 border-white/20 transition-all duration-200">
+                    <div className="absolute inset-0 flex items-center justify-center z-10 p-1">
+                      <div className="w-full h-full bg-blue-500 rounded flex items-center justify-center shadow-lg border border-white/20 transition-all duration-200 animate-in fade-in zoom-in">
                         <User size="80%" className="text-white" />
                       </div>
                     </div>
@@ -249,27 +251,27 @@ const App = () => {
           </div>
 
           {/* Сообщения и Управление */}
-          <div className="w-full mt-4 flex flex-col items-center gap-4">
-            <div className="bg-slate-800 w-full p-3 rounded-lg border border-slate-700 text-center min-h-[3rem]">
-              <p className={isGameOver && player.hp <= 0 ? "text-red-400 font-bold" : "text-slate-200"}>
+          <div className="w-full max-w-[450px] mt-4 flex flex-col items-center gap-4">
+            <div className="bg-slate-800 w-full p-4 rounded-lg border border-slate-700 text-center min-h-[4rem] flex items-center justify-center shadow-md">
+              <p className={`text-lg font-medium ${isGameOver && player.hp <= 0 ? "text-red-400 animate-bounce" : "text-slate-200"}`}>
                 {message}
               </p>
             </div>
 
             {/* Мобильное управление */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               <div />
-              <button onClick={() => movePlayer(0, -1)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronUp /></button>
+              <button onClick={() => movePlayer(0, -1)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronUp size={28} /></button>
               <div />
-              <button onClick={() => movePlayer(-1, 0)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronLeft /></button>
-              <button onClick={() => movePlayer(0, 1)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronDown /></button>
-              <button onClick={() => movePlayer(1, 0)} className="p-4 bg-slate-700 rounded-lg active:bg-slate-600 shadow-lg touch-none"><ChevronRight /></button>
+              <button onClick={() => movePlayer(-1, 0)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronLeft size={28} /></button>
+              <button onClick={() => movePlayer(0, 1)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronDown size={28} /></button>
+              <button onClick={() => movePlayer(1, 0)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronRight size={28} /></button>
             </div>
 
             {isGameOver && (
               <button 
                 onClick={initGame}
-                className="mt-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-bold transition-colors"
+                className="w-full mt-2 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xl transition-all shadow-lg active:scale-95 shadow-blue-900/20"
               >
                 Начать заново
               </button>
