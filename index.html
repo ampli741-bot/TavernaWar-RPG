@@ -179,6 +179,9 @@
 
     <script>
     const TILE_S = 85; 
+    const TILE_P = 4; // Размер отступа (padding) между плитками
+    const VISUAL_S = TILE_S - (TILE_P * 2); // Визуальный размер плитки без учета отступов
+
     let phaserGame, scene, currentLoot = null;
     const adjs = ["Древний", "Мифический", "Проклятый", "Тёмный", "Вечный", "Стальной", "Святой", "Забытый", "Ледяной", "Кровавый"];
     const slotNames = { weapon: "Оружие", body: "Доспех", legs: "Поножи", head: "Шлем", ring: "Перстень", necklace: "Амулет", hands: "Перчатки" };
@@ -291,44 +294,42 @@
             
             let container = this.add.container(x, y);
 
-            // Статичное фоновое свечение (зависит от типа)
+            // Фоновое свечение (теперь по VISUAL_S)
             let glow = this.add.graphics();
             glow.fillStyle(GLOW_COLORS[type], 0.4);
-            glow.fillRoundedRect(-TILE_S/2 - 2, -TILE_S/2 - 2, TILE_S + 4, TILE_S + 4, 14);
+            glow.fillRoundedRect(-VISUAL_S/2 - 2, -VISUAL_S/2 - 2, VISUAL_S + 4, VISUAL_S + 4, 14);
 
             let bg = this.add.graphics();
             bg.fillStyle(BG_COLORS[type], 1);
-            bg.fillRoundedRect(-TILE_S/2 - 1, -TILE_S/2 - 1, TILE_S + 2, TILE_S + 2, 12);
+            bg.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
 
             let img = this.add.image(0, 0, `t_${type}`);
             let zoom = (type === 'red' || type === 'blue' || type === 'purple') ? 2.15 : 1.5;
-            img.setDisplaySize(TILE_S * zoom, TILE_S * zoom);
+            img.setDisplaySize(VISUAL_S * zoom, VISUAL_S * zoom);
             if (type === 'yellow') img.y += 4;
 
             let maskShape = this.make.graphics();
             maskShape.fillStyle(0xffffff);
-            maskShape.fillRoundedRect(x - TILE_S/2, y - TILE_S/2, TILE_S, TILE_S, 12);
+            maskShape.fillRoundedRect(x - VISUAL_S/2, y - VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
             img.setMask(maskShape.createGeometryMask());
 
             let frame = this.add.graphics();
-            frame.lineStyle(8, 0x444444, 1);
-            frame.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
+            frame.lineStyle(6, 0x444444, 1);
+            frame.strokeRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 10);
             frame.lineStyle(2, 0x666666, 0.8);
-            frame.strokeRoundedRect(-TILE_S/2 + 2, -TILE_S/2 + 2, TILE_S - 4, TILE_S - 4, 8);
+            frame.strokeRoundedRect(-VISUAL_S/2 + 2, -VISUAL_S/2 + 2, VISUAL_S - 4, VISUAL_S - 4, 8);
             frame.lineStyle(1.5, 0xbc962c, 0.4);
-            frame.strokeRoundedRect(-TILE_S/2 + 8, -TILE_S/2 + 8, TILE_S - 16, TILE_S - 16, 6);
+            frame.strokeRoundedRect(-VISUAL_S/2 + 8, -VISUAL_S/2 + 8, VISUAL_S - 16, VISUAL_S - 16, 6);
 
-            // Свечение при наведении (белое)
             let hoverGlow = this.add.graphics();
             hoverGlow.alpha = 0;
             hoverGlow.lineStyle(4, 0xffffff, 1);
-            hoverGlow.strokeRoundedRect(-TILE_S/2 - 4, -TILE_S/2 - 4, TILE_S + 8, TILE_S + 8, 14);
+            hoverGlow.strokeRoundedRect(-VISUAL_S/2 - 4, -VISUAL_S/2 - 4, VISUAL_S + 8, VISUAL_S + 8, 14);
 
-            // ЭФФЕКТ: Призрачное пульсирующее свечение выбраной плитки
             let ghostGlow = this.add.graphics();
             ghostGlow.alpha = 0;
             ghostGlow.lineStyle(8, 0xffffff, 0.6);
-            ghostGlow.strokeRoundedRect(-TILE_S/2 - 2, -TILE_S/2 - 2, TILE_S + 4, TILE_S + 4, 12);
+            ghostGlow.strokeRoundedRect(-VISUAL_S/2 - 2, -VISUAL_S/2 - 2, VISUAL_S + 4, VISUAL_S + 4, 12);
 
             container.add([glow, bg, img, frame, hoverGlow, ghostGlow]);
             container.gridR = r; container.gridC = c; container.type = type;
@@ -346,7 +347,6 @@
                 this.tweens.add({ targets: hoverGlow, alpha: val ? 0.6 : 0, duration: 200 });
             };
 
-            // Метод для включения "Призрачного свечения"
             container.setGhost = (val) => {
                 if (val) {
                     container.ghostGlow.alpha = 1;
@@ -377,7 +377,7 @@
                 let t = this.grid[r][c];
                 if(t && t.maskShape) {
                     t.maskShape.clear(); t.maskShape.fillStyle(0xffffff);
-                    t.maskShape.fillRoundedRect(t.x - TILE_S/2, t.y - TILE_S/2, TILE_S, TILE_S, 12);
+                    t.maskShape.fillRoundedRect(t.x - VISUAL_S/2, t.y - VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
                 }
             }
         }
@@ -387,11 +387,10 @@
             
             if(!this.sel) { 
                 this.sel = t; 
-                t.setGhost(true); // Включаем свечение
+                t.setGhost(true);
                 t.setScale(1.15); 
             }
             else {
-                // Если кликнули на ту же плитку - снимаем выделение
                 if (this.sel === t) {
                     t.setGhost(false);
                     t.setScale(1);
@@ -401,7 +400,7 @@
 
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
                     if (this.checkPotentialMatch(this.sel, t)) {
-                        this.sel.setGhost(false); // Выключаем свечение перед свапом
+                        this.sel.setGhost(false);
                         await this.swap(this.sel, t); await this.check();
                         window.app.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI());
                     } else { 
@@ -410,7 +409,7 @@
                 }
                 
                 if(this.sel) {
-                    this.sel.setGhost(false); // Выключаем свечение
+                    this.sel.setGhost(false);
                     this.sel.setScale(1);
                 }
                 this.sel = null;
@@ -458,11 +457,11 @@
                 counts[t.type]++;
                 const particleColor = GLOW_COLORS[t.type];
                 for(let i=0; i<8; i++) {
-                    let rect = this.add.rectangle(t.x, t.y, 10, 10, particleColor);
+                    let rect = this.add.rectangle(t.x, t.y, 8, 8, particleColor);
                     this.tweens.add({
                         targets: rect,
-                        x: t.x + Phaser.Math.Between(-60, 60),
-                        y: t.y + Phaser.Math.Between(-60, 60),
+                        x: t.x + Phaser.Math.Between(-50, 50),
+                        y: t.y + Phaser.Math.Between(-50, 50),
                         angle: Phaser.Math.Between(0, 360),
                         alpha: 0,
                         scale: 0,
