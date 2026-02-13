@@ -334,7 +334,9 @@ class GameScene extends Phaser.Scene {
     }
 }
 
+// Заменяем самый конец файла logic.js:
 function initPhaser() { 
+    if (phaserGame) return; // Чтобы не создавать игру дважды
     phaserGame = new Phaser.Game({ 
         type: Phaser.AUTO, 
         parent: 'game-container', 
@@ -344,3 +346,8 @@ function initPhaser() {
         transparent: true 
     }); 
 }
+
+// Добавляем проверку загрузки страницы
+window.onload = () => {
+    console.log("Страница загружена, скрипты готовы.");
+};
