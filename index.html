@@ -23,12 +23,15 @@
             color: white; 
             display: grid; 
             grid-template-columns: 380px 1fr 380px;
+            /* Центрируем игровое поле по вертикали и горизонтали */
+            place-items: stretch center; 
             height: 100vh; 
             overflow: hidden; 
             font-family: var(--font-main); 
             touch-action: none; 
         }
 
+        /* --- ПАНЕЛИ --- */
         #ui-left, #ui-right { 
             width: 380px; padding: 15px 25px; 
             display: flex; flex-direction: column; 
@@ -39,15 +42,25 @@
             box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
         }
 
+        /* Фикс для центрирования канваса Phaser */
+        #game-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
         /* --- ЭФФЕКТ ДЫХАНИЯ И ПОДЛОЖКА --- */
         .portrait-container {
             position: relative;
             width: 220px; height: 220px;
-            margin: 0 auto 15px;
+            margin: 0 auto 10px;
             display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; /* Чтобы контейнер не сжимался */
         }
 
-        /* Вращающаяся подложка */
         .portrait-bg {
             position: absolute;
             width: 100%; height: 100%;
@@ -58,13 +71,12 @@
         }
 
         .portrait { 
-            width: 190px; height: 190px; 
-            border: 5px solid var(--gold); 
+            width: 180px; height: 180px; 
+            border: 4px solid var(--gold); 
             border-radius: 50%; 
             background-size: cover; background-position: center;
             box-shadow: 0 0 30px rgba(0,0,0,0.8);
             z-index: 2;
-            /* Эффект дыхания */
             animation: breathe 4s ease-in-out infinite;
             background-color: #111;
         }
@@ -72,7 +84,7 @@
         @keyframes rotate-bg { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes breathe {
             0%, 100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 5px rgba(255,215,0,0.2)); }
-            50% { transform: scale(1.03); filter: brightness(1.2) drop-shadow(0 0 15px rgba(255,215,0,0.4)); }
+            50% { transform: scale(1.04); filter: brightness(1.15) drop-shadow(0 0 15px rgba(255,215,0,0.4)); }
         }
 
         /* --- ОСТАЛЬНОЙ UI --- */
@@ -96,13 +108,16 @@
         .btn-style:hover { border-color: var(--gold); color: #fff; }
 
         .btn-ultra { 
-            width: 100%; margin-top: 5px; padding: 12px; font-size: 14px; 
+            width: 100%; margin-top: 8px; padding: 12px; font-size: 14px; 
             background: #100; color: #444; border: 2px solid #222; cursor: not-allowed; 
             font-family: var(--font-gothic);
         }
         .btn-ultra.ready { background: linear-gradient(180deg, #800 0%, #400 100%); color: white; border-color: #f00; cursor: pointer; }
 
-        #battle-log { height: 110px; margin-top: 10px; background: rgba(0,0,0,0.5); border: 1px solid #222; padding: 8px; font-size: 11px; overflow-y: auto; color: #bbb; }
+        #inv-box { flex-grow: 1; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+        .inv-item { background: rgba(255,255,255,0.05); border: 1px solid #333; padding: 6px; font-size: 12px; display: flex; justify-content: space-between; border-radius: 4px; }
+
+        #battle-log { height: 100px; margin-top: 10px; background: rgba(0,0,0,0.5); border: 1px solid #222; padding: 8px; font-size: 11px; overflow-y: auto; color: #bbb; }
         .total-stats { padding: 10px; background: rgba(0,0,0,0.5); border-top: 2px solid #333; margin-top: 5px; }
 
         #menu-overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.96); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -134,10 +149,8 @@
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">МАНА: 0%</div><div id="p-mn-f" class="bar-fill"></div></div>
         <button id="btn-ultra" class="btn-ultra">СУПЕРУДАР</button>
         
-        <div id="inv-box" style="flex-grow: 1; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto;">
-            <div class="inv-item" style="background: rgba(255,255,255,0.05); border: 1px solid #333; padding: 6px; font-size: 12px; display: flex; justify-content: space-between; border-radius: 4px; border-left: 3px solid var(--rar1)">
-                <span>Меч</span><span style="color:var(--gold)">+5 АТК</span>
-            </div>
+        <div id="inv-box">
+            <div class="inv-item" style="border-left: 3px solid var(--rar1)"><span>Меч</span><span style="color:var(--gold)">+5 АТК</span></div>
         </div>
 
         <button class="btn-shop btn-style" style="width:100%; margin-top:5px;">МАГАЗИН</button>
