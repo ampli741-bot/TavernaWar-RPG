@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gothic RPG Skeleton</title>
+    <title>Gothic RPG Skeleton - Protected Version</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Spectral:wght@400;700&display=swap');
@@ -24,12 +24,12 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-h-screen;
+            min-height: 100vh;
             padding: 20px;
             overflow-x: hidden;
         }
 
-        /* Готическая рамка-столб */
+        /* --- ВИЗУАЛЬНЫЙ БЛОК: ГОТИКА --- */
         .gothic-pillar-frame {
             position: relative;
             border: 4px solid var(--stone-dark);
@@ -42,7 +42,6 @@
             transition: transform 0.3s ease;
         }
 
-        /* Имитация колонн по бокам через псевдоэлементы */
         .gothic-pillar-frame::before, .gothic-pillar-frame::after {
             content: "";
             position: absolute;
@@ -57,7 +56,6 @@
         .gothic-pillar-frame::before { left: -10px; }
         .gothic-pillar-frame::after { right: -10px; }
 
-        /* Декоративные капители (верхушки столбов) */
         .pillar-cap {
             position: absolute;
             top: -12px;
@@ -69,7 +67,6 @@
             z-index: 11;
         }
 
-        /* Сочная подложка для иконки героя */
         .icon-lush-backdrop {
             background: radial-gradient(circle, #2d5a27 0%, #1a3c15 60%, #0a1a08 100%);
             border-radius: 12px;
@@ -84,13 +81,11 @@
             margin-bottom: 1rem;
         }
 
-        /* Сочная подложка для иконки врага */
         .enemy-backdrop {
             background: radial-gradient(circle, #5a2727 0%, #3c1515 60%, #1a0808 100%);
             box-shadow: inset 0 0 40px rgba(255,0,0,0.2);
         }
 
-        /* Заголовок */
         .gothic-title {
             font-family: 'Uncial Antiqua', cursive;
             color: var(--accent-gold);
@@ -98,7 +93,6 @@
             letter-spacing: 2px;
         }
 
-        /* Игровое поле */
         #game-board {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
@@ -132,11 +126,6 @@
             border-color: var(--accent-gold);
         }
 
-        .tile:active {
-            transform: scale(0.95);
-        }
-
-        /* Прогресс-бары */
         .bar-container {
             width: 100%;
             height: 14px;
@@ -151,16 +140,13 @@
             height: 100%; 
             background: linear-gradient(90deg, #800000, #ff3333); 
             transition: width 0.4s ease-out; 
-            box-shadow: 0 0 10px rgba(255,0,0,0.3);
         }
         .energy-bar { 
             height: 100%; 
             background: linear-gradient(90deg, #003366, #3399ff); 
             transition: width 0.4s ease-out;
-            box-shadow: 0 0 10px rgba(0,100,255,0.3);
         }
 
-        /* Лог боя */
         #battle-log {
             height: 140px;
             overflow-y: auto;
@@ -170,8 +156,6 @@
             font-size: 0.95rem;
             color: #ccc;
             border-radius: 4px;
-            scrollbar-width: thin;
-            scrollbar-color: #444 #111;
         }
 
         .msg-player { color: #87ceeb; font-weight: bold; }
@@ -179,7 +163,6 @@
         .msg-gold { color: #ffd700; }
         .msg-system { color: #888; font-style: italic; }
 
-        /* Кнопки */
         .btn-super {
             background: linear-gradient(180deg, #1e3a8a, #1e40af);
             color: white;
@@ -189,8 +172,6 @@
             text-transform: uppercase;
             font-weight: bold;
             font-size: 0.75rem;
-            letter-spacing: 1px;
-            transition: all 0.3s;
             cursor: pointer;
         }
 
@@ -202,13 +183,6 @@
             opacity: 0.6;
         }
 
-        .btn-super:not(:disabled):hover {
-            filter: brightness(1.2);
-            box-shadow: 0 0 15px rgba(59,130,246,0.5);
-            transform: translateY(-1px);
-        }
-
-        /* Анимация атаки */
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-5px); }
@@ -263,9 +237,7 @@
 
         <!-- ЦЕНТРАЛЬНАЯ ЧАСТЬ -->
         <div class="flex flex-col gap-6">
-            <div id="game-board" class="w-[450px] h-[450px]">
-                <!-- Плитки -->
-            </div>
+            <div id="game-board" class="w-[450px] h-[450px]"></div>
             <div id="battle-log">
                 <div class="msg-system">Вы входите в темный зал подземелья...</div>
             </div>
@@ -298,12 +270,14 @@
     </div>
 
     <script>
-        // --- КОНФИГУРАЦИЯ (СКЕЛЕТ) ---
+        // ==========================================================
+        // [ЗАЩИЩЕННЫЙ БЛОК: КОНФИГУРАЦИЯ И ПЕРЕМЕННЫЕ]
+        // ==========================================================
         const GRID_SIZE = 5;
         const TILE_TYPES = {
             GOLD: { icon: '💰', chance: 0.3, desc: 'Золото' },
             ENEMY: { icon: '👹', chance: 0.25, desc: 'Враг' },
-            HEAL: { icon: '🧪', chance: 0.15, desc: 'Лелье' },
+            HEAL: { icon: '🧪', chance: 0.15, desc: 'Зелье' },
             EMPTY: { icon: '🌑', chance: 0.3, desc: 'Пусто' }
         };
 
@@ -318,9 +292,12 @@
 
         let currentEnemy = null;
 
-        // --- ИНИЦИАЛИЗАЦИЯ ПОЛЯ ---
+        // ==========================================================
+        // [ЗАЩИЩЕННЫЙ БЛОК: ИНИЦИАЛИЗАЦИЯ]
+        // ==========================================================
         function initBoard() {
             const board = document.getElementById('game-board');
+            if (!board) return;
             board.innerHTML = '';
             for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
                 const tile = document.createElement('div');
@@ -343,7 +320,9 @@
             return 'EMPTY';
         }
 
-        // --- ЛОГИКА ВЗАИМОДЕЙСТВИЯ ---
+        // ==========================================================
+        // [ЗАЩИЩЕННЫЙ БЛОК: ГЕЙМПЛЕЙНАЯ ЛОГИКА]
+        // ==========================================================
         function handleTileClick(tile) {
             if (currentEnemy) {
                 addLog("Враг преграждает путь! Сражайся!", "msg-enemy");
@@ -375,7 +354,6 @@
             gainEnergy(7);
             updateUI();
 
-            // Авто-обновление поля
             if (document.querySelectorAll('.tile[style*="hidden"]').length > 18) {
                 setTimeout(initBoard, 400);
             }
@@ -398,12 +376,10 @@
         function battleTurn() {
             if (!currentEnemy) return;
 
-            // Атака игрока
             const pAtk = 12 + Math.floor(Math.random() * 8);
             currentEnemy.hp -= pAtk;
             addLog(`Вы наносите удар: -${pAtk} урона врагу.`, "msg-player");
             
-            // Визуал атаки врага
             const ePanel = document.getElementById('enemy-panel');
             ePanel.classList.add('shake');
             setTimeout(() => ePanel.classList.remove('shake'), 300);
@@ -420,7 +396,6 @@
                 return;
             }
 
-            // Ответный удар
             setTimeout(() => {
                 if (!currentEnemy) return;
                 const eAtk = currentEnemy.attack;
@@ -440,11 +415,13 @@
             }, 800);
         }
 
+        // ==========================================================
+        // [ЗАЩИЩЕННЫЙ БЛОК: ЭНЕРГИЯ И УЛЬТА]
+        // ==========================================================
         function gainEnergy(amount) {
             player.energy = Math.min(player.maxEnergy, player.energy + amount);
             if (player.energy >= player.maxEnergy) {
-                const btn = document.getElementById('super-btn');
-                btn.disabled = false;
+                document.getElementById('super-btn').disabled = false;
             }
         }
 
@@ -453,7 +430,6 @@
                 player.energy = 0;
                 const heal = 40;
                 player.hp = Math.min(player.maxHp, player.hp + heal);
-                
                 addLog("ВСПЫШКА ЯРОСТИ! Вы восстановили силы и ударили всех вокруг!", "msg-player");
                 
                 if (currentEnemy) {
@@ -465,7 +441,6 @@
                 document.getElementById('super-btn').disabled = true;
                 updateUI();
                 if (currentEnemy && currentEnemy.hp <= 0) {
-                    // Обработка смерти от супер-удара
                     currentEnemy.hp = 0;
                     addLog("Враг не выдержал вашей мощи!", "msg-gold");
                     currentEnemy = null;
@@ -473,16 +448,16 @@
             }
         };
 
-        // --- ОБНОВЛЕНИЕ ИНТЕРФЕЙСА ---
+        // ==========================================================
+        // [ЗАЩИЩЕННЫЙ БЛОК: ОБНОВЛЕНИЕ UI И ЛОГ]
+        // ==========================================================
         function updateUI() {
-            // Игрок
             document.getElementById('player-hp-val').innerText = `${player.hp}/${player.maxHp}`;
             document.getElementById('player-hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
             document.getElementById('player-energy-val').innerText = `${player.energy}/${player.maxEnergy}`;
             document.getElementById('player-energy-bar').style.width = `${(player.energy / player.maxEnergy) * 100}%`;
             document.getElementById('player-gold').innerText = player.gold;
 
-            // Враг
             if (currentEnemy) {
                 document.getElementById('enemy-hp-val').innerText = `${currentEnemy.hp}/${currentEnemy.maxHp}`;
                 document.getElementById('enemy-hp-bar').style.width = `${(currentEnemy.hp / currentEnemy.maxHp) * 100}%`;
