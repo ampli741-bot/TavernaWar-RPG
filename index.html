@@ -161,13 +161,13 @@ const App = () => {
   }, [movePlayer]);
 
   if (map.length === 0) return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white font-sans">
       Загрузка...
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col items-center font-sans">
+    <div className="min-h-screen bg-slate-900 text-white p-4 flex flex-col items-center font-sans select-none">
       <h1 className="text-3xl font-bold mb-4 flex items-center gap-2 text-amber-500">
         <Skull className="text-red-500" /> Dungeon Crawler
       </h1>
@@ -240,7 +240,7 @@ const App = () => {
                   
                   {player.x === x && player.y === y && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 p-1">
-                      <div className="w-full h-full bg-blue-500 rounded flex items-center justify-center shadow-lg border border-white/20 transition-all duration-200 animate-in fade-in zoom-in">
+                      <div className="w-full h-full bg-blue-500 rounded flex items-center justify-center shadow-lg border border-white/20 transition-all duration-200">
                         <User size="80%" className="text-white" />
                       </div>
                     </div>
@@ -261,11 +261,19 @@ const App = () => {
             {/* Мобильное управление */}
             <div className="grid grid-cols-3 gap-3">
               <div />
-              <button onClick={() => movePlayer(0, -1)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronUp size={28} /></button>
+              <button onClick={() => movePlayer(0, -1)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all">
+                <ChevronUp size={28} />
+              </button>
               <div />
-              <button onClick={() => movePlayer(-1, 0)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronLeft size={28} /></button>
-              <button onClick={() => movePlayer(0, 1)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronDown size={28} /></button>
-              <button onClick={() => movePlayer(1, 0)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all"><ChevronRight size={28} /></button>
+              <button onClick={() => movePlayer(-1, 0)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all">
+                <ChevronLeft size={28} />
+              </button>
+              <button onClick={() => movePlayer(0, 1)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all">
+                <ChevronDown size={28} />
+              </button>
+              <button onClick={() => movePlayer(1, 0)} className="p-5 bg-slate-700 rounded-xl active:bg-slate-600 shadow-lg active:translate-y-1 transition-all">
+                <ChevronRight size={28} />
+              </button>
             </div>
 
             {isGameOver && (
