@@ -47,7 +47,6 @@
         #inv-box { flex-grow: 1; margin-top: 10px; border-bottom: 1px solid #333; display: flex; flex-direction: column; }
         .inv-item { font-size: 12px; margin-bottom: 4px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 4px solid #444; display: flex; justify-content: space-between; align-items: center; }
         
-        /* КНОПКА МАГАЗИНА */
         .btn-shop {
             margin: 15px 0; padding: 12px; background: linear-gradient(to bottom, #4a3c2a, #2a1f14);
             border: 2px solid var(--border); color: var(--gold); text-align: center;
@@ -244,7 +243,19 @@
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
         preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
-        create() { scene = this; this.grid = []; this.isAnimating = false; for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } }
+        create() { 
+            scene = this; 
+            this.grid = []; 
+            this.isAnimating = false; 
+            
+            // Слой для ауры выделения (выше маски)
+            this.selectionLayer = this.add.layer(); 
+            
+            for(let r=0; r<8; r++) { 
+                this.grid[r] = []; 
+                for(let c=0; c<8; c++) this.spawnTile(r, c); 
+            } 
+        }
         
         spawnTile(r, c, fromTop=false) {
             let types = ['red', 'blue', 'green', 'purple', 'yellow'];
@@ -280,20 +291,18 @@
             frame.lineStyle(1.5, 0xbc962c, 0.4);
             frame.strokeRoundedRect(-TILE_S/2 + 8, -TILE_S/2 + 8, TILE_S - 16, TILE_S - 16, 6);
 
-            // ПОДСВЕТКА ВЫБОРА (свечение)
-            let selectGlow = this.add.graphics();
-            selectGlow.lineStyle(4, 0xffffff, 0); 
-            selectGlow.strokeRoundedRect(-TILE_S/2 - 2, -TILE_S/2 - 2, TILE_S + 4, TILE_S + 4, 12);
-
-            container.add([glow, bg, img, frame, selectGlow]);
+            // ПРИЗРАЧНАЯ АУРА (вынесена на отдельный слой)
+            let ghostAura = this.add.graphics();
+            this.selectionLayer.add(ghostAura);
+            ghostAura.setAlpha(0); // Скрыта по умолчанию
+            
+            container.add([glow, bg, img, frame]);
             container.gridR = r; container.gridC = c; container.type = type;
             container.maskShape = maskShape;
-            container.selectGlow = selectGlow;
+            container.ghostAura = ghostAura; // Ссылка для управления
             container.setSize(TILE_S, TILE_S).setInteractive();
             
-            container.on('pointerdown', () => {
-                this.handlePointer(container);
-            });
+            container.on('pointerdown', () => { this.handlePointer(container); });
 
             this.tweens.add({ targets: container, scaleX: 1.03, scaleY: 1.03, duration: 800 + Math.random() * 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
@@ -307,8 +316,43 @@
                 if(t && t.maskShape) {
                     t.maskShape.clear(); t.maskShape.fillStyle(0xffffff);
                     t.maskShape.fillRoundedRect(t.x - TILE_S/2, t.y - TILE_S/2, TILE_S, TILE_S, 12);
+                    
+                    // Обновляем позицию ауры за плиткой
+                    if(t.ghostAura) {
+                        t.ghostAura.x = t.x;
+                        t.ghostAura.y = t.y;
+                    }
                 }
             }
+        }
+
+        // РИСОВАНИЕ ПРИЗРАЧНОЙ АУРЫ
+        drawGhostAura(t, active) {
+            t.ghostAura.clear();
+            if(!active) {
+                t.ghostAura.setAlpha(0);
+                if(t.auraTween) { t.auraTween.stop(); t.auraTween = null; }
+                return;
+            }
+
+            // Рисуем мягкое "призрачное" свечение
+            const colors = [0x00ffff, 0xffffff, 0x00ffff];
+            let thickness = 10;
+            for(let i=0; i<3; i++) {
+                t.ghostAura.lineStyle(thickness - i*3, colors[i], 0.3 + i*0.2);
+                t.ghostAura.strokeRoundedRect(-TILE_S/2 - 4 - i, -TILE_S/2 - 4 - i, TILE_S + 8 + i*2, TILE_S + 8 + i*2, 16);
+            }
+            
+            t.ghostAura.setAlpha(1);
+            t.auraTween = this.tweens.add({
+                targets: t.ghostAura,
+                alpha: 0.4,
+                scale: 1.1,
+                duration: 600,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
         }
 
         async handlePointer(t) {
@@ -316,15 +360,11 @@
             
             if(!this.sel) { 
                 this.sel = t; 
-                t.setScale(1.15); 
-                // Активируем свечение при выборе
-                t.selectGlow.clear();
-                t.selectGlow.lineStyle(6, 0xffffff, 1);
-                t.selectGlow.strokeRoundedRect(-TILE_S/2 - 2, -TILE_S/2 - 2, TILE_S + 4, TILE_S + 4, 12);
+                t.setScale(1.1); 
+                this.drawGhostAura(t, true);
             }
             else {
-                // Снимаем свечение со старой плитки
-                this.sel.selectGlow.clear();
+                this.drawGhostAura(this.sel, false);
                 
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
                     if (this.checkPotentialMatch(this.sel, t)) {
@@ -375,7 +415,10 @@
 
             return new Promise(res => {
                 this.tweens.add({targets:unique, scale:0, duration:200, onComplete:()=>{
-                    unique.forEach(t => { if(t && t.scene) { this.grid[t.gridR][t.gridC]=null; t.destroy(); } });
+                    unique.forEach(t => { if(t && t.scene) { 
+                        if(t.ghostAura) t.ghostAura.destroy();
+                        this.grid[t.gridR][t.gridC]=null; t.destroy(); 
+                    } });
                     this.applySummaryEffect(counts);
                     this.isAnimating = false; res();
                 }});
