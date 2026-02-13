@@ -25,11 +25,24 @@
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
         h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
 
-        .portrait { width: 140px; height: 140px; margin: 0 auto 10px; border: 3px solid var(--border); border-radius: 50%; background-size: cover; background-position: center; }
+        /* ИГРОВЫЕ ПОРТРЕТЫ С ЭФФЕКТАМИ */
+        .portrait { 
+            width: 220px; height: 220px; margin: 0 auto 15px; 
+            border: 4px solid var(--border); border-radius: 50%; 
+            background-size: cover; background-position: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            animation: hero-breath 4s ease-in-out infinite;
+            transition: transform 0.3s ease-out;
+            cursor: default;
+        }
+        .portrait:hover {
+            transform: scale(1.05) rotateX(10deg) rotateY(10deg);
+        }
+
         .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 24px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
-        #inv-box { height: 260px; overflow-y: auto; margin-top: 10px; border-bottom: 1px solid #333; }
+        #inv-box { height: 220px; overflow-y: auto; margin-top: 10px; border-bottom: 1px solid #333; }
         .inv-item { font-size: 12px; margin-bottom: 5px; padding: 8px; background: rgba(255,255,255,0.05); border-left: 4px solid #444; display: flex; justify-content: space-between; align-items: center; }
         .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); margin-top: 10px; border-radius: 5px; }
         .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
@@ -40,14 +53,26 @@
         
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
 
-        /* КРУГЛАЯ КАРТОЧКА ГЕРОЯ: РАЗМЕР В 2 РАЗА БОЛЬШЕ + ДЫХАНИЕ */
+        /* КАРТОЧКА ВЫБОРА ГЕРОЯ: БЕЗ "КРУГА В КРУГЕ" */
         .hero-card { 
-            width: 320px; height: 320px; padding: 10px; border: 6px solid var(--border); 
-            background: rgba(20,15,10,0.9); text-align: center; cursor: pointer; 
+            width: 320px; height: 320px; 
+            border: 6px solid var(--border); 
+            background-size: cover; background-position: center;
             border-radius: 50%; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             transform-style: preserve-3d; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            position: relative; overflow: visible;
-            animation: hero-breath 4s ease-in-out infinite; /* ЭФФЕКТ ДЫХАНИЯ */
+            position: relative; overflow: hidden;
+            animation: hero-breath 4s ease-in-out infinite;
+            cursor: pointer;
+        }
+
+        .hero-card::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.8) 100%);
+            z-index: 1;
+        }
+
+        .hero-card .info {
+            position: relative; z-index: 2; margin-top: auto; padding-bottom: 30px;
         }
 
         @keyframes hero-breath {
@@ -56,23 +81,14 @@
         }
 
         .hero-card:hover { 
-            animation-play-state: paused; /* Пауза анимации при наведении для чистого наклона */
+            animation-play-state: paused;
             transform: scale(1.1) rotateY(15deg) rotateX(10deg); 
             border-color: var(--gold); 
             box-shadow: 0 0 40px rgba(255, 215, 0, 0.4); 
         }
 
-        /* Изображение внутри карточки */
-        .hero-card img { 
-            width: 220px; height: 220px; border-radius: 50%; 
-            margin-bottom: 10px; pointer-events: none; 
-            border: 4px solid var(--border);
-            object-fit: cover;
-            box-shadow: inset 0 0 20px black;
-        }
-
-        .hero-card h3 { margin: 5px 0; font-size: 24px; color: var(--gold); text-shadow: 2px 2px 4px black; }
-        .hero-card p { font-size: 12px; margin: 0; color: #ccc; max-width: 80%; }
+        .hero-card h3 { margin: 5px 0; font-size: 28px; color: var(--gold); text-shadow: 2px 2px 4px black; }
+        .hero-card p { font-size: 13px; margin: 0; color: #fff; font-weight: bold; text-shadow: 1px 1px 2px black; }
         
         #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 100; }
         .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 500px; border-radius: 15px; }
@@ -86,25 +102,29 @@
     <div id="menu-overlay">
         <h1 style="color:var(--gold); font-size: 60px; margin-bottom: 40px; text-shadow: 0 0 30px black;">TAVERNA WAR</h1>
         <div class="hero-cards">
-            <div class="hero-card" onclick="startGame('warrior')">
-                <img src="assets/hero_warrior.jpg">
-                <h3>ВОИН</h3>
-                <p>Ульта: Красные + Зеленые</p>
+            <div class="hero-card" style="background-image: url('assets/hero_warrior.jpg');" onclick="startGame('warrior')">
+                <div class="info">
+                    <h3>ВОИН</h3>
+                    <p>Ульта: Красные + Зеленые</p>
+                </div>
             </div>
-            <div class="hero-card" onclick="startGame('mage')">
-                <img src="assets/hero_mage.jpg">
-                <h3>МАГ</h3>
-                <p>Ульта: Фиол + Желтые</p>
+            <div class="hero-card" style="background-image: url('assets/hero_mage.jpg');" onclick="startGame('mage')">
+                <div class="info">
+                    <h3>МАГ</h3>
+                    <p>Ульта: Фиол + Желтые</p>
+                </div>
             </div>
-            <div class="hero-card" onclick="startGame('archer')">
-                <img src="assets/hero_archer.jpg">
-                <h3>ЛУЧНИК</h3>
-                <p>Ульта: 4 Линии</p>
+            <div class="hero-card" style="background-image: url('assets/hero_archer.jpg');" onclick="startGame('archer')">
+                <div class="info">
+                    <h3>ЛУЧНИК</h3>
+                    <p>Ульта: 4 Линии</p>
+                </div>
             </div>
-            <div class="hero-card" onclick="startGame('assassin')">
-                <img src="assets/hero_assasin.jpg">
-                <h3>УБИЙЦА</h3>
-                <p>Ульта: 30% поля + Удар</p>
+            <div class="hero-card" style="background-image: url('assets/hero_assasin.jpg');" onclick="startGame('assassin')">
+                <div class="info">
+                    <h3>УБИЙЦА</h3>
+                    <p>Ульта: 30% поля + Удар</p>
+                </div>
             </div>
         </div>
     </div>
@@ -177,6 +197,7 @@
     function spawnMob() {
         let lvl = window.app.player.level;
         window.app.mob = { name: "Гоблин Ур."+lvl, hp: 200+(lvl*100), maxHp: 200+(lvl*100), atk: 20+(lvl*10), mana: 0 };
+        document.getElementById('m-portrait').style.backgroundImage = `url('assets/monster_goblin.jpg')`; 
         window.app.turn = "PLAYER"; window.app.lootActive = false; refreshUI();
     }
 
