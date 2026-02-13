@@ -8,66 +8,244 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         :root { 
-            --gold: #ffd700; --border: #b48c46; --bg: #0c0a08;
-            --rar0: #b0b0b0; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
+            --gold: #ffd700; 
+            --border: #b48c46; 
+            --bg: #0c0a08;
+            --rar0: #b0b0b0; 
+            --rar1: #4488ff; 
+            --rar2: #aa44ff; 
+            --rar3: #ffaa00;
         }
         body { 
-            margin: 0; background: var(--bg); color: white; display: flex; height: 100vh; overflow: hidden; 
-            font-family: 'Verdana', sans-serif; touch-action: none; 
+            margin: 0; 
+            background: var(--bg); 
+            color: white; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: 'Verdana', sans-serif; 
+            touch-action: none; 
         }
-        #ui-left, #ui-right { 
-            width: 380px; padding: 15px; background: rgba(0, 0, 0, 0.9); 
-            display: flex; flex-direction: column; border: 3px solid var(--border); 
-            box-sizing: border-box; z-index: 10; 
-        }
-        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
-        h1, h2, h3, .btn-ultra, .btn-shop { font-family: 'Cinzel', serif; }
 
+        /* UI Панели */
+        #ui-left, #ui-right { 
+            width: 380px; 
+            padding: 15px; 
+            background: rgba(0, 0, 0, 0.9); 
+            display: flex; 
+            flex-direction: column; 
+            border: 3px solid var(--border); 
+            box-sizing: border-box; 
+            z-index: 10; 
+        }
+        #game-container { 
+            flex-grow: 1; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            background: transparent; 
+        }
+
+        /* Шрифты заголовков */
+        h1, h2, h3, .btn-ultra, .btn-shop { 
+            font-family: 'Cinzel', serif; 
+        }
+
+        /* Портреты */
         .portrait { 
-            width: 220px; height: 220px; margin: 0 auto 15px; 
-            border: 4px solid var(--border); border-radius: 50%; 
-            background-size: cover; background-position: center;
+            width: 220px; 
+            height: 220px; 
+            margin: 0 auto 15px; 
+            border: 4px solid var(--border); 
+            border-radius: 50%; 
+            background-size: cover; 
+            background-position: center;
             box-shadow: 0 0 25px rgba(0,0,0,0.6);
             animation: hero-breath 4s ease-in-out infinite;
         }
 
-        .bar-bg { width: 100%; height: 24px; background: #1a1111; border: 2px solid #444; margin-top: 5px; position: relative; border-radius: 4px; overflow: hidden; }
-        .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
-        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 24px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
+        /* Прогресс-бары */
+        .bar-bg { 
+            width: 100%; 
+            height: 24px; 
+            background: #1a1111; 
+            border: 2px solid #444; 
+            margin-top: 5px; 
+            position: relative; 
+            border-radius: 4px; 
+            overflow: hidden; 
+        }
+        .bar-fill { 
+            height: 100%; 
+            width: 100%; 
+            transition: width 0.3s ease-out; 
+        }
+        .bar-text { 
+            position: absolute; 
+            width: 100%; 
+            text-align: center; 
+            font-size: 13px; 
+            line-height: 24px; 
+            font-weight: 900; 
+            text-shadow: 1px 1px 2px black; 
+            color: white; 
+            z-index: 5; 
+        }
         
-        #inv-box { flex-grow: 1; margin-top: 10px; border-bottom: 1px solid #333; display: flex; flex-direction: column; overflow-y: auto; }
-        .inv-item { font-size: 12px; margin-bottom: 4px; padding: 8px; background: rgba(255,255,255,0.05); border-left: 4px solid #444; display: flex; justify-content: space-between; align-items: center; }
+        /* Инвентарь */
+        #inv-box { 
+            flex-grow: 1; 
+            margin-top: 10px; 
+            border-bottom: 1px solid #333; 
+            display: flex; 
+            flex-direction: column; 
+            overflow-y: auto; 
+        }
+        .inv-item { 
+            font-size: 12px; 
+            margin-bottom: 4px; 
+            padding: 8px; 
+            background: rgba(255,255,255,0.05); 
+            border-left: 4px solid #444; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
         
         .btn-shop {
-            margin: 10px 0; padding: 12px; background: linear-gradient(to bottom, #4a3c2a, #2a1f14);
-            border: 2px solid var(--border); color: var(--gold); text-align: center;
-            cursor: pointer; font-size: 16px; transition: all 0.2s; border-radius: 4px;
+            margin: 10px 0; 
+            padding: 12px; 
+            background: linear-gradient(to bottom, #4a3c2a, #2a1f14);
+            border: 2px solid var(--border); 
+            color: var(--gold); 
+            text-align: center;
+            cursor: pointer; 
+            font-size: 16px; 
+            transition: all 0.2s; 
+            border-radius: 4px;
         }
 
-        .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); border-radius: 5px; }
-        .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
-        #battle-log { height: 150px; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
+        /* Статистика */
+        .total-stats { 
+            padding: 10px; 
+            background: rgba(0,0,0,0.6); 
+            border: 1px solid var(--border); 
+            border-radius: 5px; 
+        }
+        .stat-line { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 16px; 
+            margin: 4px 0; 
+            color: var(--gold); 
+        }
+
+        /* Лог боя */
+        #battle-log { 
+            height: 150px; 
+            margin-top: 15px; 
+            background: rgba(0,0,0,0.7); 
+            border: 1px solid #333; 
+            padding: 10px; 
+            font-size: 12px; 
+            overflow-y: auto; 
+            color: #ccc; 
+            font-family: 'Courier New', monospace; 
+        }
         
-        #menu-overlay { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        /* Меню выбора героя */
+        #menu-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: #000; 
+            z-index: 200; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        .hero-cards { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 30px; 
+        }
         .hero-card { 
-            width: 200px; height: 200px; border: 4px solid var(--border); 
-            border-radius: 50%; transition: 0.3s; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; cursor: pointer; background: #111;
+            width: 200px; 
+            height: 200px; 
+            border: 4px solid var(--border); 
+            border-radius: 50%; 
+            transition: 0.3s; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            background: #111;
         }
-        .hero-card:hover { transform: scale(1.05); border-color: var(--gold); box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); }
+        .hero-card:hover { 
+            transform: scale(1.05); 
+            border-color: var(--gold); 
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3); 
+        }
 
-        @keyframes hero-breath { 0%, 100% { transform: scale(1.0); } 50% { transform: scale(1.03); } }
+        @keyframes hero-breath { 
+            0%, 100% { transform: scale(1.0); } 
+            50% { transform: scale(1.03); } 
+        }
         
-        #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; justify-content: center; align-items: center; z-index: 100; }
-        .loot-window { background: #1a1a1a; padding: 30px; border: 4px solid var(--gold); width: 450px; border-radius: 10px; text-align: center; }
-        .btn-ultra { width: 100%; margin: 10px 0; padding: 15px; font-size: 18px; background: #300; color: #555; border: 2px solid #333; border-radius: 8px; cursor: not-allowed; }
-        .btn-ultra.ready { background: #900; color: white; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px #f00; }
-        button { padding: 10px 20px; cursor: pointer; border: none; font-weight: bold; background: var(--gold); border-radius: 4px; font-family: 'Cinzel'; margin: 5px; }
+        /* Окно лута */
+        #loot-overlay { 
+            position: fixed; 
+            inset: 0; 
+            background: rgba(0,0,0,0.95); 
+            display: none; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 100; 
+        }
+        .loot-window { 
+            background: #1a1a1a; 
+            padding: 30px; 
+            border: 4px solid var(--gold); 
+            width: 450px; 
+            border-radius: 10px; 
+            text-align: center; 
+        }
+
+        /* Кнопка суперудара */
+        .btn-ultra { 
+            width: 100%; 
+            margin: 10px 0; 
+            padding: 15px; 
+            font-size: 18px; 
+            background: #300; 
+            color: #555; 
+            border: 2px solid #333; 
+            border-radius: 8px; 
+            cursor: not-allowed; 
+        }
+        .btn-ultra.ready { 
+            background: #900; 
+            color: white; 
+            border-color: #f00; 
+            cursor: pointer; 
+            box-shadow: 0 0 15px #f00; 
+        }
+        button { 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            border: none; 
+            font-weight: bold; 
+            background: var(--gold); 
+            border-radius: 4px; 
+            font-family: 'Cinzel'; 
+            margin: 5px; 
+        }
     </style>
 </head>
 <body>
 
+    <!-- Экран выбора героя -->
     <div id="menu-overlay">
         <h1 style="color:var(--gold); font-size: 40px; margin-bottom: 30px;">TAVERNA WAR</h1>
         <div class="hero-cards">
@@ -78,14 +256,31 @@
         </div>
     </div>
 
+    <!-- Левая панель UI (Игрок) -->
     <div id="ui-left">
         <div id="p-portrait" class="portrait" style="background-color: #222;"></div>
-        <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0 / 0</div><div id="p-arm-f" class="bar-fill" style="background: #4488ff;"></div></div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: #ee3333;"></div></div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #3333ff;"></div></div>
+        
+        <div class="bar-bg">
+            <div id="p-arm-t" class="bar-text">Броня: 0 / 0</div>
+            <div id="p-arm-f" class="bar-fill" style="background: #4488ff;"></div>
+        </div>
+        
+        <div class="bar-bg">
+            <div id="p-hp-t" class="bar-text">0 / 0</div>
+            <div id="p-hp-f" class="bar-fill" style="background: #ee3333;"></div>
+        </div>
+        
+        <div class="bar-bg">
+            <div id="p-mn-t" class="bar-text">Мана: 0%</div>
+            <div id="p-mn-f" class="bar-fill" style="background: #3333ff;"></div>
+        </div>
+        
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
+        
         <div id="inv-box"></div>
+        
         <div class="btn-shop" onclick="window.app.log('Торговец спит...', 'sys')">МАГАЗИН</div>
+        
         <div class="total-stats">
             <div class="stat-line"><span>Урон:</span><b id="stat-atk">0</b></div>
             <div class="stat-line"><span>Уворот:</span><b id="stat-dodge">0%</b></div>
@@ -93,16 +288,28 @@
         </div>
     </div>
 
+    <!-- Контейнер игры -->
     <div id="game-container"></div>
 
+    <!-- Правая панель UI (Враг) -->
     <div id="ui-right">
         <div id="m-portrait" class="portrait" style="background-color: #222;"></div>
         <h2 id="m-name" style="color:#ff4444; margin:10px 0; text-align:center;">ВРАГ</h2>
-        <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: #ee3333;"></div></div>
-        <div class="bar-bg"><div id="m-mn-t" class="bar-text">Мана: 0%</div><div id="m-mn-f" class="bar-fill" style="background: #3333ff;"></div></div>
+        
+        <div class="bar-bg">
+            <div id="m-hp-t" class="bar-text">0 / 0</div>
+            <div id="m-hp-f" class="bar-fill" style="background: #ee3333;"></div>
+        </div>
+        
+        <div class="bar-bg">
+            <div id="m-mn-t" class="bar-text">Мана: 0%</div>
+            <div id="m-mn-f" class="bar-fill" style="background: #3333ff;"></div>
+        </div>
+        
         <div id="battle-log"></div>
     </div>
 
+    <!-- Оверлей трофеев -->
     <div id="loot-overlay">
         <div class="loot-window">
             <h2 style="color:var(--gold);">ТРОФЕЙ</h2>
@@ -115,229 +322,541 @@
     <script>
     const TILE_S = 80; 
     let phaserGame, scene, currentLoot = null;
-    const slotNames = { weapon: "Оружие", body: "Доспех", legs: "Поножи", head: "Шлем", ring: "Перстень", necklace: "Амулет", hands: "Перчатки" };
-    const BG_COLORS = { red: 0x3d0a0a, blue: 0x0a1a2f, green: 0x0a240a, purple: 0x220a35, yellow: 0x2d2405 };
-    const GLOW_COLORS = { red: 0xff0000, blue: 0x00aaff, green: 0x00ff00, purple: 0xaa00ff, yellow: 0xffaa00 };
 
+    const slotNames = { 
+        weapon: "Оружие", 
+        body: "Доспех", 
+        legs: "Поножи", 
+        head: "Шлем", 
+        ring: "Перстень", 
+        necklace: "Амулет", 
+        hands: "Перчатки" 
+    };
+
+    const BG_COLORS = { 
+        red: 0x3d0a0a, 
+        blue: 0x0a1a2f, 
+        green: 0x0a240a, 
+        purple: 0x220a35, 
+        yellow: 0x2d2405 
+    };
+
+    const GLOW_COLORS = { 
+        red: 0xff0000, 
+        blue: 0x00aaff, 
+        green: 0x00ff00, 
+        purple: 0xaa00ff, 
+        yellow: 0xffaa00 
+    };
+
+    // Глобальное состояние
     window.app = { 
-        player: null, mob: null, lootActive: false, turn: "PLAYER",
+        player: null, 
+        mob: null, 
+        lootActive: false, 
+        turn: "PLAYER",
         log: (msg, type) => {
             const log = document.getElementById('battle-log');
             const entry = document.createElement('div');
             entry.style.color = type==='p'?'#4f4':type==='m'?'#f44':type==='crit'?'#aa44ff':'#ffd700';
             entry.innerText = `> ${msg}`;
             log.prepend(entry);
+            if(log.childNodes.length > 50) log.removeChild(log.lastChild);
         }
     };
 
+    // Инициализация героя
     function startGame(key) {
         document.getElementById('menu-overlay').style.display = 'none';
-        const base = { 'warrior':{hp:1600,atk:25,agi:5}, 'mage':{hp:800,atk:65,agi:2}, 'archer':{hp:1000,atk:40,agi:18}, 'assassin':{hp:900,atk:55,agi:14} }[key];
-        window.app.player = { 
-            job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, 
-            mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, 
-            equip: { weapon:{n:"Ржавый меч",atk:10,arm:0,agi:0,rar:0} } 
+        
+        const baseStats = {
+            'warrior': { hp: 1600, atk: 25, agi: 5 },
+            'mage': { hp: 800, atk: 65, agi: 2 },
+            'archer': { hp: 1000, atk: 40, agi: 18 },
+            'assassin': { hp: 900, atk: 55, agi: 14 }
         };
-        initPhaser(); spawnMob(); refreshUI();
-    }
 
-    function spawnMob() {
-        let lvl = window.app.player.level;
-        window.app.mob = { name: "Гоблин Ур."+lvl, hp: 300+(lvl*150), maxHp: 300+(lvl*150), atk: 25+(lvl*8), mana: 0 };
-        window.app.turn = "PLAYER"; refreshUI();
-    }
+        const base = baseStats[key];
+        
+        window.app.player = { 
+            job: key.toUpperCase(), 
+            key: key, 
+            hp: base.hp, 
+            maxHp: base.hp, 
+            armor: 0, 
+            maxArmor: 0, 
+            mana: 0, 
+            gold: 0, 
+            level: 1, 
+            baseAtk: base.atk, 
+            baseAgi: base.agi, 
+            equip: { 
+                weapon: { n: "Ржавый меч", atk: 10, arm: 0, agi: 0, rar: 0 } 
+            } 
+        };
 
-    function refreshUI() {
-        const p = window.app.player; const m = window.app.mob;
-        if(!p || !m) return;
-        let gearAtk=0, gearArm=0, gearAgi=0, invH = "";
-        for(let s in slotNames) { 
-            let i = p.equip[s]; if(i) { gearAtk+=i.atk; gearArm+=i.arm; gearAgi+=i.agi; }
-            invH += `<div class="inv-item" style="border-left: 4px solid ${i?`var(--rar${i.rar})`:'#444'}"><span>${slotNames[s]}:</span> <b>${i?i.n:'---'}</b></div>`;
-        }
-        p.maxArmor = gearArm;
-        document.getElementById('p-hp-t').innerText = `${Math.floor(p.hp)}/${p.maxHp}`;
-        document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100)+'%';
-        document.getElementById('p-arm-t').innerText = `Броня: ${Math.floor(p.armor)}/${p.maxArmor}`;
-        document.getElementById('p-arm-f').style.width = p.maxArmor > 0 ? (p.armor/p.maxArmor*100)+'%' : '0%';
-        document.getElementById('p-mn-t').innerText = `Мана: ${p.mana}%`;
-        document.getElementById('p-mn-f').style.width = p.mana+'%';
-        document.getElementById('btn-ultra').className = 'btn-ultra' + (p.mana>=100?' ready':'');
-        document.getElementById('stat-atk').innerText = p.baseAtk + gearAtk;
-        document.getElementById('stat-dodge').innerText = Math.min(60, p.baseAgi + gearAgi) + "%";
-        document.getElementById('gold-val').innerText = p.gold;
-        document.getElementById('m-hp-t').innerText = `${Math.floor(m.hp)}/${m.maxHp}`;
-        document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100)+'%';
-        document.getElementById('m-mn-t').innerText = `Мана: ${m.mana}%`;
-        document.getElementById('m-mn-f').style.width = m.mana+'%';
-        document.getElementById('inv-box').innerHTML = invH;
-    }
-
-    async function useUltra() {
-        if(window.app.player.mana < 100 || window.app.lootActive || scene.isAnimating) return;
-        window.app.player.mana = 0; let key = window.app.player.key;
-        window.app.log(`ИСПОЛЬЗОВАН СУПЕРУДАР!`, 'crit');
-        let toExplode = [];
-        if(key === 'warrior') toExplode = scene.grid.flat().filter(t => t && (t.type === 'red' || t.type === 'green'));
-        if(key === 'mage') toExplode = scene.grid.flat().filter(t => t && (t.type === 'purple' || t.type === 'yellow'));
-        if(key === 'archer') { for(let i=0; i<4; i++) { let r = Math.floor(Math.random()*8); for(let c=0; c<8; c++) if(scene.grid[r][c]) toExplode.push(scene.grid[r][c]); } }
-        if(key === 'assassin') { toExplode = Phaser.Utils.Array.Shuffle(scene.grid.flat().filter(t => t)).slice(0, 20); window.app.mob.hp -= (window.app.player.baseAtk * 3); }
-        if(toExplode.length > 0) { await scene.explodeUnique(toExplode); await scene.check(); }
+        initPhaser(); 
+        spawnMob(); 
         refreshUI();
     }
 
+    // Создание врага
+    function spawnMob() {
+        let lvl = window.app.player.level;
+        window.app.mob = { 
+            name: "Гоблин Ур." + lvl, 
+            hp: 300 + (lvl * 150), 
+            maxHp: 300 + (lvl * 150), 
+            atk: 25 + (lvl * 8), 
+            mana: 0 
+        };
+        window.app.turn = "PLAYER"; 
+        refreshUI();
+    }
+
+    // Обновление интерфейса
+    function refreshUI() {
+        const p = window.app.player; 
+        const m = window.app.mob;
+        if(!p || !m) return;
+
+        let gearAtk = 0, gearArm = 0, gearAgi = 0, invH = "";
+        
+        for(let s in slotNames) { 
+            let item = p.equip[s]; 
+            if(item) { 
+                gearAtk += item.atk; 
+                gearArm += item.arm; 
+                gearAgi += item.agi; 
+            }
+            invH += `
+                <div class="inv-item" style="border-left: 4px solid ${item ? `var(--rar${item.rar})` : '#444'}">
+                    <span>${slotNames[s]}:</span> 
+                    <b>${item ? item.n : '---'}</b>
+                </div>`;
+        }
+
+        p.maxArmor = gearArm;
+        
+        // HP и Броня игрока
+        document.getElementById('p-hp-t').innerText = `${Math.floor(p.hp)} / ${p.maxHp}`;
+        document.getElementById('p-hp-f').style.width = (p.hp / p.maxHp * 100) + '%';
+        
+        document.getElementById('p-arm-t').innerText = `Броня: ${Math.floor(p.armor)} / ${p.maxArmor}`;
+        document.getElementById('p-arm-f').style.width = p.maxArmor > 0 ? (p.armor / p.maxArmor * 100) + '%' : '0%';
+        
+        // Мана игрока
+        document.getElementById('p-mn-t').innerText = `Мана: ${p.mana}%`;
+        document.getElementById('p-mn-f').style.width = p.mana + '%';
+        document.getElementById('btn-ultra').className = 'btn-ultra' + (p.mana >= 100 ? ' ready' : '');
+        
+        // Статистика
+        document.getElementById('stat-atk').innerText = p.baseAtk + gearAtk;
+        document.getElementById('stat-dodge').innerText = Math.min(60, p.baseAgi + gearAgi) + "%";
+        document.getElementById('gold-val').innerText = p.gold;
+
+        // Враг
+        document.getElementById('m-hp-t').innerText = `${Math.floor(m.hp)} / ${m.maxHp}`;
+        document.getElementById('m-hp-f').style.width = (m.hp / m.maxHp * 100) + '%';
+        document.getElementById('m-mn-t').innerText = `Мана: ${m.mana}%`;
+        document.getElementById('m-mn-f').style.width = m.mana + '%';
+        
+        document.getElementById('inv-box').innerHTML = invH;
+    }
+
+    // Суперудар
+    async function useUltra() {
+        if(window.app.player.mana < 100 || window.app.lootActive || scene.isAnimating) return;
+        
+        window.app.player.mana = 0; 
+        let key = window.app.player.key;
+        window.app.log(`ИСПОЛЬЗОВАН СУПЕРУДАР!`, 'crit');
+
+        let toExplode = [];
+        
+        if(key === 'warrior') {
+            toExplode = scene.grid.flat().filter(t => t && (t.type === 'red' || t.type === 'green'));
+        }
+        else if(key === 'mage') {
+            toExplode = scene.grid.flat().filter(t => t && (t.type === 'purple' || t.type === 'yellow'));
+        }
+        else if(key === 'archer') {
+            for(let i=0; i<4; i++) {
+                let r = Math.floor(Math.random() * 8);
+                for(let c=0; c<8; c++) if(scene.grid[r][c]) toExplode.push(scene.grid[r][c]);
+            }
+        }
+        else if(key === 'assassin') {
+            toExplode = Phaser.Utils.Array.Shuffle(scene.grid.flat().filter(t => t)).slice(0, 20);
+            window.app.mob.hp -= (window.app.player.baseAtk * 3);
+        }
+
+        if(toExplode.length > 0) {
+            await scene.explodeUnique(toExplode);
+            await scene.check();
+        }
+        refreshUI();
+    }
+
+    // Лут
     function generateLoot() {
         const slots = Object.keys(slotNames);
         const slot = Phaser.Utils.Array.GetRandom(slots);
         const rar = Math.random() > 0.9 ? 3 : Math.random() > 0.7 ? 2 : Math.random() > 0.4 ? 1 : 0;
-        const names = ["Кованый", "Древний", "Мистический", "Окровавленный"];
+        const prefix = ["Кованый", "Древний", "Мистический", "Окровавленный"];
+        
         currentLoot = { 
-            slot, rar, n: `${names[rar]} ${slotNames[slot]}`,
-            atk: (rar+1) * 15, arm: (rar+1) * 10, agi: rar * 3
+            slot, 
+            rar, 
+            n: `${prefix[rar]} ${slotNames[slot]}`,
+            atk: (rar + 1) * 15, 
+            arm: (rar + 1) * 10, 
+            agi: rar * 3
         };
-        document.getElementById('loot-info').innerHTML = `Найдено: <b style="color:var(--rar${rar})">${currentLoot.n}</b><br>Урон: +${currentLoot.atk}, Броня: +${currentLoot.arm}`;
+        
+        document.getElementById('loot-info').innerHTML = `
+            Найдено: <b style="color:var(--rar${rar})">${currentLoot.n}</b><br>
+            Урон: +${currentLoot.atk}, Броня: +${currentLoot.arm}`;
+        
         document.getElementById('loot-overlay').style.display = 'flex';
         window.app.lootActive = true;
     }
-    function takeLoot() { window.app.player.equip[currentLoot.slot] = currentLoot; closeLoot(); }
-    function sellLoot() { window.app.player.gold += 50; closeLoot(); }
+
+    function takeLoot() { 
+        window.app.player.equip[currentLoot.slot] = currentLoot; 
+        closeLoot(); 
+    }
+
+    function sellLoot() { 
+        window.app.player.gold += 50; 
+        closeLoot(); 
+    }
+
     function closeLoot() { 
         document.getElementById('loot-overlay').style.display = 'none'; 
-        window.app.lootActive = false; window.app.player.level++; 
+        window.app.lootActive = false; 
+        window.app.player.level++; 
         spawnMob(); 
     }
 
+    // Сцена Phaser
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
+
         preload() { 
-            const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+            const canvas = document.createElement('canvas'); 
+            canvas.width = 64; 
+            canvas.height = 64;
             const ctx = canvas.getContext('2d');
+            
             ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => {
-                ctx.fillStyle = c; ctx.beginPath(); ctx.arc(32, 32, 20, 0, Math.PI*2); ctx.fill();
+                ctx.clearRect(0, 0, 64, 64);
+                ctx.fillStyle = c; 
+                ctx.beginPath(); 
+                ctx.arc(32, 32, 20, 0, Math.PI * 2); 
+                ctx.fill();
                 this.textures.addCanvas(`t_${c}`, canvas);
             });
         }
+
         create() { 
-            scene = this; this.grid = []; this.isAnimating = false; this.sel = null;
-            for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } 
+            scene = this; 
+            this.grid = []; 
+            this.isAnimating = false; 
+            this.sel = null;
+            
+            for(let r=0; r<8; r++) { 
+                this.grid[r] = []; 
+                for(let c=0; c<8; c++) this.spawnTile(r, c); 
+            } 
         }
-        spawnTile(r, c, fromTop=false) {
-            let types = ['red', 'blue', 'green', 'purple', 'yellow'];
-            let type = Phaser.Utils.Array.GetRandom(types);
-            let x = c * TILE_S + TILE_S/2, targetY = r * TILE_S + TILE_S/2;
-            let container = this.add.container(x, fromTop ? -TILE_S : targetY);
-            let glow = this.add.graphics().fillStyle(GLOW_COLORS[type], 0.3).fillRoundedRect(-TILE_S/2+2, -TILE_S/2+2, TILE_S-4, TILE_S-4, 10);
-            let bg = this.add.graphics().fillStyle(BG_COLORS[type], 1).fillRoundedRect(-TILE_S/2+4, -TILE_S/2+4, TILE_S-8, TILE_S-8, 8);
-            let icon = this.add.circle(0, 0, 15, GLOW_COLORS[type]);
-            container.add([glow, bg, icon]); container.gridR = r; container.gridC = c; container.type = type;
+
+        spawnTile(r, c, fromTop = false) {
+            const types = ['red', 'blue', 'green', 'purple', 'yellow'];
+            const type = Phaser.Utils.Array.GetRandom(types);
+            const x = c * TILE_S + TILE_S / 2;
+            const targetY = r * TILE_S + TILE_S / 2;
+            
+            const container = this.add.container(x, fromTop ? -TILE_S : targetY);
+            
+            const glow = this.add.graphics();
+            glow.fillStyle(GLOW_COLORS[type], 0.3);
+            glow.fillRoundedRect(-TILE_S/2+2, -TILE_S/2+2, TILE_S-4, TILE_S-4, 10);
+            
+            const bg = this.add.graphics();
+            bg.fillStyle(BG_COLORS[type], 1);
+            bg.fillRoundedRect(-TILE_S/2+4, -TILE_S/2+4, TILE_S-8, TILE_S-8, 8);
+            
+            const icon = this.add.circle(0, 0, 15, GLOW_COLORS[type]);
+            
+            container.add([glow, bg, icon]);
+            container.gridR = r; 
+            container.gridC = c; 
+            container.type = type;
             container.setSize(TILE_S, TILE_S).setInteractive();
+            
             container.on('pointerdown', () => this.handlePointer(container));
             this.grid[r][c] = container;
-            if(fromTop) this.tweens.add({ targets: container, y: targetY, duration: 300, ease: 'Back.easeOut' });
+
+            if(fromTop) {
+                this.tweens.add({
+                    targets: container,
+                    y: targetY,
+                    duration: 300,
+                    ease: 'Back.easeOut'
+                });
+            }
         }
+
         async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER" || window.app.lootActive) return;
-            if(!this.sel) { this.sel = t; t.setScale(1.1); }
-            else {
-                let prev = this.sel; this.sel = null; prev.setScale(1.0);
-                if(Math.abs(prev.gridR-t.gridR)+Math.abs(prev.gridC-t.gridC) === 1) {
+
+            if(!this.sel) { 
+                this.sel = t; 
+                t.setScale(1.1); 
+            } else {
+                let prev = this.sel; 
+                this.sel = null; 
+                prev.setScale(1.0);
+
+                const dist = Math.abs(prev.gridR - t.gridR) + Math.abs(prev.gridC - t.gridC);
+                if(dist === 1) {
                     if(this.checkPotentialMatch(prev, t)) {
-                        await this.swap(prev, t); await this.check();
-                        window.app.turn = "MOB"; this.time.delayedCall(400, () => this.mobAI());
+                        await this.swap(prev, t);
+                        await this.check();
+                        window.app.turn = "MOB";
+                        this.time.delayedCall(400, () => this.mobAI());
+                    } else {
+                        // Неудачный обмен - визуальный эффект?
                     }
                 }
             }
         }
+
         checkPotentialMatch(t1, t2) {
-            let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
-            this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
+            let r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
+            this.grid[r1][c1] = t2; 
+            this.grid[r2][c2] = t1;
             let has = this.findMatches().length > 0;
-            this.grid[r1][c1]=t1; this.grid[r2][c2]=t2; return has;
+            this.grid[r1][c1] = t1; 
+            this.grid[r2][c2] = t2; 
+            return has;
         }
+
         async swap(t1, t2) {
             this.isAnimating = true;
-            let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
-            this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
-            t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
+            let r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
+            
+            this.grid[r1][c1] = t2; 
+            this.grid[r2][c2] = t1;
+            
+            t1.gridR = r2; t1.gridC = c2;
+            t2.gridR = r1; t2.gridC = c1;
+
             return new Promise(res => {
-                this.tweens.add({targets:t1, x:c2*TILE_S+TILE_S/2, y:r2*TILE_S+TILE_S/2, duration:150});
-                this.tweens.add({targets:t2, x:c1*TILE_S+TILE_S/2, y:r1*TILE_S+TILE_S/2, duration:150, onComplete:()=> {this.isAnimating=false; res();}});
-            });
-        }
-        findMatches() {
-            let m = [];
-            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type) m.push(this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]);
-            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type) m.push(this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]);
-            return [...new Set(m)];
-        }
-        async check() {
-            let m = this.findMatches();
-            if(m.length > 0) { await this.explodeUnique(m); return true; }
-            return false;
-        }
-        async explodeUnique(unique) {
-            this.isAnimating = true;
-            let counts = { red:0, blue:0, green:0, purple:0, yellow:0 };
-            unique.forEach(t => { if(t && this.grid[t.gridR][t.gridC] === t) { this.grid[t.gridR][t.gridC] = null; counts[t.type]++; } });
-            return new Promise(res => {
-                unique.forEach(t => { if(t && t.scene) this.tweens.add({ targets: t, scale: 1.5, alpha: 0, duration: 200, onComplete: () => t.destroy() }); });
-                this.time.delayedCall(100, async () => {
-                    this.applySummary(counts); await this.refill(); await this.check();
-                    this.isAnimating = false; res();
+                this.tweens.add({
+                    targets: t1,
+                    x: c2 * TILE_S + TILE_S/2,
+                    y: r2 * TILE_S + TILE_S/2,
+                    duration: 150
+                });
+                this.tweens.add({
+                    targets: t2,
+                    x: c1 * TILE_S + TILE_S/2,
+                    y: r1 * TILE_S + TILE_S/2,
+                    duration: 150,
+                    onComplete: () => {
+                        this.isAnimating = false;
+                        res();
+                    }
                 });
             });
         }
-        applySummary(counts) {
-            let p = window.app.player, m = window.app.mob, gearAtk = 0;
-            for(let s in p.equip) gearAtk += p.equip[s].atk;
-            let atk = p.baseAtk + gearAtk;
-            if(window.app.turn === "PLAYER") {
-                if(counts.red) { m.hp -= counts.red*atk; window.app.log(`Удар -${counts.red*atk}`, 'p'); }
-                if(counts.purple) { m.hp -= counts.purple*atk*2; window.app.log(`КРИТ -${counts.purple*atk*2}`, 'crit'); }
-                if(counts.blue) p.mana = Math.min(100, p.mana + counts.blue*6);
-                if(counts.green) { p.hp = Math.min(p.maxHp, p.hp + counts.green*15); p.armor = Math.min(p.maxArmor, p.armor + counts.green*10); }
-                if(counts.yellow) p.gold += counts.yellow*3;
-            } else {
-                let d = counts.red*10 + counts.purple*15;
-                if(d > 0) { 
-                    if(p.armor > 0) { p.armor -= d; if(p.armor < 0) { p.hp += p.armor; p.armor = 0; } }
-                    else p.hp -= d; 
-                    window.app.log(`Враг нанес ${d} урона`, 'm');
+
+        findMatches() {
+            let matches = [];
+            // Горизонтальные
+            for(let r = 0; r < 8; r++) {
+                for(let c = 0; c < 6; c++) {
+                    let t1 = this.grid[r][c], t2 = this.grid[r][c+1], t3 = this.grid[r][c+2];
+                    if(t1 && t2 && t3 && t1.type === t2.type && t1.type === t3.type) {
+                        matches.push(t1, t2, t3);
+                    }
                 }
             }
+            // Вертикальные
+            for(let c = 0; c < 8; c++) {
+                for(let r = 0; r < 6; r++) {
+                    let t1 = this.grid[r][c], t2 = this.grid[r+1][c], t3 = this.grid[r+2][c];
+                    if(t1 && t2 && t3 && t1.type === t2.type && t1.type === t3.type) {
+                        matches.push(t1, t2, t3);
+                    }
+                }
+            }
+            return [...new Set(matches)];
+        }
+
+        async check() {
+            let matches = this.findMatches();
+            if(matches.length > 0) {
+                await this.explodeUnique(matches);
+                return true;
+            }
+            return false;
+        }
+
+        async explodeUnique(unique) {
+            this.isAnimating = true;
+            let counts = { red:0, blue:0, green:0, purple:0, yellow:0 };
+            
+            // Удаляем из сетки немедленно
+            unique.forEach(t => {
+                if(t && this.grid[t.gridR][t.gridC] === t) {
+                    this.grid[t.gridR][t.gridC] = null;
+                    counts[t.type]++;
+                }
+            });
+
+            return new Promise(res => {
+                // Анимация исчезновения
+                unique.forEach(t => {
+                    if(!t || !t.scene) return;
+                    this.tweens.add({
+                        targets: t,
+                        scale: 1.5,
+                        alpha: 0,
+                        duration: 200,
+                        onComplete: () => t.destroy()
+                    });
+                });
+
+                // Падение и расчет эффектов
+                this.time.delayedCall(100, async () => {
+                    this.applySummary(counts);
+                    await this.refill();
+                    await this.check();
+                    this.isAnimating = false;
+                    res();
+                });
+            });
+        }
+
+        applySummary(counts) {
+            const p = window.app.player; 
+            const m = window.app.mob;
+            let gearAtk = 0;
+            for(let s in p.equip) if(p.equip[s]) gearAtk += p.equip[s].atk;
+            
+            const atkValue = p.baseAtk + gearAtk;
+            
+            if(window.app.turn === "PLAYER") {
+                if(counts.red) {
+                    let dmg = counts.red * atkValue;
+                    m.hp -= dmg;
+                    window.app.log(`Удар -${dmg}`, 'p');
+                }
+                if(counts.purple) {
+                    let dmg = counts.purple * atkValue * 2;
+                    m.hp -= dmg;
+                    window.app.log(`КРИТИЧЕСКИЙ -${dmg}`, 'crit');
+                }
+                if(counts.blue) {
+                    p.mana = Math.min(100, p.mana + counts.blue * 6);
+                }
+                if(counts.green) {
+                    p.hp = Math.min(p.maxHp, p.hp + counts.green * 15);
+                    p.armor = Math.min(p.maxArmor, p.armor + counts.green * 10);
+                }
+                if(counts.yellow) {
+                    p.gold += counts.yellow * 3;
+                }
+            } else {
+                // Ход моба (реакция на его матчи)
+                let mobDmg = counts.red * 10 + counts.purple * 15;
+                if(mobDmg > 0) {
+                    if(p.armor > 0) {
+                        p.armor -= mobDmg;
+                        if(p.armor < 0) { p.hp += p.armor; p.armor = 0; }
+                    } else {
+                        p.hp -= mobDmg;
+                    }
+                    window.app.log(`Враг атакует: ${mobDmg} урона`, 'm');
+                }
+            }
+
             if(m.hp <= 0 && !window.app.lootActive) generateLoot();
             refreshUI();
         }
+
         async refill() {
-            for(let c=0; c<8; c++) {
-                let empty = 0;
-                for(let r=7; r>=0; r--) {
-                    if(!this.grid[r][c]) empty++;
-                    else if(empty > 0) {
-                        let t = this.grid[r][c]; this.grid[r+empty][c] = t; this.grid[r][c] = null;
-                        t.gridR = r+empty; this.tweens.add({ targets: t, y: t.gridR*TILE_S+TILE_S/2, duration: 250, ease: 'Back.easeOut' });
+            let dropTweens = [];
+            for(let c = 0; c < 8; c++) {
+                let emptySlots = 0;
+                for(let r = 7; r >= 0; r--) {
+                    if(!this.grid[r][c]) {
+                        emptySlots++;
+                    } else if(emptySlots > 0) {
+                        let tile = this.grid[r][c];
+                        this.grid[r + emptySlots][c] = tile;
+                        this.grid[r][c] = null;
+                        tile.gridR = r + emptySlots;
+                        
+                        dropTweens.push({
+                            targets: tile,
+                            y: tile.gridR * TILE_S + TILE_S/2,
+                            duration: 250,
+                            ease: 'Back.easeOut'
+                        });
                     }
                 }
-                for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
+                // Создаем новые
+                for(let i = 0; i < emptySlots; i++) {
+                    this.spawnTile(i, c, true);
+                }
+            }
+            if(dropTweens.length > 0) {
+                dropTweens.forEach(d => this.tweens.add(d));
             }
             return new Promise(r => this.time.delayedCall(200, r));
         }
+
         async mobAI() {
             if(window.app.mob.hp <= 0 || window.app.lootActive) return;
-            let moves = [];
-            for(let r=0; r<8; r++) for(let c=0; c<7; c++) {
-                let t1=this.grid[r][c], t2=this.grid[r][c+1];
-                if(t1 && t2 && this.checkPotentialMatch(t1, t2)) moves.push({t1, t2});
+            
+            let possibleMoves = [];
+            for(let r = 0; r < 8; r++) {
+                for(let c = 0; c < 7; c++) {
+                    let t1 = this.grid[r][c], t2 = this.grid[r][c+1];
+                    if(t1 && t2 && this.checkPotentialMatch(t1, t2)) possibleMoves.push({t1, t2});
+                }
             }
-            if(moves.length > 0) { let m = Phaser.Utils.Array.GetRandom(moves); await this.swap(m.t1, m.t2); await this.check(); }
-            window.app.turn = "PLAYER"; refreshUI();
+            for(let c = 0; c < 8; c++) {
+                for(let r = 0; r < 7; r++) {
+                    let t1 = this.grid[r][c], t2 = this.grid[r+1][c];
+                    if(t1 && t2 && this.checkPotentialMatch(t1, t2)) possibleMoves.push({t1, t2});
+                }
+            }
+
+            if(possibleMoves.length > 0) {
+                let move = Phaser.Utils.Array.GetRandom(possibleMoves);
+                await this.swap(move.t1, move.t2);
+                await this.check();
+            }
+            
+            window.app.turn = "PLAYER";
+            refreshUI();
         }
     }
 
     function initPhaser() { 
         phaserGame = new Phaser.Game({ 
-            type: Phaser.AUTO, parent: 'game-container', width: 640, height: 640, 
-            scene: GameScene, transparent: true, fps: { target: 60 } 
+            type: Phaser.AUTO, 
+            parent: 'game-container', 
+            width: 640, 
+            height: 640, 
+            scene: GameScene, 
+            transparent: true, 
+            fps: { target: 60 } 
         }); 
     }
     </script>
