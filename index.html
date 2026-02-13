@@ -6,6 +6,7 @@
     <title>Taverna War: Gothic Perfection</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+    <script src="logic.js"></script> 
     <style>
         :root { 
             --gold: #ffd700; --border: #b48c46; --bg: #0c0a08;
@@ -148,7 +149,7 @@
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #44f;"></div></div>
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
         <div id="inv-box"></div>
-        <button class="btn-shop" onclick="window.app.log('Магазин закрыт на переучет!', 'sys')">МАГАЗИН</button>
+        <button class="btn-shop" onclick="window.app.onShopClick()">МАГАЗИН</button>
         <div class="total-stats">
             <div class="stat-line"><span>Сила:</span><b id="stat-atk">0</b></div>
             <div class="stat-line"><span>Уворот:</span><b id="stat-dodge">0%</b></div>
@@ -180,7 +181,7 @@
     <script>
     const TILE_S = 85; 
     const TILE_P = 4; 
-    const VISUAL_S = TILE_S - (TILE_P * 2);
+    const VISUAL_S = TILE_S - (TILE_P * 2); 
 
     let phaserGame, scene, currentLoot = null;
     const adjs = ["Древний", "Мифический", "Проклятый", "Тёмный", "Вечный", "Стальной", "Святой", "Забытый", "Ледяной", "Кровавый"];
@@ -189,6 +190,7 @@
     const BG_COLORS = { red: 0x3d0a0a, blue: 0x0a1a2f, green: 0x0a240a, purple: 0x220a35, yellow: 0x2d2405 };
     const GLOW_COLORS = { red: 0xff0000, blue: 0x00aaff, green: 0x00ff00, purple: 0xaa00ff, yellow: 0xffaa00 };
 
+    // WINDOW.APP - ТОЧКА ВЗАИМОДЕЙСТВИЯ СО СКЕЛЕТОМ
     window.app = { 
         player: null, mob: null, lootActive: false, turn: "PLAYER",
         log: (msg, type) => {
@@ -197,7 +199,10 @@
             entry.style.color = type==='p'?'#4f4':type==='m'?'#f44':type==='crit'?'#aa44ff':'#ffd700';
             entry.innerText = `> ${msg}`;
             log.prepend(entry);
-        }
+        },
+        // Пустые функции, которые мы заполним в logic.js
+        onStep: () => {}, 
+        onShopClick: () => { window.app.log('Магазин закрыт на переучет!', 'sys'); }
     };
 
     function startGame(key) {
@@ -217,6 +222,7 @@
     }
 
     function refreshUI() {
+        if(!window.app.player) return;
         const p = window.app.player; const m = window.app.mob;
         let gearAtk=0, gearArm=0, gearAgi=0, invH = "";
         for(let s in slotNames) { 
@@ -278,12 +284,7 @@
 
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
-        preload() { 
-            // Загрузка твоих ассетов рун
-            ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => {
-                this.load.image(`t_${c}`, `assets/rune_${c}.png`);
-            });
-        }
+        preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
         create() { 
             scene = this; this.grid = []; this.isAnimating = false; 
             for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } 
@@ -296,82 +297,50 @@
             let type = Phaser.Utils.Array.GetRandom(types);
             let x = c * TILE_S + TILE_S/2;
             let y = fromTop ? -TILE_S : r * TILE_S + TILE_S/2;
-            
             let container = this.add.container(x, y);
-
-            // Фоновое свечение
             let glow = this.add.graphics();
             glow.fillStyle(GLOW_COLORS[type], 0.4);
             glow.fillRoundedRect(-VISUAL_S/2 - 2, -VISUAL_S/2 - 2, VISUAL_S + 4, VISUAL_S + 4, 14);
-
             let bg = this.add.graphics();
             bg.fillStyle(BG_COLORS[type], 1);
             bg.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
-
-            // Твоя картинка руны
             let img = this.add.image(0, 0, `t_${type}`);
             let zoom = (type === 'red' || type === 'blue' || type === 'purple') ? 2.15 : 1.5;
             img.setDisplaySize(VISUAL_S * zoom, VISUAL_S * zoom);
             if (type === 'yellow') img.y += 4;
-
-            // Маска (чтобы картинка не вылезала за края плитки)
             let maskShape = this.make.graphics();
             maskShape.fillStyle(0xffffff);
             maskShape.fillRoundedRect(x - VISUAL_S/2, y - VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
             img.setMask(maskShape.createGeometryMask());
-
-            // Рамка (Gothic Frame)
             let frame = this.add.graphics();
             frame.lineStyle(6, 0x444444, 1);
             frame.strokeRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 10);
-            frame.lineStyle(2, 0x666666, 0.8);
-            frame.strokeRoundedRect(-VISUAL_S/2 + 2, -VISUAL_S/2 + 2, VISUAL_S - 4, VISUAL_S - 4, 8);
-            frame.lineStyle(1.5, 0xbc962c, 0.4);
-            frame.strokeRoundedRect(-VISUAL_S/2 + 8, -VISUAL_S/2 + 8, VISUAL_S - 16, VISUAL_S - 16, 6);
-
             let hoverGlow = this.add.graphics();
-            hoverGlow.alpha = 0;
-            hoverGlow.lineStyle(4, 0xffffff, 1);
+            hoverGlow.alpha = 0; hoverGlow.lineStyle(4, 0xffffff, 1);
             hoverGlow.strokeRoundedRect(-VISUAL_S/2 - 4, -VISUAL_S/2 - 4, VISUAL_S + 8, VISUAL_S + 8, 14);
-
             let ghostGlow = this.add.graphics();
-            ghostGlow.alpha = 0;
-            ghostGlow.lineStyle(8, 0xffffff, 0.6);
+            ghostGlow.alpha = 0; ghostGlow.lineStyle(8, 0xffffff, 0.6);
             ghostGlow.strokeRoundedRect(-VISUAL_S/2 - 2, -VISUAL_S/2 - 2, VISUAL_S + 4, VISUAL_S + 4, 12);
 
             container.add([glow, bg, img, frame, hoverGlow, ghostGlow]);
             container.gridR = r; container.gridC = c; container.type = type;
-            container.maskShape = maskShape;
-            container.hoverGlow = hoverGlow;
-            container.ghostGlow = ghostGlow;
+            container.maskShape = maskShape; container.hoverGlow = hoverGlow; container.ghostGlow = ghostGlow;
             
             let hitArea = this.add.rectangle(0, 0, TILE_S, TILE_S, 0x000000, 0).setInteractive();
             hitArea.container = container;
             container.add(hitArea);
-
             hitArea.on('pointerdown', () => this.handlePointer(container));
-
-            container.setHover = (val) => {
-                this.tweens.add({ targets: hoverGlow, alpha: val ? 0.6 : 0, duration: 200 });
-            };
-
+            container.setHover = (val) => { this.tweens.add({ targets: hoverGlow, alpha: val ? 0.6 : 0, duration: 200 }); };
             container.setGhost = (val) => {
                 if (val) {
                     container.ghostGlow.alpha = 1;
-                    container.ghostPulse = this.tweens.add({
-                        targets: container.ghostGlow,
-                        alpha: 0.2, scale: 1.05, duration: 600,
-                        yoyo: true, repeat: -1, ease: 'Sine.easeInOut'
-                    });
+                    container.ghostPulse = this.tweens.add({ targets: container.ghostGlow, alpha: 0.2, scale: 1.05, duration: 600, yoyo: true, repeat: -1 });
                 } else {
                     if (container.ghostPulse) container.ghostPulse.stop();
-                    container.ghostGlow.alpha = 0;
-                    container.ghostGlow.scale = 1;
+                    container.ghostGlow.alpha = 0; container.ghostGlow.scale = 1;
                 }
             };
-
             this.tweens.add({ targets: container, scaleX: 1.03, scaleY: 1.03, duration: 800 + Math.random() * 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-
             this.grid[r][c] = container;
             if(fromTop) this.tweens.add({targets: container, y: r*TILE_S+TILE_S/2, duration: 400});
         }
@@ -388,34 +357,17 @@
 
         async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER" || window.app.lootActive) return;
-            
-            if(!this.sel) { 
-                this.sel = t; 
-                t.setGhost(true);
-                t.setScale(1.15); 
-            }
+            if(!this.sel) { this.sel = t; t.setGhost(true); t.setScale(1.15); }
             else {
-                if (this.sel === t) {
-                    t.setGhost(false);
-                    t.setScale(1);
-                    this.sel = null;
-                    return;
-                }
-
+                if (this.sel === t) { t.setGhost(false); t.setScale(1); this.sel = null; return; }
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
                     if (this.checkPotentialMatch(this.sel, t)) {
                         this.sel.setGhost(false);
                         await this.swap(this.sel, t); await this.check();
                         window.app.turn = "MOB"; this.time.delayedCall(800, () => this.mobAI());
-                    } else { 
-                        this.tweens.add({targets: [this.sel, t], x: "+=5", yoyo: true, duration: 50}); 
-                    }
+                    } else { this.tweens.add({targets: [this.sel, t], x: "+=5", yoyo: true, duration: 50}); }
                 }
-                
-                if(this.sel) {
-                    this.sel.setGhost(false);
-                    this.sel.setScale(1);
-                }
+                if(this.sel) { this.sel.setGhost(false); this.sel.setScale(1); }
                 this.sel = null;
             }
         }
@@ -455,20 +407,13 @@
         async explodeUnique(unique) {
             this.isAnimating = true;
             let counts = { red:0, blue:0, green:0, purple:0, yellow:0 };
-            
             unique.forEach(t => {
                 if (!t || !t.scene) return;
                 counts[t.type]++;
-                const particleColor = GLOW_COLORS[t.type];
+                const pColor = GLOW_COLORS[t.type];
                 for(let i=0; i<8; i++) {
-                    let rect = this.add.rectangle(t.x, t.y, 8, 8, particleColor);
-                    this.tweens.add({
-                        targets: rect,
-                        x: t.x + Phaser.Math.Between(-50, 50),
-                        y: t.y + Phaser.Math.Between(-50, 50),
-                        alpha: 0, scale: 0, duration: 500,
-                        onComplete: () => rect.destroy()
-                    });
+                    let rect = this.add.rectangle(t.x, t.y, 8, 8, pColor);
+                    this.tweens.add({ targets: rect, x: t.x + Phaser.Math.Between(-50, 50), y: t.y + Phaser.Math.Between(-50, 50), alpha: 0, scale: 0, duration: 500, onComplete: () => rect.destroy() });
                 }
             });
 
@@ -490,19 +435,20 @@
             let unitAtk = Math.floor(p.baseAtk + gearAtk);
 
             if(window.app.turn === "PLAYER") {
-                if(counts.red > 0) { let d = unitAtk * counts.red; m.hp -= d; window.app.log(`Комбо Удар: -${d}`, 'p'); }
-                if(counts.purple > 0) { let d = Math.floor(unitAtk*1.5) * counts.purple; m.hp -= d; window.app.log(`Комбо КРИТ: -${d}`, 'crit'); }
+                if(counts.red > 0) { let d = unitAtk * counts.red; m.hp -= d; window.app.log(`Удар: -${d}`, 'p'); }
+                if(counts.purple > 0) { let d = Math.floor(unitAtk*1.5) * counts.purple; m.hp -= d; window.app.log(`КРИТ: -${d}`, 'crit'); }
                 if(counts.blue > 0) { p.mana = Math.min(100, p.mana + counts.blue*5); window.app.log(`Мана +${counts.blue*5}%`, 'sys'); }
-                if(counts.green > 0) { p.hp=Math.min(p.maxHp, p.hp+counts.green*15); p.armor=Math.min(p.maxArmor, p.armor+counts.green*10); window.app.log(`Лечение +${counts.green*15}`, 'p'); }
+                if(counts.green > 0) { p.hp=Math.min(p.maxHp, p.hp+counts.green*15); p.armor=Math.min(p.maxArmor, p.armor+counts.minArmor, p.armor+counts.green*10); window.app.log(`Лечение +${counts.green*15}`, 'p'); }
                 if(counts.yellow > 0) { p.gold += counts.yellow*2; window.app.log(`Золото +${counts.yellow*2}`, 'sys'); }
             } else {
                 let dmg = (counts.red * Math.floor(m.atk/5)) + (counts.purple * Math.floor(m.atk/3));
                 if(dmg > 0) { 
                     if(p.armor > 0) { p.armor -= dmg; if(p.armor<0) {p.hp+=p.armor; p.armor=0;}} else p.hp -= dmg; 
-                    window.app.log(`Урон от врага: -${dmg}`, 'm'); 
+                    window.app.log(`Урон врага: -${dmg}`, 'm'); 
                 }
                 if(counts.blue > 0) m.mana = Math.min(100, m.mana + counts.blue*10);
             }
+            window.app.onStep(); // Вызов внешнего дополнения после хода
             if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
         }
