@@ -12,6 +12,7 @@
             --stone-color: #4a4a4a;
             --stone-light: #6e6e6e;
             --stone-dark: #2a2a2a;
+            --accent-gold: #b8860b;
         }
 
         body {
@@ -19,180 +20,277 @@
             color: #e0e0e0;
             font-family: 'Spectral', serif;
             margin: 0;
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-h-screen;
+            padding: 20px;
+            overflow-x: hidden;
         }
 
         /* Готическая рамка-столб */
         .gothic-pillar-frame {
             position: relative;
             border: 4px solid var(--stone-dark);
-            background: var(--stone-color);
+            background: #1a1a1a;
             box-shadow: 
-                inset 0 0 20px rgba(0,0,0,0.8),
-                5px 5px 15px rgba(0,0,0,0.5);
-            padding: 10px;
-            overflow: hidden;
+                inset 0 0 25px rgba(0,0,0,0.9),
+                10px 10px 20px rgba(0,0,0,0.6);
+            padding: 20px;
+            border-radius: 2px;
+            transition: transform 0.3s ease;
         }
 
-        /* Имитация текстуры камня и колонн по бокам */
+        /* Имитация колонн по бокам через псевдоэлементы */
         .gothic-pillar-frame::before, .gothic-pillar-frame::after {
             content: "";
             position: absolute;
-            top: 0;
-            width: 12px;
-            height: 100%;
-            background: linear-gradient(90deg, var(--stone-dark), var(--stone-light), var(--stone-dark));
+            top: -5px;
+            width: 15px;
+            height: calc(100% + 10px);
+            background: linear-gradient(90deg, #222, #555, #222);
+            border: 1px solid #111;
             z-index: 10;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.5);
         }
-        .gothic-pillar-frame::before { left: 0; }
-        .gothic-pillar-frame::after { right: 0; }
+        .gothic-pillar-frame::before { left: -10px; }
+        .gothic-pillar-frame::after { right: -10px; }
 
-        /* Сочная подложка для иконки */
+        /* Декоративные капители (верхушки столбов) */
+        .pillar-cap {
+            position: absolute;
+            top: -12px;
+            left: -15px;
+            right: -15px;
+            height: 15px;
+            background: var(--stone-dark);
+            border: 1px solid #000;
+            z-index: 11;
+        }
+
+        /* Сочная подложка для иконки героя */
         .icon-lush-backdrop {
             background: radial-gradient(circle, #2d5a27 0%, #1a3c15 60%, #0a1a08 100%);
-            border-radius: 8px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            box-shadow: inset 0 0 30px rgba(0,255,100,0.2);
-            border: 2px solid rgba(255,255,255,0.1);
+            box-shadow: 
+                inset 0 0 40px rgba(0,255,100,0.15),
+                0 0 20px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 1rem;
         }
 
+        /* Сочная подложка для иконки врага */
         .enemy-backdrop {
             background: radial-gradient(circle, #5a2727 0%, #3c1515 60%, #1a0808 100%);
-            box-shadow: inset 0 0 30px rgba(255,0,0,0.2);
+            box-shadow: inset 0 0 40px rgba(255,0,0,0.2);
         }
 
-        /* Заголовок в готическом стиле */
+        /* Заголовок */
         .gothic-title {
             font-family: 'Uncial Antiqua', cursive;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-            letter-spacing: 1px;
+            color: var(--accent-gold);
+            text-shadow: 3px 3px 5px rgba(0,0,0,1);
+            letter-spacing: 2px;
         }
 
-        /* Сетка игры */
+        /* Игровое поле */
         #game-board {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-            background: #1a1a1a;
-            padding: 12px;
-            border: 6px solid #2a2a2a;
+            gap: 12px;
+            background: #151515;
+            padding: 15px;
+            border: 8px solid #222;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
             border-radius: 4px;
-            box-shadow: 0 0 40px rgba(0,0,0,1);
         }
 
         .tile {
             aspect-ratio: 1/1;
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
+            background: #252525;
+            border: 2px solid #333;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 2.2rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 4px;
             position: relative;
+            user-select: none;
         }
 
         .tile:hover {
-            background: #3a3a3a;
-            transform: scale(1.05);
-            z-index: 20;
-            box-shadow: 0 0 15px rgba(255,215,0,0.3);
+            background: #353535;
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4), 0 0 10px rgba(184, 134, 11, 0.2);
+            border-color: var(--accent-gold);
+        }
+
+        .tile:active {
+            transform: scale(0.95);
         }
 
         /* Прогресс-бары */
         .bar-container {
             width: 100%;
-            height: 12px;
-            background: #111;
+            height: 14px;
+            background: #0a0a0a;
             border: 1px solid #333;
-            border-radius: 6px;
-            margin-top: 4px;
+            border-radius: 7px;
+            margin: 6px 0;
             overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
         }
-        .hp-bar { height: 100%; background: linear-gradient(90deg, #ff4b2b, #ff416c); transition: width 0.3s; }
-        .energy-bar { height: 100%; background: linear-gradient(90deg, #00c6ff, #0072ff); transition: width 0.3s; }
+        .hp-bar { 
+            height: 100%; 
+            background: linear-gradient(90deg, #800000, #ff3333); 
+            transition: width 0.4s ease-out; 
+            box-shadow: 0 0 10px rgba(255,0,0,0.3);
+        }
+        .energy-bar { 
+            height: 100%; 
+            background: linear-gradient(90deg, #003366, #3399ff); 
+            transition: width 0.4s ease-out;
+            box-shadow: 0 0 10px rgba(0,100,255,0.3);
+        }
 
         /* Лог боя */
         #battle-log {
-            height: 120px;
+            height: 140px;
             overflow-y: auto;
-            background: rgba(0,0,0,0.5);
-            border: 1px solid #333;
-            padding: 8px;
-            font-size: 0.9rem;
-            color: #aaa;
+            background: #0a0a0a;
+            border: 2px solid #222;
+            padding: 12px;
+            font-size: 0.95rem;
+            color: #ccc;
+            border-radius: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: #444 #111;
         }
 
-        .msg-player { color: #5bc0de; }
-        .msg-enemy { color: #d9534f; }
-        .msg-gold { color: #f0ad4e; }
+        .msg-player { color: #87ceeb; font-weight: bold; }
+        .msg-enemy { color: #ff6347; font-weight: bold; }
+        .msg-gold { color: #ffd700; }
+        .msg-system { color: #888; font-style: italic; }
+
+        /* Кнопки */
+        .btn-super {
+            background: linear-gradient(180deg, #1e3a8a, #1e40af);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: 1px solid #3b82f6;
+            text-transform: uppercase;
+            font-weight: bold;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .btn-super:disabled {
+            background: #222;
+            border-color: #444;
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-super:not(:disabled):hover {
+            filter: brightness(1.2);
+            box-shadow: 0 0 15px rgba(59,130,246,0.5);
+            transform: translateY(-1px);
+        }
+
+        /* Анимация атаки */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.2s ease-in-out 3; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
+<body>
 
-    <!-- Заголовок -->
-    <h1 class="gothic-title text-4xl mb-6 text-yellow-600">Gothic Dungeon Crawler</h1>
+    <h1 class="gothic-title text-5xl mb-10">Dungeon Overlord</h1>
 
-    <div class="flex flex-col md:flex-row gap-8 items-start">
+    <div class="flex flex-col xl:flex-row gap-12 items-center xl:items-start max-w-7xl">
         
-        <!-- ПАНЕЛЬ ИГРОКА (ГОТИЧЕСКИЙ СТОЛБ) -->
-        <div class="gothic-pillar-frame w-64">
-            <h2 class="gothic-title text-xl text-center mb-2 text-gray-300">Герой</h2>
-            <div class="icon-lush-backdrop h-40 mb-3">
-                <span id="player-icon" class="text-6xl select-none">🛡️</span>
+        <!-- ПАНЕЛЬ ИГРОКА -->
+        <div class="gothic-pillar-frame w-72">
+            <div class="pillar-cap"></div>
+            <h2 class="gothic-title text-2xl text-center mb-4">Герой</h2>
+            <div class="icon-lush-backdrop h-48">
+                <span id="player-icon" class="text-7xl select-none">🛡️</span>
             </div>
-            <div class="px-2">
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Здоровье</span>
-                    <span id="player-hp-val">100/100</span>
+            
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-xs font-bold uppercase tracking-widest text-gray-400">
+                        <span>Здоровье</span>
+                        <span id="player-hp-val">100/100</span>
+                    </div>
+                    <div class="bar-container">
+                        <div id="player-hp-bar" class="hp-bar" style="width: 100%"></div>
+                    </div>
                 </div>
-                <div class="bar-container mb-2">
-                    <div id="player-hp-bar" class="hp-bar" style="width: 100%"></div>
+
+                <div>
+                    <div class="flex justify-between text-xs font-bold uppercase tracking-widest text-gray-400">
+                        <span>Энергия</span>
+                        <span id="player-energy-val">0/50</span>
+                    </div>
+                    <div class="bar-container">
+                        <div id="player-energy-bar" class="energy-bar" style="width: 0%"></div>
+                    </div>
                 </div>
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Энергия</span>
-                    <span id="player-energy-val">0/50</span>
-                </div>
-                <div class="bar-container mb-2">
-                    <div id="player-energy-bar" class="energy-bar" style="width: 0%"></div>
-                </div>
-                <div class="mt-4 flex justify-between items-center">
-                    <span class="text-yellow-500 font-bold">💰 <span id="player-gold">0</span></span>
-                    <button id="super-btn" disabled class="bg-blue-900 opacity-50 px-3 py-1 rounded text-xs uppercase font-bold border border-blue-400">Супер</button>
+
+                <div class="flex justify-between items-center pt-2">
+                    <div class="text-2xl font-bold text-yellow-500">
+                        💰 <span id="player-gold">0</span>
+                    </div>
+                    <button id="super-btn" disabled class="btn-super">Ульта</button>
                 </div>
             </div>
         </div>
 
-        <!-- ИГРОВОЕ ПОЛЕ -->
-        <div class="flex flex-col gap-4">
-            <div id="game-board" class="w-[350px] h-[350px]">
-                <!-- Плитки генерируются JS -->
+        <!-- ЦЕНТРАЛЬНАЯ ЧАСТЬ -->
+        <div class="flex flex-col gap-6">
+            <div id="game-board" class="w-[450px] h-[450px]">
+                <!-- Плитки -->
             </div>
-            <div id="battle-log" class="w-[350px] rounded italic">
-                <div>Добро пожаловать в подземелье...</div>
+            <div id="battle-log">
+                <div class="msg-system">Вы входите в темный зал подземелья...</div>
             </div>
         </div>
 
-        <!-- ПАНЕЛЬ ПРОТИВНИКА (ГОТИЧЕСКИЙ СТОЛБ) -->
-        <div class="gothic-pillar-frame w-64" id="enemy-panel">
-            <h2 class="gothic-title text-xl text-center mb-2 text-gray-300">Противник</h2>
-            <div class="icon-lush-backdrop enemy-backdrop h-40 mb-3">
-                <span id="enemy-icon" class="text-6xl select-none">💀</span>
+        <!-- ПАНЕЛЬ ВРАГА -->
+        <div class="gothic-pillar-frame w-72" id="enemy-panel">
+            <div class="pillar-cap"></div>
+            <h2 class="gothic-title text-2xl text-center mb-4">Тварь</h2>
+            <div class="icon-lush-backdrop enemy-backdrop h-48">
+                <span id="enemy-icon" class="text-7xl select-none">💀</span>
             </div>
-            <div class="px-2">
-                <div class="flex justify-between text-sm mb-1">
-                    <span>Здоровье</span>
-                    <span id="enemy-hp-val">50/50</span>
+
+            <div class="space-y-4">
+                <div>
+                    <div class="flex justify-between text-xs font-bold uppercase tracking-widest text-gray-400">
+                        <span>Стойкость</span>
+                        <span id="enemy-hp-val">0/0</span>
+                    </div>
+                    <div class="bar-container">
+                        <div id="enemy-hp-bar" class="hp-bar" style="width: 0%"></div>
+                    </div>
                 </div>
-                <div class="bar-container mb-2">
-                    <div id="enemy-hp-bar" class="hp-bar" style="width: 100%"></div>
-                </div>
-                <div class="mt-2 text-center">
-                    <span class="text-red-400 text-sm italic" id="enemy-status">Ожидание боя</span>
+                <div class="text-center">
+                    <span class="text-red-500 font-bold uppercase tracking-tighter text-sm" id="enemy-status">Тьма сгущается</span>
                 </div>
             </div>
         </div>
@@ -220,7 +318,7 @@
 
         let currentEnemy = null;
 
-        // --- ИНИЦИАЛИЗАЦИЯ ---
+        // --- ИНИЦИАЛИЗАЦИЯ ПОЛЯ ---
         function initBoard() {
             const board = document.getElementById('game-board');
             board.innerHTML = '';
@@ -248,85 +346,98 @@
         // --- ЛОГИКА ВЗАИМОДЕЙСТВИЯ ---
         function handleTileClick(tile) {
             if (currentEnemy) {
-                addLog("Сначала победи текущего врага!", "msg-player");
+                addLog("Враг преграждает путь! Сражайся!", "msg-enemy");
                 return;
             }
 
             const type = tile.dataset.type;
-            
-            // Визуальный эффект нажатия
             tile.style.visibility = 'hidden';
 
             switch(type) {
                 case 'GOLD':
-                    const gain = Math.floor(Math.random() * 10) + 5;
+                    const gain = Math.floor(Math.random() * 15) + 5;
                     player.gold += gain;
-                    addLog(`Вы нашли ${gain} золота.`, "msg-gold");
+                    addLog(`Вы подобрали горсть монет: +${gain} золота.`, "msg-gold");
                     break;
                 case 'HEAL':
-                    const heal = 15;
+                    const heal = 20;
                     player.hp = Math.min(player.maxHp, player.hp + heal);
-                    addLog(`Лечебное зелье восстановило ${heal} HP.`, "msg-player");
+                    addLog(`Вы выпили зелье: +${heal} HP.`, "msg-player");
                     break;
                 case 'ENEMY':
                     spawnEnemy();
                     break;
                 case 'EMPTY':
-                    addLog("Здесь ничего нет, только холодные камни.", "");
+                    addLog("В тени ничего не обнаружилось.", "msg-system");
                     break;
             }
 
-            // Начисление энергии за действие
-            gainEnergy(5);
+            gainEnergy(7);
             updateUI();
-            
-            // Если поле опустело - перегенерация (упрощенно)
-            if (document.querySelectorAll('.tile[style*="hidden"]').length > 15) {
-                setTimeout(initBoard, 500);
+
+            // Авто-обновление поля
+            if (document.querySelectorAll('.tile[style*="hidden"]').length > 18) {
+                setTimeout(initBoard, 400);
             }
         }
 
         function spawnEnemy() {
+            const types = ['👹', '🧛', '🐺', '👻'];
             currentEnemy = {
-                hp: 40 + Math.floor(Math.random() * 20),
-                maxHp: 60,
-                attack: 8 + Math.floor(Math.random() * 5),
-                icon: '👹'
+                hp: 50 + Math.floor(Math.random() * 30),
+                maxHp: 80,
+                attack: 10 + Math.floor(Math.random() * 5),
+                icon: types[Math.floor(Math.random() * types.length)]
             };
-            document.getElementById('enemy-status').innerText = "В БОЮ!";
-            addLog("На вас напал монстр!", "msg-enemy");
+            document.getElementById('enemy-icon').innerText = currentEnemy.icon;
+            document.getElementById('enemy-status').innerText = "В ЯРОСТИ!";
+            addLog("Из тени выпрыгивает монстр!", "msg-enemy");
             battleTurn();
         }
 
         function battleTurn() {
             if (!currentEnemy) return;
 
-            // Игрок атакует
-            const pAtk = 10 + Math.floor(Math.random() * 5);
+            // Атака игрока
+            const pAtk = 12 + Math.floor(Math.random() * 8);
             currentEnemy.hp -= pAtk;
-            addLog(`Вы ударили врага на ${pAtk} урона.`, "msg-player");
+            addLog(`Вы наносите удар: -${pAtk} урона врагу.`, "msg-player");
+            
+            // Визуал атаки врага
+            const ePanel = document.getElementById('enemy-panel');
+            ePanel.classList.add('shake');
+            setTimeout(() => ePanel.classList.remove('shake'), 300);
 
             if (currentEnemy.hp <= 0) {
+                currentEnemy.hp = 0;
+                addLog("Монстр повержен в прах!", "msg-gold");
+                document.getElementById('enemy-status').innerText = "Мертв";
+                const loot = 20 + Math.floor(Math.random() * 20);
+                player.gold += loot;
+                addLog(`Трофеи: +${loot} золота.`, "msg-gold");
                 currentEnemy = null;
-                addLog("Враг повержен!", "msg-gold");
-                document.getElementById('enemy-status').innerText = "Победа";
                 updateUI();
                 return;
             }
 
-            // Враг атакует через задержку
+            // Ответный удар
             setTimeout(() => {
                 if (!currentEnemy) return;
                 const eAtk = currentEnemy.attack;
                 player.hp -= eAtk;
-                addLog(`Враг нанес вам ${eAtk} урона.`, "msg-enemy");
+                addLog(`Враг рвет плоть: -${eAtk} HP.`, "msg-enemy");
+                
+                document.body.style.backgroundColor = "#2a0000";
+                setTimeout(() => document.body.style.backgroundColor = "#0f0f0f", 100);
+                
                 updateUI();
                 
                 if (player.hp <= 0) {
-                    addLog("ВЫ ПОГИБЛИ...", "msg-enemy");
-                    setTimeout(() => location.reload(), 2000);
+                    player.hp = 0;
+                    addLog("Ваше путешествие окончено в этой сырой могиле...", "msg-enemy");
+                    setTimeout(() => location.reload(), 3000);
                 }
-            }, 600);
+            }, 800);
         }
 
         function gainEnergy(amount) {
@@ -334,21 +445,31 @@
             if (player.energy >= player.maxEnergy) {
                 const btn = document.getElementById('super-btn');
                 btn.disabled = false;
-                btn.classList.remove('opacity-50');
-                btn.classList.add('bg-blue-600', 'hover:bg-blue-400');
             }
         }
 
         document.getElementById('super-btn').onclick = () => {
             if (player.energy >= player.maxEnergy) {
                 player.energy = 0;
-                player.hp = Math.min(player.maxHp, player.hp + 30);
-                if (currentEnemy) currentEnemy.hp -= 30;
-                addLog("ИСПОЛЬЗОВАНА СУПЕРСПОСОБНОСТЬ!", "msg-player");
-                const btn = document.getElementById('super-btn');
-                btn.disabled = true;
-                btn.classList.add('opacity-50');
+                const heal = 40;
+                player.hp = Math.min(player.maxHp, player.hp + heal);
+                
+                addLog("ВСПЫШКА ЯРОСТИ! Вы восстановили силы и ударили всех вокруг!", "msg-player");
+                
+                if (currentEnemy) {
+                    const dmg = 50;
+                    currentEnemy.hp -= dmg;
+                    addLog(`Супер-удар сокрушает врага на ${dmg} урона!`, "msg-player");
+                }
+                
+                document.getElementById('super-btn').disabled = true;
                 updateUI();
+                if (currentEnemy && currentEnemy.hp <= 0) {
+                    // Обработка смерти от супер-удара
+                    currentEnemy.hp = 0;
+                    addLog("Враг не выдержал вашей мощи!", "msg-gold");
+                    currentEnemy = null;
+                }
             }
         };
 
@@ -368,14 +489,16 @@
             } else {
                 document.getElementById('enemy-hp-val').innerText = "0/0";
                 document.getElementById('enemy-hp-bar').style.width = `0%`;
+                document.getElementById('enemy-icon').innerText = '💀';
+                document.getElementById('enemy-status').innerText = "Пустота";
             }
         }
 
         function addLog(text, className) {
             const log = document.getElementById('battle-log');
             const div = document.createElement('div');
-            div.className = className;
-            div.innerText = `> ${text}`;
+            div.className = `mb-1 ${className}`;
+            div.innerText = `[${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}] ${text}`;
             log.prepend(div);
         }
 
