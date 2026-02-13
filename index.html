@@ -23,9 +23,8 @@
             box-sizing: border-box; z-index: 10; 
         }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
-        h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
+        h1, h2, h3, .btn-ultra, .btn-shop { font-family: 'Cinzel', serif; }
 
-        /* ИГРОВЫЕ ПОРТРЕТЫ С ЭФФЕКТАМИ ДЫХАНИЯ И НАКЛОНА */
         .portrait { 
             width: 240px; height: 240px; margin: 0 auto 15px; 
             border: 4px solid var(--border); border-radius: 50%; 
@@ -45,11 +44,19 @@
         .bar-fill { height: 100%; width: 100%; transition: width 0.3s ease-out; }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 13px; line-height: 24px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
         
-        /* РАСТЯНУТЫЙ ИНВЕНТАРЬ БЕЗ СКРОЛЛА */
         #inv-box { flex-grow: 1; margin-top: 10px; border-bottom: 1px solid #333; display: flex; flex-direction: column; }
         .inv-item { font-size: 12px; margin-bottom: 4px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 4px solid #444; display: flex; justify-content: space-between; align-items: center; }
         
-        .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); margin-top: 10px; border-radius: 5px; }
+        /* КНОПКА МАГАЗИНА */
+        .btn-shop {
+            margin: 15px 0; padding: 12px; background: linear-gradient(to bottom, #4a3c2a, #2a1f14);
+            border: 2px solid var(--border); color: var(--gold); text-align: center;
+            cursor: pointer; font-size: 16px; letter-spacing: 1px; transition: all 0.2s;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5); border-radius: 4px;
+        }
+        .btn-shop:hover { background: linear-gradient(to bottom, #5a4c3a, #3a2f24); filter: brightness(1.2); }
+
+        .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); border-radius: 5px; }
         .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
         #battle-log { height: 180px; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
         
@@ -58,41 +65,19 @@
         
         .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; }
 
-        /* КАРТОЧКА ВЫБОРА ГЕРОЯ */
         .hero-card { 
-            width: 330px; height: 330px; 
-            border: 6px solid var(--border); 
-            background-size: cover; background-position: center;
-            border-radius: 50%; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.3s;
+            width: 330px; height: 330px; border: 6px solid var(--border); 
+            background-size: cover; background-position: center; border-radius: 50%; 
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.3s;
             transform-style: preserve-3d; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
-            animation: hero-breath 4s ease-in-out infinite;
-            cursor: pointer;
+            position: relative; overflow: hidden; animation: hero-breath 4s ease-in-out infinite; cursor: pointer;
         }
+        .hero-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85) 100%); z-index: 1; }
+        .hero-card .info { position: relative; z-index: 2; margin-top: auto; padding-bottom: 35px; text-align: center; width: 100%; }
 
-        .hero-card::after {
-            content: ""; position: absolute; inset: 0;
-            background: linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.85) 100%);
-            z-index: 1;
-        }
+        @keyframes hero-breath { 0%, 100% { transform: scale(1.0); } 50% { transform: scale(1.04); } }
 
-        .hero-card .info {
-            position: relative; z-index: 2; margin-top: auto; padding-bottom: 35px;
-            text-align: center; width: 100%; /* ЦЕНТРОВКА НАЗВАНИЯ */
-        }
-
-        @keyframes hero-breath {
-            0%, 100% { transform: scale(1.0); }
-            50% { transform: scale(1.04); }
-        }
-
-        .hero-card:hover { 
-            animation-play-state: paused;
-            transform: scale(1.1) rotateY(15deg) rotateX(8deg); 
-            border-color: var(--gold); 
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5); 
-        }
-
+        .hero-card:hover { animation-play-state: paused; transform: scale(1.1) rotateY(15deg) rotateX(8deg); border-color: var(--gold); box-shadow: 0 0 50px rgba(255, 215, 0, 0.5); }
         .hero-card h3 { margin: 5px 0; font-size: 32px; color: var(--gold); text-shadow: 0 0 10px black; width: 100%; }
         .hero-card p { font-size: 14px; margin: 0; color: #fff; font-weight: bold; text-shadow: 1px 1px 2px black; width: 100%; }
         
@@ -110,28 +95,16 @@
         <h1 style="color:var(--gold); font-size: 70px; margin-bottom: 50px; text-shadow: 0 0 40px black;">TAVERNA WAR</h1>
         <div class="hero-cards">
             <div class="hero-card" style="background-image: url('assets/hero_warrior.jpg');" onclick="startGame('warrior')">
-                <div class="info">
-                    <h3>ВОИН</h3>
-                    <p>Ульта: Красные + Зеленые</p>
-                </div>
+                <div class="info"><h3>ВОИН</h3><p>Ульта: Красные + Зеленые</p></div>
             </div>
             <div class="hero-card" style="background-image: url('assets/hero_mage.jpg');" onclick="startGame('mage')">
-                <div class="info">
-                    <h3>МАГ</h3>
-                    <p>Ульта: Фиол + Желтые</p>
-                </div>
+                <div class="info"><h3>МАГ</h3><p>Ульта: Фиол + Желтые</p></div>
             </div>
             <div class="hero-card" style="background-image: url('assets/hero_archer.jpg');" onclick="startGame('archer')">
-                <div class="info">
-                    <h3>ЛУЧНИК</h3>
-                    <p>Ульта: 4 Линии</p>
-                </div>
+                <div class="info"><h3>ЛУЧНИК</h3><p>Ульта: 4 Линии</p></div>
             </div>
             <div class="hero-card" style="background-image: url('assets/hero_assasin.jpg');" onclick="startGame('assassin')">
-                <div class="info">
-                    <h3>УБИЙЦА</h3>
-                    <p>Ульта: 30% поля + Удар</p>
-                </div>
+                <div class="info"><h3>УБИЙЦА</h3><p>Ульта: 30% поля + Удар</p></div>
             </div>
         </div>
     </div>
@@ -143,6 +116,7 @@
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #44f;"></div></div>
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
         <div id="inv-box"></div>
+        <div class="btn-shop" onclick="window.app.log('Магазин пока закрыт...', 'sys')">МАГАЗИН</div>
         <div class="total-stats">
             <div class="stat-line"><span>Сила:</span><b id="stat-atk">0</b></div>
             <div class="stat-line"><span>Уворот:</span><b id="stat-dodge">0%</b></div>
@@ -306,21 +280,19 @@
             frame.lineStyle(1.5, 0xbc962c, 0.4);
             frame.strokeRoundedRect(-TILE_S/2 + 8, -TILE_S/2 + 8, TILE_S - 16, TILE_S - 16, 6);
 
-            // ПОДСВЕТКА НАЖАТИЯ
-            let clickGlow = this.add.graphics();
-            clickGlow.lineStyle(6, 0xffffff, 0);
-            clickGlow.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
+            // ПОДСВЕТКА ВЫБОРА (свечение)
+            let selectGlow = this.add.graphics();
+            selectGlow.lineStyle(4, 0xffffff, 0); 
+            selectGlow.strokeRoundedRect(-TILE_S/2 - 2, -TILE_S/2 - 2, TILE_S + 4, TILE_S + 4, 12);
 
-            container.add([glow, bg, img, frame, clickGlow]);
+            container.add([glow, bg, img, frame, selectGlow]);
             container.gridR = r; container.gridC = c; container.type = type;
             container.maskShape = maskShape;
-            container.clickGlow = clickGlow;
+            container.selectGlow = selectGlow;
             container.setSize(TILE_S, TILE_S).setInteractive();
+            
             container.on('pointerdown', () => {
                 this.handlePointer(container);
-                clickGlow.alpha = 1; clickGlow.lineStyle(6, 0xffffff, 0.8);
-                clickGlow.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
-                this.tweens.add({targets: clickGlow, alpha: 0, duration: 400});
             });
 
             this.tweens.add({ targets: container, scaleX: 1.03, scaleY: 1.03, duration: 800 + Math.random() * 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -341,8 +313,19 @@
 
         async handlePointer(t) {
             if(this.isAnimating || window.app.turn !== "PLAYER" || window.app.lootActive) return;
-            if(!this.sel) { this.sel = t; t.setScale(1.15); }
+            
+            if(!this.sel) { 
+                this.sel = t; 
+                t.setScale(1.15); 
+                // Активируем свечение при выборе
+                t.selectGlow.clear();
+                t.selectGlow.lineStyle(6, 0xffffff, 1);
+                t.selectGlow.strokeRoundedRect(-TILE_S/2 - 2, -TILE_S/2 - 2, TILE_S + 4, TILE_S + 4, 12);
+            }
             else {
+                // Снимаем свечение со старой плитки
+                this.sel.selectGlow.clear();
+                
                 if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
                     if (this.checkPotentialMatch(this.sel, t)) {
                         await this.swap(this.sel, t); await this.check();
