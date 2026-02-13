@@ -1,110 +1,124 @@
-import { GameScene } from "./phaser/GameScene.js";
-import { appState, refreshUI } from "./game/appState.js";
-import { SLOT_NAMES, ADJECTIVES } from "./data/constants.js";
+export class GameScene extends Phaser.Scene {
+    // ... твои методы preload и create ...
 
-let phaserGame;
+    async handlePointer(tile) {
+        // Если анимация идет или сейчас ход моба — игнорируем клик
+        if (this.isMoving || window.appState.turn !== "PLAYER") return;
 
-// Запуск игры
-window.startGame = (key) => {
-    document.getElementById('menu-overlay').style.display = 'none';
-    const base = { 
-        'warrior': {hp:1600, atk:25, agi:5}, 
-        'mage': {hp:800, atk:65, agi:2}, 
-        'archer': {hp:1000, atk:40, agi:18}, 
-        'assassin': {hp:900, atk:55, agi:14} 
-    }[key];
-    
-    const imgKey = key === 'assassin' ? 'assasin' : key;
-    
-    appState.player = { 
-        job: key.toUpperCase(), 
-        key, 
-        hp: base.hp, 
-        maxHp: base.hp, 
-        armor: 0, 
-        maxArmor: 0, 
-        mana: 0, 
-        gold: 0, 
-        level: 1, 
-        baseAtk: base.atk, 
-        baseAgi: base.agi, 
-        equip: { weapon: { n: "Старая палка", atk: 12, arm: 0, agi: 0, rar: 0 } } 
-    };
-    
-    document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${imgKey}.jpg')`;
-    
-    initPhaser(); 
-    spawnMob();
-};
+        if (!this.selectedTile) {
+            this.selectedTile = tile;
+            tile.setAlpha(0.6); // Визуальный выбор
+            return;
+        }
 
-// Спавн монстра и сброс состояния сцены
-export function spawnMob() {
-    let lvl = appState.player.level;
-    appState.mob = { 
-        name: "Гоблин Ур." + lvl, 
-        hp: 200 + (lvl * 100), 
-        maxHp: 200 + (lvl * 100), 
-        atk: 20 + (lvl * 10), 
-        mana: 0 
-    };
-    
-    document.getElementById('m-portrait').style.backgroundImage = `url('assets/monster_goblin.jpg')`; 
-    appState.turn = "PLAYER"; 
-    appState.lootActive = false; 
-    
-    // ПРЕДОХРАНИТЕЛЬ: Разблокируем поле Phaser при новом мобе
-    if (phaserGame) {
-        const scene = phaserGame.scene.keys.GameScene;
-        if (scene && scene.resetBoardAfterBattle) {
-            scene.resetBoardAfterBattle();
+        const t1 = this.selectedTile;
+        const t2 = tile;
+        const dist = Math.abs(t1.gridX - t2.gridX) + Math.abs(t1.gridY - t2.gridY);
+
+        if (dist === 1) {
+            this.isMoving = true; // Блокируем ввод
+            t1.setAlpha(1);
+            
+            // Пытаемся поменять местами
+            const success = await this.swapTiles(t1, t2);
+            if (success) {
+                // Если есть совпадение — запускаем цикл уничтожения и падения
+                await this.processMatches();
+                
+                // Передаем ход монстру, если только игрок не в режиме суперспособности
+                if (!this.ultraActive) {
+                    this.enemyTurn();
+                }
+            } else {
+                // Если совпадений нет — возвращаем назад и разблокируем
+                this.isMoving = false;
+            }
+        } else {
+            // Если кликнули далеко — просто перевыбираем плитку
+            t1.setAlpha(1);
+            this.selectedTile = t2;
+            t2.setAlpha(0.6);
         }
     }
-    
-    refreshUI();
+
+    // Обработка всех совпадений и падения новых плиток
+    async processMatches() {
+        let hasMatches = true;
+        while (hasMatches) {
+            const matches = this.getMatches(); // Ищем совпадения 3+ в ряд
+            if (matches.length > 0) {
+                await this.destroyTiles(matches); // Удаляем и начисляем урон
+                await this.fillGaps(); // ТА САМАЯ ФУНКЦИЯ ПАДЕНИЯ
+            } else {
+                hasMatches = false;
+            }
+        }
+        this.isMoving = false; // ОСВОБОЖДАЕМ ИГРУ ДЛЯ НОВОГО ХОДА
+        this.selectedTile = null;
+    }
+
+    // Метод падения плиток (чтобы не зависало)
+    async fillGaps() {
+        return new Promise(resolve => {
+            let maxDelay = 0;
+            
+            // Проходим по каждому столбцу
+            for (let x = 0; x < this.gridSize; x++) {
+                let emptySpaces = 0;
+                // Идем снизу вверх
+                for (let y = this.gridSize - 1; y >= 0; y--) {
+                    const tile = this.grid[y][x];
+                    if (!tile) {
+                        emptySpaces++;
+                    } else if (emptySpaces > 0) {
+                        // Двигаем плитку вниз
+                        const newY = y + emptySpaces;
+                        this.grid[newY][x] = tile;
+                        this.grid[y][x] = null;
+                        tile.gridY = newY;
+                        
+                        this.tweens.add({
+                            targets: tile,
+                            y: newY * this.tileSize + this.offsetY,
+                            duration: 300,
+                            ease: 'Bounce.easeOut'
+                        });
+                        maxDelay = Math.max(maxDelay, 300);
+                    }
+                }
+                
+                // Создаем новые плитки сверху
+                for (let i = 0; i < emptySpaces; i++) {
+                    const newY = i;
+                    const type = this.getRandomType();
+                    const tile = this.createTile(x, newY - emptySpaces, type); // Спавним за экраном
+                    
+                    this.grid[newY][x] = tile;
+                    tile.gridY = newY;
+                    
+                    this.tweens.add({
+                        targets: tile,
+                        y: newY * this.tileSize + this.offsetY,
+                        duration: 300,
+                        delay: 100,
+                        ease: 'Bounce.easeOut'
+                    });
+                    maxDelay = Math.max(maxDelay, 400);
+                }
+            }
+            this.time.delayedCall(maxDelay + 50, resolve);
+        });
+    }
+
+    // ПРЕДОХРАНИТЕЛЬ: Метод для вызова из main.js
+    resetBoardAfterBattle() {
+        this.isMoving = false;
+        this.selectedTile = null;
+        if (this.grid) {
+            this.grid.forEach(row => row.forEach(tile => {
+                if (tile) tile.setAlpha(1);
+            }));
+        }
+        console.log("Поле принудительно разблокировано для нового боя.");
+    }
 }
-
-function initPhaser() {
-    if (phaserGame) return;
-    phaserGame = new Phaser.Game({
-        type: Phaser.AUTO,
-        parent: 'game-container',
-        width: 680,
-        height: 680,
-        scene: GameScene,
-        transparent: true,
-        fps: { target: 60, forceSetTimeOut: true } // Стабильный FPS для анимаций
-    });
-}
-
-// Логика лута
-window.takeLoot = () => {
-    if (!appState.currentLoot) return;
-    appState.player.equip[appState.currentLoot.slot] = appState.currentLoot;
-    appState.player.armor = appState.player.maxArmor;
-    closeLoot();
-};
-
-window.sellLoot = () => {
-    appState.player.gold += 50;
-    closeLoot();
-};
-
-function closeLoot() {
-    const lootOverlay = document.getElementById('loot-overlay');
-    if (lootOverlay) lootOverlay.style.display = 'none';
-    appState.player.level++;
-    spawnMob();
-}
-
-// Привязка кнопок UI
-document.getElementById('btn-ultra').onclick = () => {
-    if (appState.player.mana < 100) return;
-    const scene = phaserGame.scene.keys.GameScene;
-    if (scene) scene.useUltra();
-};
-
-// Проверка наличия кнопок перед привязкой (защита от ошибок)
-const btnTake = document.getElementById('btn-take-loot');
-const btnSell = document.getElementById('btn-sell-loot');
-if (btnTake) btnTake.onclick = () => window.takeLoot();
-if (btnSell) btnSell.onclick = () => window.sellLoot();
