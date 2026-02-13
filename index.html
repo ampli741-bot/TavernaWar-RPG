@@ -23,7 +23,7 @@
             box-sizing: border-box; z-index: 10; 
         }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
-        h1, h2, h3, .btn-ultra { font-family: 'Cinzel', serif; }
+        h1, h2, h3, .btn-ultra, .btn-shop { font-family: 'Cinzel', serif; }
 
         /* ИГРОВЫЕ ПОРТРЕТЫ С ЭФФЕКТАМИ ДЫХАНИЯ И НАКЛОНА */
         .portrait { 
@@ -49,6 +49,14 @@
         #inv-box { flex-grow: 1; margin-top: 10px; border-bottom: 1px solid #333; display: flex; flex-direction: column; }
         .inv-item { font-size: 12px; margin-bottom: 4px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 4px solid #444; display: flex; justify-content: space-between; align-items: center; }
         
+        .btn-shop { 
+            width: 100%; padding: 10px; margin-top: 10px; background: #2a2010; 
+            color: var(--gold); border: 2px solid var(--border); border-radius: 4px; 
+            cursor: pointer; font-size: 16px; transition: all 0.3s;
+            text-transform: uppercase; letter-spacing: 2px;
+        }
+        .btn-shop:hover { background: #3d2d15; box-shadow: 0 0 15px rgba(180, 140, 70, 0.3); }
+
         .total-stats { padding: 10px; background: rgba(0,0,0,0.6); border: 1px solid var(--border); margin-top: 10px; border-radius: 5px; }
         .stat-line { display: flex; justify-content: space-between; font-size: 16px; margin: 4px 0; color: var(--gold); }
         #battle-log { height: 180px; margin-top: 15px; background: rgba(0,0,0,0.7); border: 1px solid #333; padding: 10px; font-size: 12px; overflow-y: auto; color: #ccc; font-family: 'Courier New', monospace; }
@@ -143,6 +151,7 @@
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #44f;"></div></div>
         <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
         <div id="inv-box"></div>
+        <button class="btn-shop" onclick="window.app.log('Магазин закрыт на переучет!', 'sys')">МАГАЗИН</button>
         <div class="total-stats">
             <div class="stat-line"><span>Сила:</span><b id="stat-atk">0</b></div>
             <div class="stat-line"><span>Уворот:</span><b id="stat-dodge">0%</b></div>
@@ -270,7 +279,12 @@
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
         preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
-        create() { scene = this; this.grid = []; this.isAnimating = false; for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } }
+        create() { 
+            scene = this; this.grid = []; this.isAnimating = false; 
+            for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } 
+            this.input.on('gameobjectover', (ptr, obj) => { if(obj.container) obj.container.setGlow(true); });
+            this.input.on('gameobjectout', (ptr, obj) => { if(obj.container) obj.container.setGlow(false); });
+        }
         
         spawnTile(r, c, fromTop=false) {
             let types = ['red', 'blue', 'green', 'purple', 'yellow'];
@@ -306,22 +320,43 @@
             frame.lineStyle(1.5, 0xbc962c, 0.4);
             frame.strokeRoundedRect(-TILE_S/2 + 8, -TILE_S/2 + 8, TILE_S - 16, TILE_S - 16, 6);
 
-            // ПОДСВЕТКА НАЖАТИЯ
+            let hoverGlow = this.add.graphics();
+            hoverGlow.lineStyle(4, 0xffffff, 0);
+            hoverGlow.strokeRoundedRect(-TILE_S/2 - 4, -TILE_S/2 - 4, TILE_S + 8, TILE_S + 8, 14);
+
             let clickGlow = this.add.graphics();
             clickGlow.lineStyle(6, 0xffffff, 0);
             clickGlow.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
 
-            container.add([glow, bg, img, frame, clickGlow]);
+            container.add([glow, bg, img, frame, hoverGlow, clickGlow]);
             container.gridR = r; container.gridC = c; container.type = type;
             container.maskShape = maskShape;
             container.clickGlow = clickGlow;
-            container.setSize(TILE_S, TILE_S).setInteractive();
-            container.on('pointerdown', () => {
+            container.hoverGlow = hoverGlow;
+            
+            let hitArea = this.add.rectangle(0, 0, TILE_S, TILE_S, 0x000000, 0).setInteractive();
+            hitArea.container = container;
+            container.add(hitArea);
+
+            hitArea.on('pointerdown', () => {
                 this.handlePointer(container);
                 clickGlow.alpha = 1; clickGlow.lineStyle(6, 0xffffff, 0.8);
                 clickGlow.strokeRoundedRect(-TILE_S/2, -TILE_S/2, TILE_S, TILE_S, 10);
                 this.tweens.add({targets: clickGlow, alpha: 0, duration: 400});
             });
+
+            container.setGlow = (val) => {
+                this.tweens.add({
+                    targets: hoverGlow, 
+                    alpha: val ? 0.6 : 0, 
+                    duration: 200,
+                    onUpdate: () => {
+                        hoverGlow.clear();
+                        hoverGlow.lineStyle(4, 0xffffff, hoverGlow.alpha);
+                        hoverGlow.strokeRoundedRect(-TILE_S/2 - 4, -TILE_S/2 - 4, TILE_S + 8, TILE_S + 8, 14);
+                    }
+                });
+            };
 
             this.tweens.add({ targets: container, scaleX: 1.03, scaleY: 1.03, duration: 800 + Math.random() * 400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
@@ -391,6 +426,19 @@
             unique.forEach(t => { if(t && t.scene) { counts[t.type]++; } });
 
             return new Promise(res => {
+                unique.forEach(t => {
+                    if(!t || !t.scene) return;
+                    let emitter = this.add.particles(t.x, t.y, `t_${t.type}`, {
+                        speed: { min: 50, max: 150 },
+                        scale: { start: 0.2, end: 0 },
+                        alpha: { start: 1, end: 0 },
+                        lifespan: 600,
+                        gravityY: 200,
+                        stopAfter: 8
+                    });
+                    this.time.delayedCall(1000, () => emitter.destroy());
+                });
+
                 this.tweens.add({targets:unique, scale:0, duration:200, onComplete:()=>{
                     unique.forEach(t => { if(t && t.scene) { this.grid[t.gridR][t.gridC]=null; t.destroy(); } });
                     this.applySummaryEffect(counts);
