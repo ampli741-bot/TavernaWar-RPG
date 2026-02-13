@@ -24,15 +24,12 @@
             touch-action: none; 
         }
 
-        /* --- ПАНЕЛИ-КОЛОННЫ --- */
+        /* --- НОВЫЙ ДИЗАЙН ПАНЕЛЕЙ (КАМЕННЫЕ КОЛОННЫ) --- */
         #ui-left, #ui-right { 
-            width: 350px; /* Немного сузил, чтобы влезло на все экраны */
-            padding: 20px; 
-            display: flex; 
-            flex-direction: column; 
+            width: 380px; padding: 25px; 
+            display: flex; flex-direction: column; 
             position: relative;
-            box-sizing: border-box; 
-            z-index: 10;
+            box-sizing: border-box; z-index: 10;
             background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.03) 0%, transparent 40%),
                         linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
             border-left: 4px solid #333;
@@ -40,8 +37,8 @@
             box-shadow: inset 0 0 50px rgba(0,0,0,0.9), 0 0 30px rgba(0,0,0,0.5);
         }
 
-        /* ШИПЫ */
-        #ui-left::after, #ui-right::after {
+        /* ОСТРЫЕ ШИПЫ */
+        #ui-left::before, #ui-right::before {
             content: "";
             position: absolute;
             top: 0; bottom: 0;
@@ -52,64 +49,90 @@
                 linear-gradient(45deg, #333 25%, transparent 25%),
                 linear-gradient(-45deg, #111 25%, transparent 25%);
             background-size: 30px 60px;
-            filter: drop-shadow(5px 0 5px rgba(0,0,0,0.7));
+            filter: drop-shadow(8px 0 5px rgba(0,0,0,0.7));
             z-index: 20;
         }
-        #ui-left::after { right: -30px; }
-        #ui-right::after { left: -30px; transform: scaleX(-1); }
 
-        #game-container { 
-            flex-grow: 1; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 5;
-        }
+        #ui-left::before { right: -30px; }
+        #ui-right::before { left: -30px; transform: scaleX(-1); }
 
-        /* КАРТОЧКИ В МЕНЮ (ФИКС СМЕЩЕНИЯ) */
-        .hero-cards { 
-            display: grid; 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 30px; 
-            max-width: 800px;
-        }
-        .hero-card { 
-            width: 250px; height: 250px; 
-            border: 4px solid #333; 
-            background-size: cover; 
-            border-radius: 50%; 
-            position: relative; 
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .hero-card:hover { transform: scale(1.1); border-color: var(--gold); }
-        .hero-card .info { position: absolute; bottom: 15px; width: 100%; text-align: center; }
-        .hero-card h3 { font-family: 'Cinzel'; color: var(--gold); margin: 0; font-size: 22px; }
+        #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
+        
+        h1, h2, h3, .btn-ultra, .btn-shop { font-family: 'Cinzel', serif; text-transform: uppercase; letter-spacing: 2px; }
 
-        /* ОСТАЛЬНЫЕ СТИЛИ ПОРТРЕТОВ И БАРОВ */
+        /* ПОРТРЕТЫ В КАМЕННОЙ ОПРАВЕ */
         .portrait { 
-            width: 220px; height: 220px; margin: 0 auto 15px; 
-            border: 6px solid #222; outline: 2px solid #444; border-radius: 10px; 
+            width: 240px; height: 240px; margin: 0 auto 15px; 
+            border: 8px solid #222; 
+            outline: 2px solid #444;
+            border-radius: 10px; 
             background-size: cover; background-position: center;
+            box-shadow: 0 0 30px rgba(0,0,0,1);
+            animation: hero-breath 4s ease-in-out infinite;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            perspective: 1000px;
         }
+        .portrait:hover {
+            transform: scale(1.05) rotateX(5deg);
+            outline-color: var(--gold);
+        }
+
+        /* ОСТРЫЕ ПОЛОСКИ HP/МАНЫ */
         .bar-bg { 
-            width: 100%; height: 24px; background: #050505; border: 1px solid #333; 
-            margin-top: 8px; position: relative; 
+            width: 100%; height: 28px; 
+            background: #050505; border: 1px solid #333; 
+            margin-top: 10px; position: relative; 
             clip-path: polygon(3% 0%, 97% 0%, 100% 50%, 97% 100%, 3% 100%, 0% 50%);
         }
-        .bar-fill { height: 100%; transition: width 0.4s; }
-        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 24px; font-weight: bold; color: white; z-index: 5; }
+        .bar-fill { 
+            height: 100%; width: 100%; 
+            transition: width 0.4s ease-out;
+            background-image: linear-gradient(90deg, rgba(0,0,0,0.4) 0%, transparent 50%, rgba(0,0,0,0.4) 100%);
+        }
+        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 28px; font-weight: 900; text-shadow: 1px 1px 2px black; color: white; z-index: 5; }
         
-        #battle-log { height: 150px; margin-top: 15px; background: rgba(0,0,0,0.5); padding: 10px; font-size: 11px; overflow-y: auto; font-family: monospace; }
-        .btn-shop, .btn-ultra { font-family: 'Cinzel'; width: 100%; padding: 10px; cursor: pointer; border: 2px solid #333; margin-top: 10px; }
+        /* ИНВЕНТАРЬ И КНОПКИ */
+        #inv-box { flex-grow: 1; margin-top: 15px; display: flex; flex-direction: column; gap: 5px; }
+        .inv-item { font-size: 11px; padding: 8px; background: rgba(255,255,255,0.03); border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
         
+        .btn-shop { 
+            width: 100%; padding: 12px; margin-top: 10px; background: #1a1510; 
+            color: var(--gold); border: 2px solid #333; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-shop:hover { background: #2a2015; border-color: var(--gold); }
+
+        .total-stats { padding: 10px; background: rgba(0,0,0,0.4); border-top: 2px solid #222; margin-top: 10px; }
+        .stat-line { display: flex; justify-content: space-between; font-size: 14px; margin: 4px 0; color: #ccc; }
+        
+        #battle-log { height: 160px; margin-top: 15px; background: rgba(0,0,0,0.5); border: 1px solid #222; padding: 10px; font-size: 11px; overflow-y: auto; color: #aaa; font-family: 'Courier New', monospace; }
+        
+        /* МЕНЮ И ЛУТ */
         #menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        
+        /* ФИКС СМЕШЕНИЯ КАРТОЧЕК */
+        .hero-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; max-width: 700px; }
+        .hero-card { 
+            width: 260px; height: 260px; border: 5px solid #333; 
+            background-size: cover; border-radius: 50%; transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; cursor: pointer;
+        }
+        .hero-card:hover { border-color: var(--gold); transform: scale(1.05); box-shadow: 0 0 30px rgba(255,215,0,0.3); }
+        .hero-card .info { position: absolute; bottom: 20px; text-align: center; width: 100%; z-index: 2; background: rgba(0,0,0,0.4); }
+        .hero-card h3 { margin: 0; color: var(--gold); font-size: 24px; }
+
+        #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .loot-window { background: #111; padding: 30px; border: 4px solid #333; width: 450px; text-align: center; }
+        
+        .btn-ultra { width: 100%; margin-top: 10px; padding: 15px; font-size: 16px; background: #200; color: #555; border: 2px solid #333; cursor: not-allowed; transition: all 0.3s; }
+        .btn-ultra.ready { background: #600; color: white; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px #f00; }
+
+        @keyframes hero-breath { 0%, 100% { transform: scale(1.0); } 50% { transform: scale(1.02); } }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-family:Cinzel; font-size: 50px; margin-bottom: 30px;">TAVERNA WAR</h1>
+        <h1 style="color:var(--gold); font-family:Cinzel; font-size: 50px; margin-bottom: 30px; text-shadow: 0 0 30px black;">TAVERNA WAR</h1>
         <div class="hero-cards">
             <div class="hero-card" style="background-image: url('assets/hero_warrior.jpg');" onclick="startGame('warrior')">
                 <div class="info"><h3>ВОИН</h3></div>
@@ -128,25 +151,38 @@
 
     <div id="ui-left">
         <div id="p-portrait" class="portrait"></div>
-        <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0</div><div id="p-arm-f" class="bar-fill" style="background: #3498db; width:0%"></div></div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">100/100</div><div id="p-hp-f" class="bar-fill" style="background: #c0392b; width:100%"></div></div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #2980b9; width:0%"></div></div>
-        <button id="btn-ultra" class="btn-ultra" style="background:#200; color:#555;">СУПЕРУДАР</button>
-        <div id="inv-box" style="flex-grow:1"></div>
-        <button class="btn-shop" style="background:#1a1510; color:var(--gold);">МАГАЗИН</button>
-        <div style="border-top:1px solid #333; padding-top:10px; font-size:14px;">
-            Золото: <span id="gold-val" style="color:var(--gold)">0</span>
+        <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0 / 0</div><div id="p-arm-f" class="bar-fill" style="background: #3498db;"></div></div>
+        <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: #c0392b;"></div></div>
+        <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #2980b9;"></div></div>
+        <button id="btn-ultra" class="btn-ultra">СУПЕРУДАР</button>
+        <div id="inv-box"></div>
+        <button class="btn-shop">МАГАЗИН</button>
+        <div class="total-stats">
+            <div class="stat-line"><span>Сила:</span><b id="stat-atk">0</b></div>
+            <div class="stat-line"><span>Уворот:</span><b id="stat-dodge">0%</b></div>
+            <div class="stat-line"><span>Золото:</span><b id="gold-val" style="color:var(--gold)">0</b></div>
         </div>
     </div>
 
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait"></div>
-        <h2 id="m-name" style="color:#e74c3c; text-align:center; font-family:Cinzel;">ВРАГ</h2>
-        <div class="bar-bg"><div id="m-hp-t" class="bar-text">300/300</div><div id="m-hp-f" class="bar-fill" style="background: #c0392b; width:100%"></div></div>
-        <div class="bar-bg"><div id="m-mn-t" class="bar-text">Мана: 0%</div><div id="m-mn-f" class="bar-fill" style="background: #2980b9; width:0%"></div></div>
+        <div id="m-portrait" class="portrait" style="filter: sepia(0.3) grayscale(0.2);"></div>
+        <h2 id="m-name" style="color:#e74c3c; margin:10px 0; text-align:center; font-family:Cinzel;">ВРАГ</h2>
+        <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: #c0392b;"></div></div>
+        <div class="bar-bg"><div id="m-mn-t" class="bar-text">Мана: 0%</div><div id="m-mn-f" class="bar-fill" style="background: #2980b9;"></div></div>
         <div id="battle-log"></div>
+    </div>
+
+    <div id="loot-overlay">
+        <div class="loot-window">
+            <h2 style="color:var(--gold);">ТРОФЕЙ НАЙДЕН</h2>
+            <div id="loot-compare" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:20px 0;"></div>
+            <div>
+                <button id="btn-take-loot">ЭКИПИРОВАТЬ</button>
+                <button id="btn-sell-loot" style="background:#333; color:white;">ПРОДАТЬ (+50💰)</button>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="main.js"></script>
