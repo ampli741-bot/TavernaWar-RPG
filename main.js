@@ -1,4 +1,3 @@
-import { TILE_S } from './data/constants.js'
+import { TILE_S, BG_COLORS } from './data'
 
-console.log('TILE_S =', TILE_S)
-
+console.log(TILE_S, BG_COLORS)
