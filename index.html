@@ -8,295 +8,348 @@
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
         :root { 
-            --gold: #b48c46; /* Состаренная бронза вместо яркого золота */
-            --border: rgba(180, 140, 70, 0.3); 
-            --bg: #050505;
-            --rar0: #888; --rar1: #3498db; --rar2: #9b59b6; --rar3: #e67e22;
+            --gold: #b48c46; 
+            --border: rgba(180, 140, 70, 0.2); 
+            --bg: #0c0a08;
+            --rar0: #888; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
         }
 
         body { 
             margin: 0; 
-            background: #000 url('https://w.forfun.com/fetch/51/5196560410492869036e4f16a0f78103.jpeg') center center / cover no-repeat; 
+            background: var(--bg) url('assets/bg.jpg') center center / cover no-repeat; 
             color: white; display: flex; height: 100vh; overflow: hidden; 
             font-family: 'Verdana', sans-serif; touch-action: none; 
         }
 
         /* Убираем черные квадраты боковых панелей */
         #ui-left, #ui-right { 
-            width: 380px; padding: 25px; 
-            background: linear-gradient(to right, rgba(0,0,0,0.9), transparent);
-            display: flex; flex-direction: column; 
-            z-index: 10; position: relative;
+            width: 380px; padding: 20px; 
+            background: linear-gradient(to right, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
+            display: flex; flex-direction: column; z-index: 10;
         }
-        #ui-right { background: linear-gradient(to left, rgba(0,0,0,0.9), transparent); }
+        #ui-right { 
+            background: linear-gradient(to left, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 70%, transparent 100%); 
+        }
 
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: transparent; }
 
-        /* Новый стиль портретов без рамок */
+        /* Герой теперь без рамки, в глубокой нише */
         .portrait { 
-            width: 260px; height: 260px; margin: 0 auto 20px; 
+            width: 240px; height: 240px; margin: 0 auto 15px; 
             border-radius: 50%; 
             background-size: cover; background-position: center;
-            /* Внутренняя тень создает эффект ниши, внешнее свечение - магию */
-            box-shadow: inset 0 0 40px #000, 0 0 30px rgba(0,0,0,0.8);
+            box-shadow: inset 0 0 50px #000, 0 0 30px rgba(0,0,0,0.5);
             position: relative;
-            transition: all 0.5s ease;
+            animation: hero-breath 4s ease-in-out infinite;
         }
 
-        /* Магическое свечение под героем (вместо рамки) */
-        .portrait::before {
-            content: ""; position: absolute; inset: -10px;
-            border-radius: 50%;
-            background: radial-gradient(circle, var(--gold) 0%, transparent 70%);
-            opacity: 0.2; z-index: -1;
-            animation: pulse-glow 3s infinite alternate;
+        /* Магическое свечение под ногами вместо рамки */
+        .portrait::after {
+            content: ""; position: absolute; inset: -5px; border-radius: 50%;
+            background: radial-gradient(circle, var(--gold) 0%, transparent 80%);
+            opacity: 0.15; z-index: -1;
         }
 
-        @keyframes pulse-glow {
-            from { opacity: 0.1; transform: scale(0.95); }
-            to { opacity: 0.3; transform: scale(1.05); }
+        @keyframes hero-breath {
+            0%, 100% { transform: scale(1.0); filter: brightness(1); }
+            50% { transform: scale(1.03); filter: brightness(1.2); }
         }
 
-        /* Полоски HP стали более готическими */
-        .bar-bg { width: 100%; height: 12px; background: rgba(255,255,255,0.05); margin-top: 8px; position: relative; border-radius: 2px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-        .bar-fill { height: 100%; transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        .bar-text { position: absolute; width: 100%; text-align: right; padding-right: 5px; font-size: 10px; line-height: 12px; color: #aaa; z-index: 5; text-transform: uppercase; letter-spacing: 1px; }
+        /* Тонкие готические полоски */
+        .bar-bg { width: 100%; height: 16px; background: rgba(255,255,255,0.05); margin-top: 10px; position: relative; border-radius: 2px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.4s ease; }
+        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 16px; font-weight: 900; text-shadow: 1px 1px 2px black; color: #ccc; z-index: 5; font-family: 'Cinzel'; }
 
-        /* Инвентарь */
-        #inv-box { flex-grow: 1; margin-top: 20px; }
-        .inv-item { font-size: 12px; margin-bottom: 6px; padding: 12px; background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(180, 140, 70, 0.1); display: flex; justify-content: space-between; }
-
-        /* Кнопка Ульты */
-        .btn-ultra { 
-            width: 100%; padding: 15px; margin-top: 15px; 
-            background: rgba(40,0,0,0.6); color: #888; 
-            border: 1px solid #444; font-family: 'Cinzel', serif;
-            cursor: not-allowed; transition: all 0.4s;
+        #inv-box { flex-grow: 1; margin-top: 15px; display: flex; flex-direction: column; gap: 5px; }
+        .inv-item { 
+            font-size: 11px; padding: 8px; 
+            background: rgba(255,255,255,0.03); 
+            border-left: 2px solid #444; 
+            display: flex; justify-content: space-between; align-items: center;
+            transition: background 0.3s;
         }
-        .btn-ultra.ready { 
-            background: rgba(150,0,0,0.4); color: #fff; 
-            border-color: #ff4444; cursor: pointer;
-            box-shadow: 0 0 15px rgba(255,0,0,0.3);
+        .inv-item:hover { background: rgba(255,255,255,0.07); }
+
+        .btn-shop { 
+            width: 100%; padding: 10px; margin-top: 10px; background: transparent; 
+            color: var(--gold); border: 1px solid var(--border); border-radius: 2px; 
+            cursor: pointer; font-family: 'Cinzel'; font-size: 14px; transition: 0.3s;
+        }
+        .btn-shop:hover { background: rgba(180, 140, 70, 0.1); border-color: var(--gold); }
+
+        .total-stats { padding: 10px; background: rgba(0,0,0,0.3); margin-top: 10px; border-top: 1px solid var(--border); }
+        .stat-line { display: flex; justify-content: space-between; font-size: 14px; margin: 3px 0; color: #aaa; font-family: 'Cinzel'; }
+        
+        #battle-log { 
+            height: 180px; margin-top: 15px; 
+            background: transparent; 
+            font-size: 11px; overflow-y: auto; color: #888; 
+            mask-image: linear-gradient(to bottom, transparent, black 15%);
         }
 
-        /* Лог боя */
-        #battle-log { height: 150px; background: transparent; border-top: 1px solid rgba(180, 140, 70, 0.2); margin-top: 10px; padding: 10px; font-size: 11px; overflow-y: auto; mask-image: linear-gradient(to bottom, transparent, black 20%); }
-
-        /* Меню выбора героя */
-        #menu-overlay { position: fixed; inset: 0; background: #000 url('https://images8.alphacoders.com/131/1311050.jpeg') center/cover; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #menu-overlay::after { content: ""; position: absolute; inset:0; background: radial-gradient(circle, transparent, #000); }
-
-        .hero-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; position: relative; z-index: 10; }
+        #menu-overlay { position: fixed; inset: 0; background: #000 url('assets/bg.jpg') center/cover; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #menu-overlay::before { content: ""; position: absolute; inset:0; background: radial-gradient(circle, transparent, #000); }
+        
+        .hero-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; z-index: 10; }
         .hero-card { 
-            width: 200px; height: 350px; background-size: cover; background-position: center;
-            border: 1px solid rgba(180, 140, 70, 0.3); position: relative; cursor: pointer;
-            transition: all 0.4s; filter: grayscale(0.5);
+            width: 180px; height: 300px; border: 1px solid var(--border); 
+            background-size: cover; background-position: center; position: relative; cursor: pointer; transition: 0.4s;
         }
-        .hero-card:hover { transform: translateY(-10px); filter: grayscale(0); border-color: var(--gold); box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-        .hero-card .info { position: absolute; bottom: 0; width: 100%; background: linear-gradient(to top, #000, transparent); padding: 20px 10px; text-align: center; }
-        .hero-card h3 { font-family: 'Cinzel'; margin: 0; color: var(--gold); }
+        .hero-card:hover { transform: translateY(-10px); border-color: var(--gold); box-shadow: 0 0 20px rgba(180, 140, 70, 0.4); }
+        .hero-card .info { position: absolute; bottom: 0; width: 100%; padding: 15px 5px; background: linear-gradient(to top, #000 80%, transparent); text-align: center; }
 
-        /* Лут */
-        #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 300; }
-        .loot-window { background: #111; padding: 40px; border: 1px solid var(--gold); text-align: center; }
-
-        button { background: var(--gold); color: #000; font-family: 'Cinzel'; border: none; padding: 10px 20px; cursor: pointer; transition: 0.3s; }
+        #loot-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; justify-content: center; align-items: center; z-index: 100; }
+        .loot-window { background: #0c0a08; padding: 30px; border: 1px solid var(--gold); width: 450px; text-align: center; }
+        
+        .btn-ultra { width: 100%; margin-top: 10px; padding: 12px; font-family: 'Cinzel'; background: rgba(60,0,0,0.4); color: #555; border: 1px solid #333; cursor: not-allowed; transition: 0.4s; }
+        .btn-ultra.ready { background: #600; color: white; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px #f00; }
+        
+        button { padding: 10px 20px; cursor: pointer; border: none; background: var(--gold); color: black; font-family: 'Cinzel'; transition: 0.3s; }
         button:hover { background: #fff; }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-family:'Cinzel'; font-size: 60px; z-index: 10; text-shadow: 0 0 20px #000;">TAVERNA WAR</h1>
+        <h1 style="color:var(--gold); font-family:'Cinzel'; font-size: 50px; margin-bottom: 40px; text-shadow: 0 0 20px #000; z-index:10;">TAVERNA WAR</h1>
         <div class="hero-cards">
-            <div class="hero-card" style="background-image: url('https://i.pinimg.com/736x/8f/3d/8b/8f3d8b598f399478f69185a54483733a.jpg');" onclick="startGame('warrior')">
-                <div class="info"><h3>ВОИН</h3><p>Сила и защита</p></div>
+            <div class="hero-card" style="background-image: url('assets/hero_warrior.jpg');" onclick="startGame('warrior')">
+                <div class="info"><h3>ВОИН</h3><p style="font-size:10px; color:#aaa;">Красные + Зеленые</p></div>
             </div>
-            <div class="hero-card" style="background-image: url('https://i.pinimg.com/736x/01/a9/32/01a932d207310f83652697841961623f.jpg');" onclick="startGame('mage')">
-                <div class="info"><h3>МАГ</h3><p>Мощь стихий</p></div>
+            <div class="hero-card" style="background-image: url('assets/hero_mage.jpg');" onclick="startGame('mage')">
+                <div class="info"><h3>МАГ</h3><p style="font-size:10px; color:#aaa;">Фиол + Желтые</p></div>
             </div>
-            <div class="hero-card" style="background-image: url('https://i.pinimg.com/736x/6c/20/0f/6c200f68a52988182745a30646279f13.jpg');" onclick="startGame('archer')">
-                <div class="info"><h3>ЛУЧНИК</h3><p>Скорость ветра</p></div>
+            <div class="hero-card" style="background-image: url('assets/hero_archer.jpg');" onclick="startGame('archer')">
+                <div class="info"><h3>ЛУЧНИК</h3><p style="font-size:10px; color:#aaa;">4 Линии</p></div>
             </div>
-            <div class="hero-card" style="background-image: url('https://i.pinimg.com/736x/e6/7a/7b/e67a7b8e515d9472e9a2656919e1262d.jpg');" onclick="startGame('assassin')">
-                <div class="info"><h3>УБИЙЦА</h3><p>Тень смерти</p></div>
+            <div class="hero-card" style="background-image: url('assets/hero_assasin.jpg');" onclick="startGame('assassin')">
+                <div class="info"><h3>УБИЙЦА</h3><p style="font-size:10px; color:#aaa;">30% Поля</p></div>
             </div>
         </div>
     </div>
 
     <div id="ui-left">
         <div id="p-portrait" class="portrait"></div>
-        <div style="font-family:'Cinzel'; color:var(--gold); font-size: 14px;">HP</div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: #800;"></div></div>
-        <div style="font-family:'Cinzel'; color:var(--gold); font-size: 14px; margin-top:10px;">MANA</div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">0%</div><div id="p-mn-f" class="bar-fill" style="background: #204080;"></div></div>
-        
-        <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">ИСПОЛЬЗОВАТЬ УЛЬТУ</button>
-        
+        <div class="bar-bg"><div id="p-arm-t" class="bar-text">Броня: 0 / 0</div><div id="p-arm-f" class="bar-fill" style="background: #3498db;"></div></div>
+        <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill" style="background: #960000;"></div></div>
+        <div class="bar-bg"><div id="p-mn-t" class="bar-text">Мана: 0%</div><div id="p-mn-f" class="bar-fill" style="background: #2980b9;"></div></div>
+        <button id="btn-ultra" class="btn-ultra" onclick="useUltra()">СУПЕРУДАР</button>
         <div id="inv-box"></div>
-        
-        <div style="display:flex; justify-content: space-between; padding: 10px; font-family:'Cinzel'; border-top: 1px solid var(--border);">
-            <span>ATK: <b id="stat-atk">0</b></span>
-            <span>GOLD: <b id="gold-val" style="color:var(--gold)">0</b></span>
+        <button class="btn-shop" onclick="window.app.log('Магазин закрыт!', 'sys')">МАГАЗИН</button>
+        <div class="total-stats">
+            <div class="stat-line"><span>Сила:</span><b id="stat-atk">0</b></div>
+            <div class="stat-line"><span>Уворот:</span><b id="stat-dodge">0%</b></div>
+            <div class="stat-line"><span>Золото:</span><b id="gold-val" style="color:var(--gold)">0</b></div>
         </div>
     </div>
 
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div id="m-portrait" class="portrait" style="box-shadow: inset 0 0 40px #000, 0 0 30px rgba(150,0,0,0.2);"></div>
-        <h2 id="m-name" style="font-family:'Cinzel'; color:#ff4444; text-align:center; font-size: 20px; letter-spacing: 2px;">ВРАГ</h2>
-        <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: #600;"></div></div>
+        <div id="m-portrait" class="portrait" style="filter: sepia(0.3) saturate(1.2);"></div>
+        <h2 id="m-name" style="color:#ff4444; font-family:'Cinzel'; margin:10px 0; text-align:center;">ВРАГ</h2>
+        <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill" style="background: #960000;"></div></div>
+        <div class="bar-bg"><div id="m-mn-t" class="bar-text">Мана: 0%</div><div id="m-mn-f" class="bar-fill" style="background: #2980b9;"></div></div>
         <div id="battle-log"></div>
     </div>
 
     <div id="loot-overlay">
         <div class="loot-window">
-            <h2 style="font-family:'Cinzel'; color:var(--gold);">ТРОФЕЙ НАЙДЕН</h2>
-            <div id="loot-compare" style="margin: 20px 0; font-size: 13px;"></div>
-            <button onclick="takeLoot()">ЗАБРАТЬ</button>
-            <button onclick="sellLoot()" style="background:#222; color:#fff; margin-left: 10px;">ПРОДАТЬ</button>
+            <h2 style="color:var(--gold); font-family:'Cinzel';">ТРОФЕЙ НАЙДЕН</h2>
+            <div id="loot-compare" style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:20px 0; text-align:left;"></div>
+            <button onclick="takeLoot()">ЭКИПИРОВАТЬ</button>
+            <button onclick="sellLoot()" style="background:#222; color:white; margin-left:10px;">ПРОДАТЬ (+50💰)</button>
         </div>
     </div>
 
     <script>
-    // --- ПЕРЕМЕННЫЕ ИГРЫ (Ригидный скелет сохранен) ---
-    const TILE_S = 80;
+    // --- ПОЛНЫЙ ЖЕСТКИЙ СКЕЛЕТ МЕХАНИК ---
+    const TILE_S = 85; const TILE_P = 4; const VISUAL_S = TILE_S - (TILE_P * 2);
     let phaserGame, scene, currentLoot = null;
-    const slotNames = { weapon: "Оружие", body: "Доспех", head: "Шлем" };
+    const adjs = ["Древний", "Мифический", "Проклятый", "Тёмный", "Вечный", "Стальной", "Святой"];
+    const slotNames = { weapon: "Оружие", body: "Доспех", legs: "Поножи", head: "Шлем", ring: "Перстень", necklace: "Амулет", hands: "Перчатки" };
+    const BG_COLORS = { red: 0x3d0a0a, blue: 0x0a1a2f, green: 0x0a240a, purple: 0x220a35, yellow: 0x2d2405 };
+    const GLOW_COLORS = { red: 0xff0000, blue: 0x00aaff, green: 0x00ff00, purple: 0xaa00ff, yellow: 0xffaa00 };
 
     window.app = { 
         player: null, mob: null, lootActive: false, turn: "PLAYER",
         log: (msg, type) => {
             const log = document.getElementById('battle-log');
             const entry = document.createElement('div');
-            entry.style.color = type==='p'?'#aaa':type==='m'?'#f44':'#b48c46';
-            entry.style.marginBottom = "5px";
-            entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            entry.style.color = type==='p'?'#fff':type==='m'?'#f44':type==='crit'?'#aa44ff':'#ffd700';
+            entry.innerText = `> ${msg}`;
             log.prepend(entry);
         }
     };
 
     function startGame(key) {
         document.getElementById('menu-overlay').style.display = 'none';
-        const base = { 'warrior':{hp:1200,atk:30}, 'mage':{hp:700,atk:60}, 'archer':{hp:900,atk:45}, 'assassin':{hp:800,atk:55} }[key];
-        
-        // Ссылки на картинки из интернета для теста стиля
-        const imgs = {
-            warrior: 'https://i.pinimg.com/736x/8f/3d/8b/8f3d8b598f399478f69185a54483733a.jpg',
-            mage: 'https://i.pinimg.com/736x/01/a9/32/01a932d207310f83652697841961623f.jpg',
-            archer: 'https://i.pinimg.com/736x/6c/20/0f/6c200f68a52988182745a30646279f13.jpg',
-            assassin: 'https://i.pinimg.com/736x/e6/7a/7b/e67a7b8e515d9472e9a2656919e1262d.jpg'
-        };
-
-        window.app.player = { job:key, hp:base.hp, maxHp:base.hp, mana:0, gold:0, level:1, baseAtk:base.atk, equip: {} };
-        document.getElementById('p-portrait').style.backgroundImage = `url('${imgs[key]}')`;
+        const base = { 'warrior':{hp:1600,atk:25,agi:5}, 'mage':{hp:800,atk:65,agi:2}, 'archer':{hp:1000,atk:40,agi:18}, 'assassin':{hp:900,atk:55,agi:14} }[key];
+        window.app.player = { job:key.toUpperCase(), key, hp:base.hp, maxHp:base.hp, armor:0, maxArmor:0, mana:0, gold:0, level:1, baseAtk:base.atk, baseAgi:base.agi, equip: { weapon:{n:"Старая палка",atk:12,arm:0,agi:0,rar:0} } };
+        document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${key}.jpg')`;
         initPhaser(); spawnMob(); refreshUI();
     }
 
     function spawnMob() {
         let lvl = window.app.player.level;
-        window.app.mob = { hp: 300+(lvl*150), maxHp: 300+(lvl*150), atk: 15+(lvl*10) };
-        document.getElementById('m-portrait').style.backgroundImage = `url('https://i.pinimg.com/736x/8d/6d/2c/8d6d2c486450534272f65a4a5823122c.jpg')`;
-        refreshUI();
+        window.app.mob = { name: "Гоблин Ур."+lvl, hp: 200+(lvl*100), maxHp: 200+(lvl*100), atk: 20+(lvl*10), mana: 0 };
+        document.getElementById('m-portrait').style.backgroundImage = `url('assets/monster_goblin.jpg')`; 
+        window.app.turn = "PLAYER"; window.app.lootActive = false; refreshUI();
     }
 
     function refreshUI() {
         const p = window.app.player; const m = window.app.mob;
-        document.getElementById('p-hp-t').innerText = `${Math.floor(p.hp)} / ${p.maxHp}`;
+        if(!p) return;
+        let gearAtk=0, gearArm=0, gearAgi=0, invH = "";
+        for(let s in slotNames) { 
+            let i = p.equip[s]; if(i) { gearAtk+=i.atk; gearArm+=i.arm; gearAgi+=i.agi; }
+            let color = i ? `var(--rar${i.rar})` : '#444';
+            invH += `<div class="inv-item" style="border-left: 2px solid ${color}">
+                <div style="color:${color}">${slotNames[s]}: ${i?i.n:'---'}</div>
+                <div style="font-size:9px">${i?'⚔️'+i.atk+' 🛡️'+i.arm:''}</div>
+            </div>`;
+        }
+        p.maxArmor = gearArm;
+        document.getElementById('p-hp-t').innerText = `${Math.floor(p.hp)}/${p.maxHp}`;
         document.getElementById('p-hp-f').style.width = (p.hp/p.maxHp*100)+'%';
-        document.getElementById('p-mn-t').innerText = `${p.mana}%`;
+        document.getElementById('p-arm-t').innerText = `Броня: ${Math.floor(p.armor)}/${p.maxArmor}`;
+        document.getElementById('p-arm-f').style.width = p.maxArmor > 0 ? (p.armor/p.maxArmor*100)+'%' : '0%';
+        document.getElementById('p-mn-t').innerText = `Мана: ${p.mana}%`;
         document.getElementById('p-mn-f').style.width = p.mana+'%';
-        document.getElementById('m-hp-t').innerText = `${Math.floor(m.hp)} / ${m.maxHp}`;
-        document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100)+'%';
-        document.getElementById('stat-atk').innerText = p.baseAtk;
-        document.getElementById('gold-val').innerText = p.gold;
         document.getElementById('btn-ultra').className = 'btn-ultra' + (p.mana>=100?' ready':'');
+        document.getElementById('stat-atk').innerText = p.baseAtk + gearAtk;
+        document.getElementById('stat-dodge').innerText = Math.min(60, p.baseAgi + gearAgi) + "%";
+        document.getElementById('gold-val').innerText = p.gold;
+        document.getElementById('m-hp-t').innerText = `HP: ${Math.floor(m.hp)}/${m.maxHp}`;
+        document.getElementById('m-hp-f').style.width = (m.hp/m.maxHp*100)+'%';
+        document.getElementById('inv-box').innerHTML = invH;
     }
 
-    // --- PHASER CORE (Rigid Skeleton) ---
+    async function useUltra() {
+        if(window.app.player.mana < 100 || window.app.lootActive || scene.isAnimating) return;
+        window.app.player.mana = 0; let key = window.app.player.key;
+        window.app.log(`УЛЬТА: ${window.app.player.job}!`, 'crit');
+        let toExplode = [];
+        if(key === 'warrior') toExplode = scene.grid.flat().filter(t => t && (t.type === 'red' || t.type === 'green'));
+        if(key === 'mage') toExplode = scene.grid.flat().filter(t => t && (t.type === 'purple' || t.type === 'yellow'));
+        if(key === 'archer') { for(let i=0; i<4; i++) { let r = Math.floor(Math.random()*7); for(let c=0; c<7; c++) if(scene.grid[r][c]) toExplode.push(scene.grid[r][c]); } }
+        if(key === 'assassin') { toExplode = Phaser.Utils.Array.Shuffle(scene.grid.flat().filter(t => t)).slice(0, 15); window.app.mob.hp -= (window.app.player.baseAtk * 2); }
+        if(toExplode.length > 0) { await scene.explodeUnique(toExplode); await scene.refill(); await scene.check(); }
+        refreshUI();
+    }
+
+    function generateLoot() {
+        const slots = Object.keys(slotNames); const slot = slots[Math.floor(Math.random()*slots.length)];
+        const rar = Math.random()>0.95?3:Math.random()>0.8?2:Math.random()>0.5?1:0;
+        const power = (10 + window.app.player.level * 8) * (1 + rar * 0.5);
+        return { slot, rar, n: `${adjs[Math.floor(Math.random()*adjs.length)]} ${slotNames[slot]}`, atk: Math.floor(slot==='weapon'||slot==='ring'?power:power/4), arm: Math.floor(slot==='body'||slot==='head'?power*2:power/3), agi: Math.floor(Math.random()*5) };
+    }
+
+    function showLootScreen() {
+        window.app.lootActive = true; currentLoot = generateLoot();
+        let old = window.app.player.equip[currentLoot.slot] || {n:"Пусто", atk:0, arm:0, rar:0};
+        document.getElementById('loot-compare').innerHTML = `<div><b style="color:#666">ТЕКУЩЕЕ:</b><br>${old.n}<br>⚔️${old.atk} 🛡️${old.arm}</div><div><b style="color:var(--rar${currentLoot.rar})">НОВОЕ:</b><br>${currentLoot.n}<br>⚔️${currentLoot.atk} 🛡️${currentLoot.arm}</div>`;
+        document.getElementById('loot-overlay').style.display = 'flex';
+    }
+
+    function takeLoot() { window.app.player.equip[currentLoot.slot] = currentLoot; window.app.player.armor = window.app.player.maxArmor; closeLoot(); }
+    function sellLoot() { window.app.player.gold += 50; closeLoot(); }
+    function closeLoot() { document.getElementById('loot-overlay').style.display = 'none'; window.app.player.level++; spawnMob(); }
+
     class GameScene extends Phaser.Scene {
         constructor() { super('GameScene'); }
-        preload() {
-            // Заглушки для рун (цвета)
-            this.load.image('t_red', 'https://cdn-icons-png.flaticon.com/512/594/594846.png');
-            this.load.image('t_blue', 'https://cdn-icons-png.flaticon.com/512/594/594830.png');
-            this.load.image('t_green', 'https://cdn-icons-png.flaticon.com/512/594/594838.png');
-            this.load.image('t_purple', 'https://cdn-icons-png.flaticon.com/512/594/594842.png');
-            this.load.image('t_yellow', 'https://cdn-icons-png.flaticon.com/512/594/594834.png');
+        preload() { ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => this.load.image(`t_${c}`, `assets/rune_${c}.png`)); }
+        create() { 
+            scene = this; this.grid = []; this.isAnimating = false; 
+            for(let r=0; r<8; r++) { this.grid[r] = []; for(let c=0; c<8; c++) this.spawnTile(r, c); } 
         }
-        create() {
-            scene = this; this.grid = [];
-            for(let r=0; r<7; r++) {
-                this.grid[r] = [];
-                for(let c=0; c<7; c++) this.spawnTile(r, c);
-            }
+        spawnTile(r, c, fromTop=false) {
+            let type = Phaser.Utils.Array.GetRandom(['red', 'blue', 'green', 'purple', 'yellow']);
+            let x = c * TILE_S + TILE_S/2; let y = fromTop ? -TILE_S : r * TILE_S + TILE_S/2;
+            let container = this.add.container(x, y);
+            let bg = this.add.graphics(); bg.fillStyle(BG_COLORS[type], 0.8); bg.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 8);
+            let img = this.add.image(0, 0, `t_${type}`).setDisplaySize(VISUAL_S*0.8, VISUAL_S*0.8);
+            container.add([bg, img]); container.type = type; container.gridR = r; container.gridC = c;
+            let hit = this.add.rectangle(0, 0, TILE_S, TILE_S, 0, 0).setInteractive();
+            hit.on('pointerdown', () => this.handlePointer(container));
+            container.add(hit); this.grid[r][c] = container;
+            if(fromTop) this.tweens.add({targets: container, y: r*TILE_S+TILE_S/2, duration: 300});
         }
-        spawnTile(r, c) {
-            let types = ['red', 'blue', 'green', 'purple', 'yellow'];
-            let type = Phaser.Utils.Array.GetRandom(types);
-            let container = this.add.container(c*TILE_S+40, r*TILE_S+40);
-            let img = this.add.image(0, 0, `t_${type}`).setDisplaySize(50, 50);
-            container.add(img);
-            container.type = type; container.gridR = r; container.gridC = c;
-            img.setInteractive().on('pointerdown', () => this.handleSelect(container));
-            this.grid[r][c] = container;
-        }
-        async handleSelect(t) {
-            if(this.sel) {
-                let t1 = this.sel, t2 = t;
-                if(Math.abs(t1.gridR-t2.gridR) + Math.abs(t1.gridC-t2.gridC) === 1) {
-                    await this.swap(t1, t2);
-                    this.checkMatches();
+        async handlePointer(t) {
+            if(this.isAnimating || window.app.turn !== "PLAYER" || window.app.lootActive) return;
+            if(!this.sel) { this.sel = t; t.setScale(1.1); }
+            else {
+                if(Math.abs(this.sel.gridR-t.gridR)+Math.abs(this.sel.gridC-t.gridC) === 1) {
+                    await this.swap(this.sel, t);
+                    if(!await this.check()) await this.swap(this.sel, t);
+                    else { window.app.turn = "MOB"; this.time.delayedCall(600, () => this.mobAI()); }
                 }
-                t1.first.setScale(1); this.sel = null;
-            } else {
-                this.sel = t; t.first.setScale(1.2);
+                this.sel.setScale(1); this.sel = null;
             }
         }
         async swap(t1, t2) {
+            this.isAnimating = true;
             let r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
             this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
             t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
             return new Promise(res => {
-                this.tweens.add({targets:t1, x:c2*TILE_S+40, y:r2*TILE_S+40, duration:200});
-                this.tweens.add({targets:t2, x:c1*TILE_S+40, y:r1*TILE_S+40, duration:200, onComplete:res});
+                this.tweens.add({targets:t1, x:c2*TILE_S+TILE_S/2, y:r2*TILE_S+TILE_S/2, duration:200});
+                this.tweens.add({targets:t2, x:c1*TILE_S+TILE_S/2, y:r1*TILE_S+TILE_S/2, duration:200, onComplete:()=>{this.isAnimating=false; res();}});
             });
         }
-        checkMatches() {
-            // Упрощенная логика сбора для демо
-            let toDestroy = [this.grid[Math.floor(Math.random()*7)][Math.floor(Math.random()*7)]];
-            this.applyEffect(toDestroy);
+        findMatches() {
+            let match = [];
+            for(let r=0; r<8; r++) for(let c=0; c<6; c++) if(this.grid[r][c] && this.grid[r][c+1] && this.grid[r][c+2] && this.grid[r][c].type===this.grid[r][c+1].type && this.grid[r][c].type===this.grid[r][c+2].type) match.push(this.grid[r][c], this.grid[r][c+1], this.grid[r][c+2]);
+            for(let c=0; c<8; c++) for(let r=0; r<6; r++) if(this.grid[r][c] && this.grid[r+1][c] && this.grid[r+2][c] && this.grid[r][c].type===this.grid[r+1][c].type && this.grid[r][c].type===this.grid[r+2][c].type) match.push(this.grid[r][c], this.grid[r+1][c], this.grid[r+2][c]);
+            return [...new Set(match)];
         }
-        applyEffect(tiles) {
-            let p = window.app.player; let m = window.app.mob;
-            m.hp -= p.baseAtk;
-            p.mana = Math.min(100, p.mana + 10);
-            window.app.log(`Вы нанесли ${p.baseAtk} урона!`, 'p');
-            if(m.hp <= 0) { window.app.player.level++; spawnMob(); }
-            else { 
-                p.hp -= m.atk; 
-                window.app.log(`Враг ударил на ${m.atk}!`, 'm'); 
-                if(p.hp <=0) { alert("Поражение"); location.reload(); }
+        async check() {
+            let m = this.findMatches();
+            if(m.length > 0) { await this.explodeUnique(m); await this.refill(); await this.check(); return true; }
+            return false;
+        }
+        async explodeUnique(unique) {
+            let counts = { red:0, blue:0, green:0, purple:0, yellow:0 };
+            unique.forEach(t => { counts[t.type]++; this.grid[t.gridR][t.gridC] = null; t.destroy(); });
+            this.applySummary(counts);
+            return new Promise(res => this.time.delayedCall(200, res));
+        }
+        applySummary(counts) {
+            let p = window.app.player, m = window.app.mob;
+            let atk = p.baseAtk;
+            if(window.app.turn === "PLAYER") {
+                if(counts.red > 0) { m.hp -= atk*counts.red; window.app.log(`Удар: -${atk*counts.red}`, 'p'); }
+                if(counts.purple > 0) { m.hp -= atk*2*counts.purple; window.app.log(`КРИТ: -${atk*2*counts.purple}`, 'crit'); }
+                if(counts.blue > 0) p.mana = Math.min(100, p.mana + counts.blue*5);
+                if(counts.green > 0) p.hp = Math.min(p.maxHp, p.hp + counts.green*20);
+                if(counts.yellow > 0) p.gold += counts.yellow*5;
+            } else {
+                let dmg = counts.red * 15 + counts.purple * 25;
+                if(dmg > 0) { p.hp -= dmg; window.app.log(`Враг бьет: -${dmg}`, 'm'); }
             }
+            if(m.hp <= 0 && !window.app.lootActive) showLootScreen();
             refreshUI();
         }
+        async refill() {
+            for(let c=0; c<8; c++) {
+                let empty = 0;
+                for(let r=7; r>=0; r--) {
+                    if(!this.grid[r][c]) empty++;
+                    else if(empty > 0) { let t = this.grid[r][c]; this.grid[r+empty][c]=t; this.grid[r][c]=null; t.gridR=r+empty; this.tweens.add({targets:t, y:t.gridR*TILE_S+TILE_S/2, duration:200}); }
+                }
+                for(let i=0; i<empty; i++) this.spawnTile(i, c, true);
+            }
+            await new Promise(res => this.time.delayedCall(200, res));
+        }
+        async mobAI() {
+            if(window.app.mob.hp <= 0) return;
+            // Упрощенный AI для хода врага
+            let m = this.findMatches(); // Проверка на каскады
+            window.app.turn = "PLAYER"; refreshUI();
+        }
     }
 
-    function initPhaser() { 
-        phaserGame = new Phaser.Game({ 
-            type: Phaser.AUTO, 
-            parent: 'game-container', 
-            width: 560, height: 560, 
-            transparent: true, 
-            scene: GameScene 
-        }); 
-    }
-
-    function takeLoot() { document.getElementById('loot-overlay').style.display='none'; }
-    function sellLoot() { window.app.player.gold += 50; takeLoot(); }
-    function useUltra() { if(window.app.player.mana >= 100) { window.app.player.mana = 0; window.app.mob.hp -= 200; refreshUI(); window.app.log("УЛЬТА!", "sys"); } }
-
+    function initPhaser() { new Phaser.Game({ type: Phaser.AUTO, parent: 'game-container', width: 680, height: 680, scene: GameScene, transparent: true }); }
     </script>
 </body>
 </html>
