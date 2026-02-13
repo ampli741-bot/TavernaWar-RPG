@@ -3,12 +3,13 @@ import { appState, refreshUI } from "./game/appState.js";
 
 let phaserGame;
 
+// Явно привязываем к window, чтобы HTML видел функцию
 window.startGame = (key) => {
-    // 1. Скрываем меню выбора
+    console.log("Попытка запуска игры для:", key);
+    
     const menu = document.getElementById('menu-overlay');
     if (menu) menu.style.display = 'none';
 
-    // 2. Инициализация параметров героя
     const stats = {
         'warrior': {hp:1600, atk:25, agi:5},
         'mage': {hp:800, atk:65, agi:2},
@@ -17,29 +18,29 @@ window.startGame = (key) => {
     };
 
     const base = stats[key] || stats['warrior'];
-    const imgKey = key === 'assassin' ? 'assasin' : key;
+    const imgKey = (key === 'assassin') ? 'assasin' : key;
     
+    // Инициализация данных
     appState.player = {
         job: key.toUpperCase(),
         key: key,
         hp: base.hp, maxHp: base.hp,
-        armor: 0, maxArmor: 0, mana: 0, gold: 0, level: 1,
+        armor: 0, maxArmor: 200, mana: 0, gold: 0, level: 1,
         baseAtk: base.atk, baseAgi: base.agi,
         equip: { weapon: { n: "Старая палка", atk: 12, arm: 0, agi: 0, rar: 0 } }
     };
 
-    // Обновляем портрет в UI
     const portrait = document.getElementById('p-portrait');
     if (portrait) portrait.style.backgroundImage = `url('assets/hero_${imgKey}.jpg')`;
 
-    // 3. Запуск Phaser
+    // ЗАПУСК
     initPhaser();
-    
-    // 4. Спавн первого врага
     spawnMob();
+    refreshUI();
 };
 
 export function spawnMob() {
+    if (!appState.player) return;
     let lvl = appState.player.level;
     appState.mob = { 
         name: "Гоблин Ур." + lvl, 
@@ -62,7 +63,7 @@ function initPhaser() {
     
     const config = {
         type: Phaser.AUTO,
-        parent: 'game-container', // Убедитесь, что этот ID есть в index.html
+        parent: 'game-container',
         width: 680,
         height: 680,
         scene: GameScene, 
@@ -71,12 +72,12 @@ function initPhaser() {
     };
 
     phaserGame = new Phaser.Game(config);
+    console.log("Phaser запущен");
 }
 
-// Привязка кнопок лута (если они уже есть в DOM)
+// Обработка кнопок
 document.addEventListener('DOMContentLoaded', () => {
+    // Если кнопки в HTML имеют id, привязываем их тут
     const btnTake = document.getElementById('btn-take-loot');
-    const btnSell = document.getElementById('btn-sell-loot');
     if (btnTake) btnTake.onclick = () => window.takeLoot();
-    if (btnSell) btnSell.onclick = () => window.sellLoot();
 });
