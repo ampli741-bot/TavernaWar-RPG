@@ -12,6 +12,7 @@
             --rar0: #b0b0b0; --rar1: #4488ff; --rar2: #aa44ff; --rar3: #ffaa00;
             --font-main: 'Quicksand', sans-serif;
             --font-gothic: 'Cinzel', serif;
+            /* Цвета полосок */
             --hp-grad: linear-gradient(90deg, #8b0000, #ff4444);
             --mn-grad: linear-gradient(90deg, #004488, #3399ff);
             --ar-grad: linear-gradient(90deg, #333333, #5dade2);
@@ -33,47 +34,77 @@
         #ui-left, #ui-right { 
             width: 380px; padding: 15px 25px; 
             display: flex; flex-direction: column; 
-            position: relative; box-sizing: border-box; z-index: 10;
+            position: relative;
+            box-sizing: border-box; z-index: 10;
             background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.03) 0%, transparent 40%),
                         linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
-            border-left: 4px solid #333; border-right: 4px solid #111;
+            border-left: 4px solid #333;
+            border-right: 4px solid #111;
             box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
         }
 
-        /* --- КРУГЛЫЙ ПОРТРЕТ С ЭФФЕКТАМИ --- */
-        .portrait-container {
+        #ui-left::before, #ui-right::before {
+            content: ""; position: absolute; top: 0; bottom: 0; width: 30px;
+            background-image: linear-gradient(135deg, #444 25%, transparent 25%), linear-gradient(225deg, #222 25%, transparent 25%), linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #111 25%, transparent 25%);
+            background-size: 30px 60px; filter: drop-shadow(8px 0 5px rgba(0,0,0,0.7)); z-index: 20;
+        }
+        #ui-left::before { right: -30px; }
+        #ui-right::before { left: -30px; transform: scaleX(-1); }
+
+        #game-container { display: flex; justify-content: center; align-items: center; background: transparent; }
+        
+        h1, h2, h3, .btn-ultra, .btn-shop, .btn-loot { font-family: var(--font-gothic); text-transform: uppercase; letter-spacing: 2px; }
+
+        /* --- КНОПКИ --- */
+        .btn-style {
+            border: 2px solid #555;
+            background: linear-gradient(180deg, #333 0%, #111 100%);
+            color: #ddd;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 0 #000;
             position: relative;
-            width: 210px; height: 210px;
+            outline: none;
+            padding: 10px;
+        }
+        .btn-style:hover { border-color: var(--gold); color: #fff; }
+        .btn-style:active { transform: translateY(2px); box-shadow: 0 1px 0 #000; }
+
+        /* --- ОБНОВЛЕННЫЙ КРУГЛЫЙ ПОРТРЕТ --- */
+        .portrait-frame {
+            position: relative;
+            width: 210px;
+            height: 210px;
             margin: 0 auto 10px;
-            display: flex; justify-content: center; align-items: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Эффект свечения и магии за кругом */
+        .portrait-frame::after {
+            content: "";
+            position: absolute;
+            inset: -5px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,215,0,0.15) 0%, transparent 70%);
+            border: 1px dashed rgba(255,215,0,0.2);
+            animation: rotate-slow 15s linear infinite;
         }
 
         .portrait { 
             width: 190px; height: 190px; 
-            border-radius: 50%; /* Делаем круглым */
-            border: 4px solid var(--gold); /* Золотая рамка */
+            border: 4px solid var(--gold); 
+            border-radius: 50%; /* КРУГЛЫЙ ПОРТРЕТ */
             background-size: cover; background-position: center;
-            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2), inset 0 0 20px rgba(0,0,0,0.5);
-            z-index: 2;
-            position: relative;
-            background-color: #1a1a1a;
-        }
-
-        /* Декоративный фон за портретом (руны/свечение) */
-        .portrait-container::before {
-            content: ""; position: absolute;
-            width: 210px; height: 210px;
-            border-radius: 50%;
-            background: url('https://www.transparenttextures.com/patterns/dark-matter.png'), 
-                        radial-gradient(circle, rgba(255,215,0,0.15) 0%, transparent 70%);
-            border: 1px dashed rgba(255,215,0,0.3);
-            animation: rotate-slow 20s linear infinite;
-            z-index: 1;
+            box-shadow: 0 0 25px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
+            z-index: 5;
+            background-color: #151515; /* Чтоб не было пустоты до загрузки */
         }
 
         @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* --- ОСТАЛЬНОЙ UI --- */
+        /* --- ПОЛОСКИ И UI --- */
         .bar-bg { 
             width: 100%; height: 22px; background: #000; border: 1px solid #333; 
             margin-top: 5px; position: relative; 
@@ -86,20 +117,40 @@
         #p-hp-f, #m-hp-f { background: var(--hp-grad); }
         #p-mn-f, #m-mn-f { background: var(--mn-grad); }
 
+        .btn-ultra { 
+            width: 100%; margin-top: 5px; padding: 12px; font-size: 14px; 
+            background: #100; color: #444; border: 2px solid #222; cursor: not-allowed; 
+        }
+        .btn-ultra.ready { background: linear-gradient(180deg, #800 0%, #400 100%); color: white; border-color: #f00; cursor: pointer; }
+
+        #inv-box { flex-grow: 1; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+        .inv-item { background: rgba(255,255,255,0.05); border: 1px solid #333; padding: 6px; font-size: 12px; display: flex; justify-content: space-between; border-radius: 4px; }
+
         #battle-log { height: 110px; margin-top: 10px; background: rgba(0,0,0,0.5); border: 1px solid #222; padding: 8px; font-size: 11px; overflow-y: auto; color: #bbb; }
+        
         .total-stats { padding: 10px; background: rgba(0,0,0,0.5); border-top: 2px solid #333; margin-top: 5px; }
 
-        #menu-overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.96); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* --- МЕНЮ --- */
+        #menu-overlay { 
+            position: fixed; inset: 0; 
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.96); 
+            z-index: 1000; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        }
         .hero-cards { display: grid; grid-template-columns: repeat(2, 280px); gap: 30px; }
-        .hero-card { width: 260px; height: 260px; border: 5px solid #333; border-radius: 50%; background-size: cover; background-position: center; position: relative; cursor: pointer; transition: 0.3s; }
+        .hero-card { 
+            width: 260px; height: 260px; border: 5px solid #333; border-radius: 50%; 
+            background-size: cover; background-position: center; position: relative; cursor: pointer; transition: 0.3s; 
+        }
         .hero-card:hover { border-color: var(--gold); transform: scale(1.05); }
-        .hero-card h3 { position: absolute; bottom: 20px; width: 100%; text-align: center; color: var(--gold); text-shadow: 0 2px 10px #000; margin: 0; font-family: var(--font-gothic); }
+        .hero-card h3 { position: absolute; bottom: 20px; width: 100%; text-align: center; color: var(--gold); text-shadow: 0 2px 10px #000; margin: 0; }
     </style>
 </head>
 <body>
 
     <div id="menu-overlay">
-        <h1 style="color:var(--gold); font-size: 50px; margin-bottom: 40px; font-family: var(--font-gothic);">TAVERNA WAR</h1>
+        <h1 style="color:var(--gold); font-size: 50px; margin-bottom: 40px; text-shadow: 0 0 30px rgba(255,215,0,0.3);">TAVERNA WAR</h1>
         <div class="hero-cards">
             <div class="hero-card" style="background-image: url('assets/hero_warrior.jpg');" onclick="startGame('warrior')"><h3>ВОИН</h3></div>
             <div class="hero-card" style="background-image: url('assets/hero_mage.jpg');" onclick="startGame('mage')"><h3>МАГ</h3></div>
@@ -109,23 +160,25 @@
     </div>
 
     <div id="ui-left">
-        <div class="portrait-container">
+        <div class="portrait-frame">
             <div id="p-portrait" class="portrait"></div>
         </div>
         <div class="bar-bg"><div id="p-arm-t" class="bar-text">БРОНЯ: 0 / 0</div><div id="p-arm-f" class="bar-fill"></div></div>
         <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill"></div></div>
         <div class="bar-bg"><div id="p-mn-t" class="bar-text">МАНА: 0%</div><div id="p-mn-f" class="bar-fill"></div></div>
+        <button id="btn-ultra" class="btn-ultra">СУПЕРУДАР</button>
         
-        <button id="btn-ultra" class="btn-style" style="width:100%; margin-top:10px; font-family: var(--font-gothic);">СУПЕРУДАР</button>
-        
-        <div id="inv-box" style="flex-grow: 1; margin-top: 10px;">
-            <div style="font-size: 10px; color: #666; text-align: center;">ИНВЕНТАРЬ ПУСТ</div>
+        <div id="inv-box">
+            <div class="inv-item" style="border-left: 3px solid var(--rar1)"><span>Меч</span><span style="color:var(--gold)">+5 АТК</span></div>
         </div>
 
+        <button class="btn-shop btn-style" style="width:100%; margin-top:5px;">МАГАЗИН</button>
+        
         <div class="total-stats">
             <div style="display:flex; justify-content:space-between; font-size:12px;"><span>Урон:</span><b id="stat-atk" style="color:#ff4444">0</b></div>
+            <div style="display:flex; justify-content:space-between; font-size:12px;"><span>Уворот:</span><b id="stat-dodge" style="color:#44ff44">0%</b></div>
             <div style="display:flex; justify-content:space-between; margin-top:5px; border-top:1px solid #333; padding-top:5px;">
-                <span>ЗОЛОТО:</span><b id="gold-val" style="color:var(--gold); font-size:14px;">0 💰</b>
+                <span style="font-weight:bold;">ЗОЛОТО:</span><b id="gold-val" style="color:var(--gold); font-size:14px;">0 💰</b>
             </div>
         </div>
     </div>
@@ -133,10 +186,10 @@
     <div id="game-container"></div>
 
     <div id="ui-right">
-        <div class="portrait-container">
-            <div id="m-portrait" class="portrait" style="filter: sepia(0.4);"></div>
+        <div class="portrait-frame">
+            <div id="m-portrait" class="portrait" style="filter: sepia(0.3);"></div>
         </div>
-        <h2 id="m-name" style="color:#e74c3c; margin:5px 0; text-align:center; font-size: 18px; font-family: var(--font-gothic);">ВРАГ</h2>
+        <h2 id="m-name" style="color:#e74c3c; margin:5px 0; text-align:center; font-size: 18px;">ВРАГ</h2>
         <div class="bar-bg"><div id="m-hp-t" class="bar-text">0 / 0</div><div id="m-hp-f" class="bar-fill"></div></div>
         <div class="bar-bg"><div id="m-mn-t" class="bar-text">МАНА: 0%</div><div id="m-mn-f" class="bar-fill"></div></div>
         <div id="battle-log"></div>
