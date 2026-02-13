@@ -23,7 +23,6 @@
             color: white; 
             display: grid; 
             grid-template-columns: 380px 1fr 380px;
-            /* Центрируем игровое поле по вертикали и горизонтали */
             place-items: stretch center; 
             height: 100vh; 
             overflow: hidden; 
@@ -42,7 +41,6 @@
             box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
         }
 
-        /* Фикс для центрирования канваса Phaser */
         #game-container {
             width: 100%;
             height: 100%;
@@ -50,28 +48,30 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
+            position: relative;
         }
 
         /* --- ЭФФЕКТ ДЫХАНИЯ И ПОДЛОЖКА --- */
         .portrait-container {
             position: relative;
-            width: 220px; height: 220px;
+            width: 210px; height: 210px;
             margin: 0 auto 10px;
             display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0; /* Чтобы контейнер не сжимался */
+            flex-shrink: 0;
+            pointer-events: none; /* Чтобы не мешало кликам, если перекроет */
         }
 
         .portrait-bg {
             position: absolute;
             width: 100%; height: 100%;
-            background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, transparent 70%);
-            border: 2px dashed rgba(255,215,0,0.3);
+            background: radial-gradient(circle, rgba(255,215,0,0.15) 0%, transparent 70%);
+            border: 2px dashed rgba(255,215,0,0.2);
             border-radius: 50%;
-            animation: rotate-bg 20s linear infinite;
+            animation: rotate-bg 25s linear infinite;
         }
 
         .portrait { 
-            width: 180px; height: 180px; 
+            width: 170px; height: 170px; 
             border: 4px solid var(--gold); 
             border-radius: 50%; 
             background-size: cover; background-position: center;
@@ -83,18 +83,18 @@
 
         @keyframes rotate-bg { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes breathe {
-            0%, 100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 5px rgba(255,215,0,0.2)); }
-            50% { transform: scale(1.04); filter: brightness(1.15) drop-shadow(0 0 15px rgba(255,215,0,0.4)); }
+            0%, 100% { transform: scale(1); filter: brightness(1) drop-shadow(0 0 5px rgba(255,215,0,0.1)); }
+            50% { transform: scale(1.03); filter: brightness(1.1) drop-shadow(0 0 15px rgba(255,215,0,0.3)); }
         }
 
-        /* --- ОСТАЛЬНОЙ UI --- */
+        /* --- UI ЭЛЕМЕНТЫ --- */
         .bar-bg { 
             width: 100%; height: 22px; background: #000; border: 1px solid #333; 
             margin-top: 5px; position: relative; 
             clip-path: polygon(2% 0%, 98% 0%, 100% 50%, 98% 100%, 2% 100%, 0% 50%);
         }
         .bar-text { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 22px; font-weight: 700; color: white; z-index: 5; text-shadow: 1px 1px 2px #000; }
-        .bar-fill { height: 100%; transition: width 0.3s ease; }
+        .bar-fill { height: 100%; transition: width 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
 
         #p-arm-f { background: var(--ar-grad); }
         #p-hp-f, #m-hp-f { background: var(--hp-grad); }
@@ -106,24 +106,26 @@
             padding: 10px; font-family: var(--font-gothic); text-transform: uppercase;
         }
         .btn-style:hover { border-color: var(--gold); color: #fff; }
+        .btn-style:active { transform: translateY(2px); box-shadow: 0 2px 0 #000; }
 
         .btn-ultra { 
             width: 100%; margin-top: 8px; padding: 12px; font-size: 14px; 
             background: #100; color: #444; border: 2px solid #222; cursor: not-allowed; 
-            font-family: var(--font-gothic);
+            font-family: var(--font-gothic); transition: 0.3s;
         }
-        .btn-ultra.ready { background: linear-gradient(180deg, #800 0%, #400 100%); color: white; border-color: #f00; cursor: pointer; }
+        .btn-ultra.ready { background: linear-gradient(180deg, #800 0%, #400 100%); color: white; border-color: #f00; cursor: pointer; box-shadow: 0 0 15px rgba(255,0,0,0.4); }
 
-        #inv-box { flex-grow: 1; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+        #inv-box { flex-grow: 1; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; scrollbar-width: thin; }
         .inv-item { background: rgba(255,255,255,0.05); border: 1px solid #333; padding: 6px; font-size: 12px; display: flex; justify-content: space-between; border-radius: 4px; }
 
-        #battle-log { height: 100px; margin-top: 10px; background: rgba(0,0,0,0.5); border: 1px solid #222; padding: 8px; font-size: 11px; overflow-y: auto; color: #bbb; }
+        #battle-log { height: 100px; margin-top: 10px; background: rgba(0,0,0,0.5); border: 1px solid #222; padding: 8px; font-size: 11px; overflow-y: auto; color: #bbb; scrollbar-width: thin; }
         .total-stats { padding: 10px; background: rgba(0,0,0,0.5); border-top: 2px solid #333; margin-top: 5px; }
 
+        /* МЕНЮ */
         #menu-overlay { position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.96); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .hero-cards { display: grid; grid-template-columns: repeat(2, 280px); gap: 30px; }
         .hero-card { width: 260px; height: 260px; border: 5px solid #333; border-radius: 50%; background-size: cover; background-position: center; position: relative; cursor: pointer; transition: 0.3s; }
-        .hero-card:hover { border-color: var(--gold); transform: scale(1.05); }
+        .hero-card:hover { border-color: var(--gold); transform: scale(1.05); box-shadow: 0 0 30px rgba(255,215,0,0.2); }
         .hero-card h3 { position: absolute; bottom: 20px; width: 100%; text-align: center; color: var(--gold); text-shadow: 0 2px 10px #000; margin: 0; font-family: var(--font-gothic); }
     </style>
 </head>
@@ -145,13 +147,12 @@
             <div id="p-portrait" class="portrait"></div>
         </div>
         <div class="bar-bg"><div id="p-arm-t" class="bar-text">БРОНЯ: 0 / 0</div><div id="p-arm-f" class="bar-fill"></div></div>
-        <div class="bar-bg"><div id="p-hp-t" class="bar-text">0 / 0</div><div id="p-hp-f" class="bar-fill"></div></div>
-        <div class="bar-bg"><div id="p-mn-t" class="bar-text">МАНА: 0%</div><div id="p-mn-f" class="bar-fill"></div></div>
+        <div class="bar-bg"><div id="p-hp-t" class="bar-text">100 / 100</div><div id="p-hp-f" class="bar-fill" style="width: 100%"></div></div>
+        <div class="bar-bg"><div id="p-mn-t" class="bar-text">МАНА: 0%</div><div id="p-mn-f" class="bar-fill" style="width: 0%"></div></div>
         <button id="btn-ultra" class="btn-ultra">СУПЕРУДАР</button>
         
         <div id="inv-box">
-            <div class="inv-item" style="border-left: 3px solid var(--rar1)"><span>Меч</span><span style="color:var(--gold)">+5 АТК</span></div>
-        </div>
+            </div>
 
         <button class="btn-shop btn-style" style="width:100%; margin-top:5px;">МАГАЗИН</button>
         
