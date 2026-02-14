@@ -4,14 +4,24 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
-    const cols = 8;
-    const rows = 8;
-    const tileSize = 80;
+    this.cols = 8;
+    this.rows = 8;
+    this.tileSize = 80;
+    this.grid = [];
 
-    const offsetX = (this.sys.game.config.width - cols * tileSize) / 2;
-    const offsetY = (this.sys.game.config.height - rows * tileSize) / 2;
+    const types = ['red', 'blue', 'green', 'purple', 'yellow'];
+    const colors = {
+      red: 0xaa3333,
+      blue: 0x3366aa,
+      green: 0x33aa66,
+      purple: 0x663399,
+      yellow: 0xaaaa33
+    };
 
-    // фон сцены
+    const offsetX = (this.sys.game.config.width - this.cols * this.tileSize) / 2;
+    const offsetY = (this.sys.game.config.height - this.rows * this.tileSize) / 2;
+
+    // фон
     this.add.rectangle(
       this.sys.game.config.width / 2,
       this.sys.game.config.height / 2,
@@ -20,21 +30,32 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // сетка
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
+    // создаём сетку
+    for (let y = 0; y < this.rows; y++) {
+      this.grid[y] = [];
+
+      for (let x = 0; x < this.cols; x++) {
+        const type = Phaser.Utils.Array.GetRandom(types);
+
         const rect = this.add.rectangle(
-          offsetX + x * tileSize + tileSize / 2,
-          offsetY + y * tileSize + tileSize / 2,
-          tileSize - 4,
-          tileSize - 4,
-          0x2a2a2a
+          offsetX + x * this.tileSize + this.tileSize / 2,
+          offsetY + y * this.tileSize + this.tileSize / 2,
+          this.tileSize - 6,
+          this.tileSize - 6,
+          colors[type]
         );
 
-        rect.setStrokeStyle(2, 0x444444);
+        rect.setStrokeStyle(2, 0x222222);
+        rect.setInteractive();
+
+        rect.on('pointerdown', () => {
+          console.log(`Tile clicked → [${x}, ${y}] type=${type}`);
+        });
+
+        this.grid[y][x] = { x, y, type, rect };
       }
     }
 
-    console.log('Grid 8x8 created');
+    console.log('Typed grid created');
   }
 }
