@@ -1,65 +1,66 @@
-import { TILE_S, VISUAL_S, BG_COLORS, GLOW_COLORS, SLOT_NAMES, ADJECTIVES } from "../data/constants.js";
+import { TILE_S, VISUAL_S, BG_COLORS } from "../data/constants.js";
 import { appState, refreshUI } from "../game/appState.js";
 
 export class GameScene extends Phaser.Scene {
     constructor() { 
         super('GameScene'); 
+        this.isAnimating = false;
+        this.selectedTile = null;
     }
 
     preload() {
-        ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => 
-            this.load.image(`t_${c}`, `assets/rune_${c}.png`)
-        );
+        ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => {
+            this.load.image(`t_${c}`, `assets/rune_${c}.png`);
+        });
     }
 
     create() {
         this.grid = [];
-        this.isAnimating = false;
-        this.sel = null;
-
-        // Генерация начальной сетки
+        // Генерируем начальную сетку 8x8
         for (let r = 0; r < 8; r++) {
             this.grid[r] = [];
             for (let c = 0; c < 8; c++) {
                 this.spawnTile(r, c);
             }
         }
-        console.log("GameScene: Сетка создана");
     }
 
     spawnTile(r, c, fromTop = false) {
-        let types = ['red', 'blue', 'green', 'purple', 'yellow'];
-        let type = Phaser.Utils.Array.GetRandom(types);
-        let x = c * TILE_S + TILE_S / 2;
-        let y = fromTop ? -TILE_S : r * TILE_S + TILE_S / 2;
+        const types = ['red', 'blue', 'green', 'purple', 'yellow'];
+        const type = Phaser.Utils.Array.GetRandom(types);
+        const x = c * TILE_S + TILE_S / 2;
+        const y = fromTop ? -TILE_S : r * TILE_S + TILE_S / 2;
 
-        let container = this.add.container(x, y);
-
-        // Визуальные слои
-        let bg = this.add.graphics();
-        bg.fillStyle(BG_COLORS[type] || 0x333333, 1);
+        const container = this.add.container(x, y);
+        
+        // Фон
+        const bg = this.add.graphics();
+        bg.fillStyle(BG_COLORS[type] || 0x444444, 1);
         bg.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
 
-        let img = this.add.image(0, 0, `t_${type}`);
-        let zoom = (type === 'red' || type === 'blue' || type === 'purple') ? 2.15 : 1.5;
-        img.setDisplaySize(VISUAL_S * zoom, VISUAL_S * zoom);
+        // Иконка
+        const img = this.add.image(0, 0, `t_${type}`);
+        img.setDisplaySize(VISUAL_S * 0.8, VISUAL_S * 0.8);
 
-        let ghost = this.add.graphics().setAlpha(0);
-        ghost.lineStyle(6, 0xffffff, 0.6);
-        ghost.strokeRoundedRect(-VISUAL_S/2 - 2, -VISUAL_S/2 - 2, VISUAL_S + 4, VISUAL_S + 4, 12);
+        // Рамка выделения
+        const frame = this.add.graphics();
+        frame.lineStyle(4, 0xffffff, 1);
+        frame.strokeRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
+        frame.setVisible(false);
 
-        container.add([bg, img, ghost]);
+        container.add([bg, img, frame]);
+        container.type = type;
         container.gridR = r;
         container.gridC = c;
-        container.type = type;
-        container.ghost = ghost;
+        container.frame = frame;
 
-        let hitArea = this.add.rectangle(0, 0, TILE_S, TILE_S, 0, 0).setInteractive();
+        // Интерактив
+        const hitArea = this.add.rectangle(0, 0, TILE_S, TILE_S, 0, 0).setInteractive();
         hitArea.on('pointerdown', () => this.handlePointer(container));
         container.add(hitArea);
 
         this.grid[r][c] = container;
-        
+
         if (fromTop) {
             this.tweens.add({
                 targets: container,
@@ -71,63 +72,67 @@ export class GameScene extends Phaser.Scene {
         return container;
     }
 
-    async handlePointer(t) {
+    async handlePointer(tile) {
         if (this.isAnimating || appState.turn !== "PLAYER") return;
 
-        if (!this.sel) {
-            this.sel = t;
-            t.ghost.setAlpha(1);
-            t.setScale(1.1);
+        if (!this.selectedTile) {
+            this.selectedTile = tile;
+            tile.frame.setVisible(true);
+            tile.setScale(1.1);
         } else {
-            let t1 = this.sel;
-            let t2 = t;
-            t1.ghost.setAlpha(0);
+            const t1 = this.selectedTile;
+            const t2 = tile;
+            t1.frame.setVisible(false);
             t1.setScale(1);
-            this.sel = null;
+            this.selectedTile = null;
 
             if (t1 === t2) return;
 
-            let dist = Math.abs(t1.gridR - t2.gridR) + Math.abs(t1.gridC - t2.gridC);
+            const dist = Math.abs(t1.gridR - t2.gridR) + Math.abs(t1.gridC - t2.gridC);
             if (dist === 1) {
                 this.isAnimating = true;
-                await this.swap(t1, t2);
+                await this.swapTiles(t1, t2);
                 
-                let matches = this.findMatches();
+                const matches = this.findMatches();
                 if (matches.length > 0) {
-                    await this.processSequence();
+                    await this.processAllMatches();
                     appState.turn = "MOB";
-                    this.time.delayedCall(600, () => this.mobAI());
+                    this.time.delayedCall(500, () => this.mobAI());
                 } else {
-                    await this.swap(t1, t2); // Возврат
+                    await this.swapTiles(t1, t2); // Возврат если нет матча
                     this.isAnimating = false;
                 }
             }
         }
     }
 
-    async swap(t1, t2) {
-        let r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
+    async swapTiles(t1, t2) {
+        const r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
         this.grid[r1][c1] = t2; this.grid[r2][c2] = t1;
         t1.gridR = r2; t1.gridC = c2; t2.gridR = r1; t2.gridC = c1;
 
         return new Promise(res => {
-            this.tweens.add({ targets: t1, x: c2 * TILE_S + TILE_S / 2, y: r2 * TILE_S + TILE_S / 2, duration: 200 });
-            this.tweens.add({ targets: t2, x: c1 * TILE_S + TILE_S / 2, y: r1 * TILE_S + TILE_S / 2, duration: 200, onComplete: res });
+            this.tweens.add({
+                targets: t1, x: c2 * TILE_S + TILE_S / 2, y: r2 * TILE_S + TILE_S / 2,
+                duration: 250, ease: 'Quad.easeInOut'
+            });
+            this.tweens.add({
+                targets: t2, x: c1 * TILE_S + TILE_S / 2, y: r1 * TILE_S + TILE_S / 2,
+                duration: 250, ease: 'Quad.easeInOut', onComplete: res
+            });
         });
     }
 
     findMatches() {
         let matched = new Set();
-        // Ряды
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 6; c++) {
                 let t1 = this.grid[r][c], t2 = this.grid[r][c+1], t3 = this.grid[r][c+2];
-                if (t1 && t2 && t3 && t1.type === t2.type && t1.type === t3.type) {
+                if (t1 && t2 && t3 && t1.type === t2.type && t1.type === t2.type && t1.type === t3.type) {
                     matched.add(t1); matched.add(t2); matched.add(t3);
                 }
             }
         }
-        // Столбцы
         for (let c = 0; c < 8; c++) {
             for (let r = 0; r < 6; r++) {
                 let t1 = this.grid[r][c], t2 = this.grid[r+1][c], t3 = this.grid[r+2][c];
@@ -139,45 +144,38 @@ export class GameScene extends Phaser.Scene {
         return Array.from(matched);
     }
 
-    async processSequence() {
+    async processAllMatches() {
         let matches = this.findMatches();
         while (matches.length > 0) {
-            await this.explode(matches);
-            await this.fillGaps();
+            const counts = {};
+            matches.forEach(t => {
+                counts[t.type] = (counts[t.type] || 0) + 1;
+                this.grid[t.gridR][t.gridC] = null;
+            });
+
+            await new Promise(res => {
+                this.tweens.add({
+                    targets: matches, scale: 0, alpha: 0, duration: 300,
+                    onComplete: () => { matches.forEach(t => t.destroy()); res(); }
+                });
+            });
+
+            this.applyEffects(counts);
+            await this.refillGrid();
             matches = this.findMatches();
         }
         this.isAnimating = false;
     }
 
-    async explode(matches) {
-        let counts = { red: 0, blue: 0, green: 0, purple: 0, yellow: 0 };
-        matches.forEach(t => {
-            counts[t.type]++;
-            this.grid[t.gridR][t.gridC] = null;
-        });
-
-        return new Promise(res => {
-            this.tweens.add({
-                targets: matches, scale: 0, alpha: 0, duration: 250,
-                onComplete: () => {
-                    matches.forEach(t => t.destroy());
-                    this.applySummaryEffect(counts);
-                    res();
-                }
-            });
-        });
-    }
-
-    async fillGaps() {
+    async refillGrid() {
         let promises = [];
         for (let c = 0; c < 8; c++) {
             let empty = 0;
             for (let r = 7; r >= 0; r--) {
                 if (this.grid[r][c] === null) empty++;
                 else if (empty > 0) {
-                    let t = this.grid[r][c];
-                    this.grid[r + empty][c] = t;
-                    this.grid[r][c] = null;
+                    const t = this.grid[r][c];
+                    this.grid[r+empty][c] = t; this.grid[r][c] = null;
                     t.gridR = r + empty;
                     promises.push(new Promise(res => {
                         this.tweens.add({ targets: t, y: t.gridR * TILE_S + TILE_S / 2, duration: 300, onComplete: res });
@@ -185,36 +183,26 @@ export class GameScene extends Phaser.Scene {
                 }
             }
             for (let i = 0; i < empty; i++) {
-                let t = this.spawnTile(i, c, true);
-                t.y = -TILE_S * (empty - i);
+                const nt = this.spawnTile(i, c, true);
+                nt.y = -(empty - i) * TILE_S;
             }
         }
-        await Promise.all(promises);
+        if (promises.length > 0) await Promise.all(promises);
     }
 
-    applySummaryEffect(counts) {
-        let p = appState.player, m = appState.mob;
-        if (appState.turn === "PLAYER") {
-            if (counts.red > 0) m.hp -= (p.baseAtk * counts.red);
-            if (counts.blue > 0) p.mana = Math.min(100, p.mana + counts.blue * 5);
-        } else {
-            let dmg = counts.red * 10;
-            p.hp -= dmg;
-        }
+    applyEffects(counts) {
+        const p = appState.player, m = appState.mob;
+        if (counts.red) m.hp -= counts.red * p.baseAtk;
+        if (counts.blue) p.mana = Math.min(100, p.mana + counts.blue * 5);
+        if (counts.green) p.hp = Math.min(p.maxHp, p.hp + counts.green * 10);
         refreshUI();
     }
 
-    unlock() {
-        this.isAnimating = false;
-    }
-
-    async mobAI() {
-        if (appState.mob.hp <= 0) return;
-        // Упрощенный AI: просто имитируем ход
-        this.time.delayedCall(1000, () => {
-            appState.turn = "PLAYER";
-            this.isAnimating = false;
-            refreshUI();
-        });
+    mobAI() {
+        if (!appState.mob || appState.mob.hp <= 0) return;
+        appState.player.hp -= appState.mob.atk;
+        appState.turn = "PLAYER";
+        refreshUI();
+        console.log("🤖 Моб атаковал!");
     }
 }
