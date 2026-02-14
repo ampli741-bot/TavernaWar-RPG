@@ -20,6 +20,6 @@ export function spawnMob() {
   window.app.lootActive = false;
 
   window.app.log(`Появился враг: ${window.app.mob.name}`, 'm');
-  
-refreshUI();
 
+  refreshUI();
+}
