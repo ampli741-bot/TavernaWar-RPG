@@ -3,19 +3,20 @@ export class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
+  preload() {
+    this.load.image('red', 'assets/rune_red.png');
+    this.load.image('blue', 'assets/rune_blue.png');
+    this.load.image('green', 'assets/rune_green.png');
+    this.load.image('purple', 'assets/rune_purple.png');
+    this.load.image('yellow', 'assets/rune_yellow.png');
+  }
+
   create() {
     this.cols = 8;
     this.rows = 8;
     this.tileSize = 80;
 
     this.types = ['red', 'blue', 'green', 'purple', 'yellow'];
-    this.colors = {
-      red: 0xaa3333,
-      blue: 0x3366aa,
-      green: 0x33aa66,
-      purple: 0x663399,
-      yellow: 0xaaaa33
-    };
 
     this.grid = [];
     this.selected = null;
@@ -26,19 +27,17 @@ export class GameScene extends Phaser.Scene {
       (this.sys.game.config.height - this.rows * this.tileSize) / 2;
 
     // фон
-    this.add.rectangle(
+    this.add.image(
       this.sys.game.config.width / 2,
       this.sys.game.config.height / 2,
-      this.sys.game.config.width,
-      this.sys.game.config.height,
-      0x1e1e1e
-    );
+      'bg'
+    ).setDepth(-10);
 
     this.createGrid();
-    console.log('Grid created');
+    console.log('Grid with runes created');
   }
 
-  /* ================= GRID ================= */
+  /* ========== GRID ========== */
 
   createGrid() {
     for (let y = 0; y < this.rows; y++) {
@@ -53,16 +52,14 @@ export class GameScene extends Phaser.Scene {
   createCell(x, y) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
 
-    const tile = this.add.rectangle(
+    const tile = this.add.image(
       this.offsetX + x * this.tileSize + this.tileSize / 2,
       this.offsetY + y * this.tileSize + this.tileSize / 2,
-      this.tileSize - 6,
-      this.tileSize - 6,
-      this.colors[type]
+      type
     );
 
-    tile.setStrokeStyle(2, 0x222222);
-    tile.setInteractive();
+    tile.setDisplaySize(this.tileSize - 10, this.tileSize - 10);
+    tile.setInteractive({ useHandCursor: true });
 
     const cell = { x, y, type, tile };
 
@@ -70,7 +67,7 @@ export class GameScene extends Phaser.Scene {
     return cell;
   }
 
-  /* ================= INPUT ================= */
+  /* ========== INPUT ========== */
 
   handleClick(cell) {
     if (!this.selected) {
@@ -95,13 +92,20 @@ export class GameScene extends Phaser.Scene {
 
   select(cell) {
     this.selected = cell;
-    cell.tile.setStrokeStyle(4, 0xffffff);
-    console.log(`Selected [${cell.x}, ${cell.y}]`);
+    this.tweens.add({
+      targets: cell.tile,
+      scale: 1.15,
+      duration: 100
+    });
   }
 
   clearSelection() {
     if (this.selected) {
-      this.selected.tile.setStrokeStyle(2, 0x222222);
+      this.tweens.add({
+        targets: this.selected.tile,
+        scale: 1,
+        duration: 100
+      });
       this.selected = null;
     }
   }
@@ -110,7 +114,7 @@ export class GameScene extends Phaser.Scene {
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
   }
 
-  /* ================= SWAP ================= */
+  /* ========== SWAP ========== */
 
   swap(a, b) {
     const ax = a.tile.x;
@@ -126,22 +130,18 @@ export class GameScene extends Phaser.Scene {
 
     this.tweens.add({ targets: a.tile, x: bx, y: by, duration: 200 });
     this.tweens.add({ targets: b.tile, x: ax, y: ay, duration: 200 });
-
-    console.log('Tiles swapped');
   }
 
-  /* ================= MATCH LOGIC ================= */
+  /* ========== MATCH / REMOVE ========== */
 
   resolveBoard() {
     const matches = this.findMatches();
-    if (matches.length === 0) return;
+    if (!matches.length) return;
 
-    this.logMatches(matches);
     this.removeMatches(matches);
 
     this.time.delayedCall(250, () => {
       this.applyGravity();
-
       this.time.delayedCall(250, () => {
         this.fillEmpty();
         this.time.delayedCall(250, () => this.resolveBoard());
@@ -183,51 +183,15 @@ export class GameScene extends Phaser.Scene {
     return [...new Set(matches)];
   }
 
-  logMatches(matches) {
-    const summary = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
-    matches.forEach(c => summary[c.type]++);
-
-    console.log('MATCH SUMMARY:', summary);
-
-    this.playMatchEffects(summary);
-  }
-
-  /* ================= VISUAL EFFECTS ================= */
-
-  playMatchEffects(summary) {
-    if (summary.red > 0) {
-      this.cameras.main.shake(120, 0.004);
-    }
-
-    if (summary.blue > 0) {
-      this.cameras.main.flash(120, 80, 80, 200);
-    }
-
-    if (summary.green > 0) {
-      this.cameras.main.flash(120, 80, 200, 120);
-    }
-
-    if (summary.purple > 0) {
-      this.cameras.main.flash(150, 140, 80, 180);
-    }
-
-    if (summary.yellow > 0) {
-      this.cameras.main.flash(100, 220, 200, 80);
-    }
-  }
-
-  /* ================= REMOVE / GRAVITY ================= */
-
   removeMatches(matches) {
     matches.forEach(cell => {
       this.tweens.add({
         targets: cell.tile,
-        scale: 0,
         alpha: 0,
+        scale: 0,
         duration: 200,
         onComplete: () => cell.tile.destroy()
       });
-
       this.grid[cell.y][cell.x] = null;
     });
   }
@@ -235,13 +199,12 @@ export class GameScene extends Phaser.Scene {
   applyGravity() {
     for (let x = 0; x < this.cols; x++) {
       for (let y = this.rows - 1; y >= 0; y--) {
-        if (this.grid[y][x] === null) {
+        if (!this.grid[y][x]) {
           for (let yy = y - 1; yy >= 0; yy--) {
             if (this.grid[yy][x]) {
               const cell = this.grid[yy][x];
               this.grid[y][x] = cell;
               this.grid[yy][x] = null;
-
               cell.y = y;
 
               this.tweens.add({
@@ -260,17 +223,16 @@ export class GameScene extends Phaser.Scene {
   fillEmpty() {
     for (let x = 0; x < this.cols; x++) {
       for (let y = 0; y < this.rows; y++) {
-        if (this.grid[y][x] === null) {
+        if (!this.grid[y][x]) {
           const cell = this.createCell(x, y);
           cell.tile.y = this.offsetY - this.tileSize;
+          this.grid[y][x] = cell;
 
           this.tweens.add({
             targets: cell.tile,
             y: this.offsetY + y * this.tileSize + this.tileSize / 2,
             duration: 300
           });
-
-          this.grid[y][x] = cell;
         }
       }
     }
