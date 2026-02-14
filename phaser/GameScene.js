@@ -11,6 +11,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // ОБЯЗАТЕЛЬНО: Даем понять main.js, что эта сцена теперь главная
+        window.gameScene = this; 
+
         this.grid = [];
         this.isAnimating = false;
         this.sel = null;
