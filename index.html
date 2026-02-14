@@ -2,355 +2,299 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RPG Match-3 Skeleton</title>
+    <title>Taverna War - Rigid Skeleton</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
     <style>
-        :root {
-            --bg-dark: #1a1a1a;
-            --panel-bg: rgba(0, 0, 0, 0.8);
-            --border-gold: #ffd700;
-        }
-
         body {
             margin: 0;
-            padding: 0;
-            background: var(--bg-dark);
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
+            background: #000;
+            color: #eee;
+            font-family: 'Verdana', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            overflow: hidden;
         }
 
         #game-wrapper {
             position: relative;
-            width: 1000px;
-            height: 700px;
             display: flex;
-            gap: 10px;
+            gap: 20px;
+            align-items: flex-start;
         }
 
-        /* Игровое поле Phaser */
-        #game-container {
-            width: 680px;
-            height: 680px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
-
-        /* Левая панель: Игрок */
-        #ui-left {
-            width: 150px;
+        /* Панели UI */
+        .ui-panel {
+            width: 180px;
+            background: rgba(20, 20, 20, 0.95);
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
         }
 
-        /* Правая панель: Моб и Логи */
-        #ui-right {
-            width: 150px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .stat-card {
-            background: var(--panel-bg);
-            padding: 10px;
-            border: 1px solid var(--border-gold);
+        .hero-portrait {
+            width: 100%;
+            aspect-ratio: 1;
+            border: 2px solid #ffd700;
             border-radius: 8px;
-            text-align: center;
+            background-size: cover;
+            background-position: center;
         }
 
-        .bar-outer {
+        /* Полоски статов */
+        .stat-container { text-align: center; }
+        .bar-bg {
             width: 100%;
-            height: 12px;
-            background: #333;
-            border-radius: 6px;
-            margin-top: 5px;
+            height: 14px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 7px;
             overflow: hidden;
+            margin: 4px 0;
         }
+        .bar-fill { height: 100%; width: 100%; transition: 0.3s; }
+        #hp-fill { background: linear-gradient(90deg, #8b0000, #ff4d4d); }
+        #mp-fill { background: linear-gradient(90deg, #00008b, #4d4dff); }
+        #mob-hp-fill { background: #ff4d4d; }
 
-        .bar-inner {
-            height: 100%;
-            width: 100%;
-            transition: width 0.3s;
-        }
-
-        #hp-bar-p { background: #ff4d4d; }
-        #mp-bar-p { background: #4d4dff; }
-        #hp-bar-m { background: #ff4d4d; }
-
-        .btn-ability {
-            width: 100%;
+        /* Кнопки */
+        .btn {
+            background: #1a1a1a;
+            border: 1px solid #ffd700;
+            color: #ffd700;
             padding: 10px;
-            margin-top: 5px;
             cursor: pointer;
-            background: #444;
-            color: white;
-            border: 1px solid #666;
-            border-radius: 5px;
-        }
-
-        .btn-ability:hover { background: #555; }
-
-        /* Лог боя */
-        #battle-log {
-            height: 200px;
-            overflow-y: auto;
+            border-radius: 4px;
             font-size: 12px;
-            background: rgba(0,0,0,0.5);
-            padding: 5px;
-            border-radius: 5px;
+            text-transform: uppercase;
         }
+        .btn:hover { background: #ffd700; color: #000; }
 
-        /* Оверлеи (Меню, Лут) */
+        /* Оверлеи */
         .overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 100;
+        }
+
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .char-select {
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .char-select:hover { transform: scale(1.05); }
+        .char-select img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid #ffd700;
         }
 
         .hidden { display: none !important; }
-
-        .loot-card {
-            background: #333;
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid var(--border-gold);
-            text-align: center;
-        }
-
-        .loot-item {
-            display: inline-block;
-            width: 120px;
-            margin: 10px;
-            padding: 10px;
-            background: #444;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .loot-item:hover { border: 1px solid white; }
     </style>
 </head>
 <body>
 
-    <div id="game-wrapper">
-        <div id="ui-left" class="hidden">
-            <div class="stat-card">
-                <strong>ИГРОК</strong>
-                <div class="bar-outer"><div id="hp-bar-p" class="bar-inner"></div></div>
-                <div id="hp-text-p">100/100</div>
-                <div class="bar-outer"><div id="mp-bar-p" class="bar-inner"></div></div>
-                <div id="mp-text-p">0/100</div>
-            </div>
-            <button class="btn-ability" onclick="useAbility('strike')">УЛЬТА (40 MP)</button>
-            <button class="btn-ability" onclick="useAbility('heal')">ЛЕЧИТЬ (30 MP)</button>
-            <button class="btn-ability" onclick="toggleInventory()">ИНВЕНТАРЬ</button>
+<div id="game-wrapper">
+    <div id="ui-left" class="ui-panel hidden">
+        <div id="hero-img" class="hero-portrait"></div>
+        <div class="stat-container">
+            <small>ЗДОРОВЬЕ</small>
+            <div class="bar-bg"><div id="hp-fill" class="bar-fill"></div></div>
+            <small>МАНА</small>
+            <div class="bar-bg"><div id="mp-fill" class="bar-fill"></div></div>
         </div>
+        <button class="btn" onclick="useAbility('strike')">Суперудар (40)</button>
+        <button class="btn" onclick="useAbility('heal')">Лечение (30)</button>
+    </div>
 
-        <div id="game-container"></div>
+    <div id="game-container" style="width: 640px; height: 640px; background: #111; border-radius: 8px;"></div>
 
-        <div id="ui-right" class="hidden">
-            <div class="stat-card">
-                <strong id="mob-name">МОНСТР</strong>
-                <div class="bar-outer"><div id="hp-bar-m" class="bar-inner"></div></div>
-                <div id="hp-text-m">100/100</div>
-            </div>
-            <div id="battle-log"></div>
+    <div id="ui-right" class="ui-panel hidden">
+        <h3 style="text-align: center; color: #ff4d4d; margin: 0;">ВРАГ</h3>
+        <div id="mob-img" class="hero-portrait" style="border-color: #ff4d4d;"></div>
+        <div class="stat-container">
+            <div class="bar-bg"><div id="mob-hp-fill" class="bar-fill"></div></div>
+            <small id="mob-hp-text">100/100</small>
         </div>
+        <div id="log" style="font-size: 11px; height: 150px; overflow-y: auto; color: #aaa; border-top: 1px solid #333; padding-top: 5px;"></div>
+    </div>
 
-        <div id="menu-overlay" class="overlay">
-            <h1>ВЫБЕРИ ГЕРОЯ</h1>
-            <div>
-                <button class="btn-ability" style="width: 150px;" onclick="startGame('WARRIOR')">ВОИН</button>
-                <button class="btn-ability" style="width: 150px;" onclick="startGame('MAGE')">МАГ</button>
+    <div id="start-menu" class="overlay">
+        <h1 style="color: #ffd700; letter-spacing: 5px;">TAVERNA WAR</h1>
+        <div class="character-grid">
+            <div class="char-select" onclick="initGame('WARRIOR')">
+                <img src="https://via.placeholder.com/120/8b0000/ffffff?text=ВОИН">
+                <p>ВОИН</p>
             </div>
-        </div>
-
-        <div id="loot-container" class="overlay hidden">
-            <div class="loot-card">
-                <h2>ПОБЕДА! ВЫБЕРИ НАГРАДУ</h2>
-                <div id="loot-list"></div>
+            <div class="char-select" onclick="initGame('MAGE')">
+                <img src="https://via.placeholder.com/120/00008b/ffffff?text=МАГ">
+                <p>МАГ</p>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        // 1. ГЛОБАЛЬНОЕ СОСТОЯНИЕ (appState)
-        window.appState = {
-            turn: "PLAYER",
-            lootActive: false,
-            player: { hp: 100, maxHp: 100, mana: 0, baseAtk: 10, armor: 0, equip: {} },
-            mob: { hp: 100, maxHp: 100, atk: 8, name: "Гоблин" }
-        };
+<script>
+    // --- ГЛОБАЛЬНОЕ СОСТОЯНИЕ ---
+    window.appState = {
+        player: { hp: 100, maxHp: 100, mp: 0, atk: 12 },
+        mob: { hp: 100, maxHp: 100, atk: 8 },
+        turn: 'PLAYER'
+    };
 
-        function log(msg, type) {
-            const logEl = document.getElementById('battle-log');
-            const color = type === 'p' ? '#4dff4d' : (type === 'm' ? '#ff4d4d' : '#ffd700');
-            logEl.innerHTML = `<div style="color: ${color}">${msg}</div>` + logEl.innerHTML;
+    function updateUI() {
+        const { player: p, mob: m } = window.appState;
+        document.getElementById('hp-fill').style.width = (p.hp / p.maxHp * 100) + '%';
+        document.getElementById('mp-fill').style.width = p.mp + '%';
+        document.getElementById('mob-hp-fill').style.width = (m.hp / m.maxHp * 100) + '%';
+        document.getElementById('mob-hp-text').innerText = `${Math.ceil(m.hp)} / ${m.maxHp}`;
+    }
+
+    function addLog(msg, color = "#aaa") {
+        const log = document.getElementById('log');
+        log.innerHTML = `<div style="color: ${color}">${msg}</div>` + log.innerHTML;
+    }
+
+    // --- ЛОГИКА PHASER ---
+    class GameScene extends Phaser.Scene {
+        constructor() { super('GameScene'); }
+
+        create() {
+            window.gameScene = this;
+            this.grid = [];
+            this.canMove = true;
+            this.selected = null;
+
+            // Создаем сетку 8x8
+            for (let r = 0; r < 8; r++) {
+                this.grid[r] = [];
+                for (let c = 0; c < 8; c++) this.spawnTile(r, c);
+            }
         }
 
-        function refreshUI() {
-            const { player: p, mob: m } = window.appState;
-            document.getElementById('hp-bar-p').style.width = (p.hp/p.maxHp*100) + '%';
-            document.getElementById('hp-text-p').innerText = `${Math.ceil(p.hp)}/${p.maxHp}`;
-            document.getElementById('mp-bar-p').style.width = p.mana + '%';
-            document.getElementById('mp-text-p').innerText = `${p.mana}/100`;
+        spawnTile(r, c) {
+            const colors = [0xff4d4d, 0x4d4dff, 0x4dff4d, 0xffd700, 0x9933ff];
+            const typeIdx = Math.floor(Math.random() * colors.length);
             
-            document.getElementById('hp-bar-m').style.width = (m.hp/m.maxHp*100) + '%';
-            document.getElementById('hp-text-m').innerText = `${Math.ceil(m.hp)}/${m.maxHp}`;
+            const x = c * 80 + 40;
+            const y = r * 80 + 40;
+
+            const container = this.add.container(x, y);
+            const rect = this.add.rectangle(0, 0, 70, 70, colors[typeIdx]).setInteractive();
+            const glow = this.add.rectangle(0, 0, 74, 74, 0xffffff, 0.1).setVisible(false);
+            
+            container.add([glow, rect]);
+            container.gridR = r; container.gridC = c; container.type = typeIdx;
+            
+            rect.on('pointerdown', () => this.handleSelect(container));
+            this.grid[r][c] = container;
         }
-    </script>
 
-    <script>
-        const TILE_S = 80;
-        const VISUAL_S = 70;
+        async handleSelect(tile) {
+            if (!this.canMove || window.appState.turn !== 'PLAYER') return;
 
-        window.GameScene = class extends Phaser.Scene {
-            constructor() { super('GameScene'); }
-
-            preload() {
-                // Загружаем заглушки или реальные пути
-                ['red', 'blue', 'green', 'purple', 'yellow'].forEach(c => 
-                    this.load.image(`t_${c}`, `https://labs.phaser.io/assets/sprites/gem${this.getGemIdx(c)}.png`)
-                );
-            }
-
-            getGemIdx(c) {
-                return {red:1, blue:2, green:3, purple:4, yellow:5}[c];
-            }
-
-            create() {
-                window.gameScene = this;
-                this.grid = [];
-                this.isAnimating = false;
+            if (!this.selected) {
+                this.selected = tile;
+                tile.list[0].setVisible(true); // Показать свечение
+            } else {
+                const dist = Math.abs(this.selected.gridR - tile.gridR) + Math.abs(this.selected.gridC - tile.gridC);
+                if (dist === 1) {
+                    await this.swapTiles(this.selected, tile);
+                    this.executeTurn();
+                }
+                this.selected.list[0].setVisible(false);
                 this.selected = null;
-
-                for(let r=0; r<8; r++) {
-                    this.grid[r] = [];
-                    for(let c=0; c<8; c++) this.spawnTile(r, c);
-                }
             }
+        }
 
-            spawnTile(r, c, fromTop=false) {
-                const types = ['red', 'blue', 'green', 'purple', 'yellow'];
-                const type = Phaser.Utils.Array.GetRandom(types);
-                const x = c * TILE_S + TILE_S/2 + 20;
-                const y = fromTop ? -TILE_S : r * TILE_S + TILE_S/2 + 20;
+        async swapTiles(t1, t2) {
+            this.canMove = false;
+            const r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
+            
+            this.grid[r1][c1] = t2; this.grid[r2][c2] = t1;
+            t1.gridR = r2; t1.gridC = c2; t2.gridR = r1; t2.gridC = c1;
 
-                const container = this.add.container(x, y);
-                const bg = this.add.rectangle(0, 0, VISUAL_S, VISUAL_S, 0x333333).setInteractive();
-                const img = this.add.image(0, 0, `t_${type}`).setDisplaySize(VISUAL_S-10, VISUAL_S-10);
-                
-                container.add([bg, img]);
-                container.gridR = r; container.gridC = c; container.type = type;
-
-                bg.on('pointerdown', () => this.handlePointer(container));
-                this.grid[r][c] = container;
-
-                if(fromTop) this.tweens.add({targets: container, y: r*TILE_S+TILE_S/2+20, duration: 300});
-            }
-
-            async handlePointer(t) {
-                if(this.isAnimating || window.appState.turn !== "PLAYER") return;
-
-                if(!this.selected) {
-                    this.selected = t;
-                    t.setScale(1.1);
-                } else {
-                    const dist = Math.abs(this.selected.gridR - t.gridR) + Math.abs(this.selected.gridC - t.gridC);
-                    if(dist === 1) {
-                        await this.swap(this.selected, t);
-                        // Тут должна быть проверка матчей, для скелета просто меняем ход
-                        window.appState.turn = "MOB";
-                        setTimeout(() => this.mobAI(), 1000);
-                    }
-                    this.selected.setScale(1);
-                    this.selected = null;
-                }
-            }
-
-            async swap(t1, t2) {
-                this.isAnimating = true;
-                const r1=t1.gridR, c1=t1.gridC, r2=t2.gridR, c2=t2.gridC;
-                this.grid[r1][c1]=t2; this.grid[r2][c2]=t1;
-                t1.gridR=r2; t1.gridC=c2; t2.gridR=r1; t2.gridC=c1;
-
-                return new Promise(res => {
-                    this.tweens.add({targets: t1, x: c2*TILE_S+TILE_S/2+20, y: r2*TILE_S+TILE_S/2+20, duration: 200});
-                    this.tweens.add({targets: t2, x: c1*TILE_S+TILE_S/2+20, y: r1*TILE_S+TILE_S/2+20, duration: 200, onComplete: () => {
-                        this.isAnimating = false;
-                        res();
-                    }});
+            return new Promise(res => {
+                this.tweens.add({
+                    targets: t1, x: c2 * 80 + 40, y: r2 * 80 + 40, duration: 200
                 });
-            }
+                this.tweens.add({
+                    targets: t2, x: c1 * 80 + 40, y: r1 * 80 + 40, duration: 200,
+                    onComplete: () => { this.canMove = true; res(); }
+                });
+            });
+        }
 
-            mobAI() {
-                if(window.appState.mob.hp <= 0) return;
-                log("Враг атакует!", 'm');
+        executeTurn() {
+            // Базовый урон за ход
+            window.appState.mob.hp -= window.appState.player.atk;
+            window.appState.player.mp = Math.min(100, window.appState.player.mp + 10);
+            addLog("Вы ударили врага!", "#4dff4d");
+            
+            updateUI();
+            
+            // Ход моба
+            window.appState.turn = 'MOB';
+            setTimeout(() => {
                 window.appState.player.hp -= window.appState.mob.atk;
-                window.appState.turn = "PLAYER";
-                refreshUI();
-            }
+                addLog("Враг атакует!", "#ff4d4d");
+                window.appState.turn = 'PLAYER';
+                updateUI();
+            }, 600);
+        }
+    }
+
+    // --- ЗАПУСК ---
+    function initGame(hero) {
+        document.getElementById('start-menu').classList.add('hidden');
+        document.getElementById('ui-left').classList.remove('hidden');
+        document.getElementById('ui-right').classList.remove('hidden');
+
+        const config = {
+            type: Phaser.AUTO,
+            parent: 'game-container',
+            width: 640, height: 640,
+            scene: GameScene,
+            transparent: true
         };
-    </script>
+        new Phaser.Game(config);
+        updateUI();
+        addLog("Битва началась!");
+    }
 
-    <script>
-        function startGame(hero) {
-            document.getElementById('menu-overlay').classList.add('hidden');
-            document.getElementById('ui-left').classList.remove('hidden');
-            document.getElementById('ui-right').classList.remove('hidden');
-
-            const config = {
-                type: Phaser.AUTO,
-                parent: 'game-container',
-                width: 680,
-                height: 680,
-                scene: window.GameScene,
-                transparent: true
-            };
-            window.phaserGame = new Phaser.Game(config);
-            refreshUI();
+    function useAbility(type) {
+        if (window.appState.turn !== 'PLAYER') return;
+        
+        const p = window.appState.player;
+        if (type === 'strike' && p.mp >= 40) {
+            p.mp -= 40;
+            window.appState.mob.hp -= 30;
+            addLog("СУПЕРУДАР: -30 HP врагу!", "#ffd700");
+        } else if (type === 'heal' && p.mp >= 30) {
+            p.mp -= 30;
+            p.hp = Math.min(p.maxHp, p.hp + 40);
+            addLog("ЛЕЧЕНИЕ: +40 HP", "#4dff4d");
         }
+        updateUI();
+    }
+</script>
 
-        function useAbility(type) {
-            const p = window.appState.player;
-            if(type === 'strike' && p.mana >= 40) {
-                p.mana -= 40;
-                log("УЛЬТА: Огненный удар!", 'p');
-            } else if (type === 'heal' && p.mana >= 30) {
-                p.mana -= 30;
-                p.hp = Math.min(p.maxHp, p.hp + 50);
-                log("Исцеление!", 'p');
-            }
-            refreshUI();
-        }
-
-        window.showLootScreen = () => {
-            document.getElementById('loot-container').classList.remove('hidden');
-            const list = document.getElementById('loot-list');
-            list.innerHTML = `
-                <div class="loot-item" onclick="pickLoot('Меч')">Меч (+5 Атк)</div>
-                <div class="loot-item" onclick="pickLoot('Щит')">Щит (+3 Броня)</div>
-            `;
-        };
-
-        function pickLoot(name) {
-            log("Вы получили: " + name, 'p');
-            document.getElementById('loot-container').classList.add('hidden');
-            // Здесь спавним нового моба
-        }
-    </script>
 </body>
 </html>
