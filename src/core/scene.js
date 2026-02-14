@@ -9,9 +9,10 @@ export class GameScene extends Phaser.Scene {
     this.tileSize = 80;
     this.grid = [];
     this.selected = null;
+    this.isBusy = false;
 
-    const types = ['red', 'blue', 'green', 'purple', 'yellow'];
-    const colors = {
+    this.types = ['red', 'blue', 'green', 'purple', 'yellow'];
+    this.colors = {
       red: 0xaa3333,
       blue: 0x3366aa,
       green: 0x33aa66,
@@ -31,19 +32,19 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // сетка
+    // создаём сетку
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
 
       for (let x = 0; x < this.cols; x++) {
-        const type = Phaser.Utils.Array.GetRandom(types);
+        const type = Phaser.Utils.Array.GetRandom(this.types);
 
         const tile = this.add.rectangle(
           offsetX + x * this.tileSize + this.tileSize / 2,
           offsetY + y * this.tileSize + this.tileSize / 2,
           this.tileSize - 6,
           this.tileSize - 6,
-          colors[type]
+          this.colors[type]
         );
 
         tile.setStrokeStyle(2, 0x222222);
@@ -51,9 +52,7 @@ export class GameScene extends Phaser.Scene {
 
         const cell = { x, y, type, tile };
 
-        tile.on('pointerdown', () => {
-          this.handleClick(cell);
-        });
+        tile.on('pointerdown', () => this.handleClick(cell));
 
         this.grid[y][x] = cell;
       }
@@ -62,7 +61,13 @@ export class GameScene extends Phaser.Scene {
     console.log('Grid created');
   }
 
+  // =======================
+  // INPUT
+  // =======================
+
   handleClick(cell) {
+    if (this.isBusy) return;
+
     if (!this.selected) {
       this.select(cell);
       return;
@@ -85,7 +90,6 @@ export class GameScene extends Phaser.Scene {
   select(cell) {
     this.selected = cell;
     cell.tile.setStrokeStyle(4, 0xffffff);
-    console.log(`Selected [${cell.x}, ${cell.y}]`);
   }
 
   clearSelection() {
@@ -101,12 +105,19 @@ export class GameScene extends Phaser.Scene {
     return dx + dy === 1;
   }
 
+  // =======================
+  // SWAP
+  // =======================
+
   swap(a, b) {
+    this.isBusy = true;
+
     const ax = a.tile.x;
     const ay = a.tile.y;
     const bx = b.tile.x;
     const by = b.tile.y;
 
+    // логическая сетка
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
 
@@ -124,10 +135,97 @@ export class GameScene extends Phaser.Scene {
       targets: b.tile,
       x: ax,
       y: ay,
-      duration: 200
+      duration: 200,
+      onComplete: () => this.afterSwap()
+    });
+  }
+
+  afterSwap() {
+    const matches = this.findMatches();
+
+    if (matches.length > 0) {
+      this.highlightMatches(matches);
+
+      this.time.delayedCall(300, () => {
+        this.removeMatches(matches);
+      });
+    } else {
+      this.isBusy = false;
+    }
+  }
+
+  // =======================
+  // MATCH FIND
+  // =======================
+
+  findMatches() {
+    const matches = [];
+
+    // горизонталь
+    for (let y = 0; y < this.rows; y++) {
+      let run = [this.grid[y][0]];
+
+      for (let x = 1; x < this.cols; x++) {
+        const cell = this.grid[y][x];
+        const prev = run[run.length - 1];
+
+        if (cell.type === prev.type) {
+          run.push(cell);
+        } else {
+          if (run.length >= 3) matches.push(...run);
+          run = [cell];
+        }
+      }
+      if (run.length >= 3) matches.push(...run);
+    }
+
+    // вертикаль
+    for (let x = 0; x < this.cols; x++) {
+      let run = [this.grid[0][x]];
+
+      for (let y = 1; y < this.rows; y++) {
+        const cell = this.grid[y][x];
+        const prev = run[run.length - 1];
+
+        if (cell.type === prev.type) {
+          run.push(cell);
+        } else {
+          if (run.length >= 3) matches.push(...run);
+          run = [cell];
+        }
+      }
+      if (run.length >= 3) matches.push(...run);
+    }
+
+    return [...new Set(matches)];
+  }
+
+  // =======================
+  // HIGHLIGHT + REMOVE
+  // =======================
+
+  highlightMatches(matches) {
+    matches.forEach(cell => {
+      cell.tile.setStrokeStyle(4, 0xffff00);
+    });
+  }
+
+  removeMatches(matches) {
+    matches.forEach(cell => {
+      this.tweens.add({
+        targets: cell.tile,
+        scale: 0,
+        alpha: 0,
+        duration: 250,
+        onComplete: () => {
+          cell.tile.destroy();
+          this.grid[cell.y][cell.x] = null;
+        }
+      });
     });
 
-      console.log('Tiles swapped');
+    this.time.delayedCall(300, () => {
+      this.isBusy = false;
+    });
+  }
 }
-}
-
