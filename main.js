@@ -6,8 +6,8 @@ import { adjs, slotNames } from "./data/constants.js";
 let currentLoot = null;
 
 // --- ИНИЦИАЛИЗАЦИЯ ИГРЫ ---
-// Экспортируем функцию в window, чтобы HTML её видел
 window.startGame = function(key) {
+    console.log("Запуск игры для:", key); // Отладка в консоли
     const overlay = document.getElementById('menu-overlay');
     if (overlay) overlay.style.display = 'none';
     
@@ -21,7 +21,7 @@ window.startGame = function(key) {
     const base = baseStats[key];
     const imgKey = key === 'assassin' ? 'assasin' : key;
 
-    // Заполняем состояние игрока
+    // Инициализация игрока
     appState.player = { 
         job: key.toUpperCase(), 
         key: key,
@@ -39,26 +39,31 @@ window.startGame = function(key) {
         } 
     };
     
-    // Установка портрета
+    // UI Портрет
     const portrait = document.getElementById('p-portrait');
     if (portrait) portrait.style.backgroundImage = `url('assets/hero_${imgKey}.jpg')`;
     
     // Запуск Phaser
+    if (window.phaserGame) {
+        window.phaserGame.destroy(true);
+    }
+
     window.phaserGame = new Phaser.Game({
         type: Phaser.AUTO,
         parent: 'game-container',
         width: 680,
         height: 680,
         scene: GameScene,
-        transparent: true
+        transparent: true,
+        fps: { target: 60, forceSetTimeOut: true }
     });
 
-    // Важно: спавним моба ПОСЛЕ инициализации игрока
-    spawnMob();
+    // Создаем монстра
+    window.spawnMob();
 };
 
 // --- МОНСТРЫ ---
-function spawnMob() {
+window.spawnMob = function() {
     if (!appState.player) return;
 
     let lvl = appState.player.level;
@@ -79,12 +84,11 @@ function spawnMob() {
     appState.turn = "PLAYER";
     appState.lootActive = false;
     
-    // Даем Phaser время на загрузку перед логом
     setTimeout(() => {
         refreshUI();
         log(`Появился ${appState.mob.name}!`, 'sys');
-    }, 100);
-}
+    }, 200);
+};
 
 // --- СИСТЕМА ЛУТА ---
 window.showLootScreen = function() {
@@ -128,22 +132,25 @@ function generateLoot() {
 }
 
 window.takeLoot = function() {
-    appState.player.equip[currentLoot.slot] = currentLoot;
-    appState.player.armor = appState.player.maxArmor; 
-    closeLoot();
+    if (currentLoot) {
+        appState.player.equip[currentLoot.slot] = currentLoot;
+        appState.player.armor = appState.player.maxArmor; 
+    }
+    window.closeLoot();
 };
 
 window.sellLoot = function() {
     appState.player.gold += 50;
     log("Предмет продан за 50 золотых", "sys");
-    closeLoot();
+    window.closeLoot();
 };
 
-function closeLoot() {
-    document.getElementById('loot-overlay').style.display = 'none';
+window.closeLoot = function() {
+    const lootOverlay = document.getElementById('loot-overlay');
+    if (lootOverlay) lootOverlay.style.display = 'none';
     appState.player.level++;
-    spawnMob();
-}
+    window.spawnMob();
+};
 
 // --- СУПЕРСПОСОБНОСТИ (УЛЬТА) ---
 window.useUltra = async function() {
