@@ -1,3 +1,5 @@
+import { GameScene } from './core/scene.js';
+
 import { startGame } from './game/game.js';
 
 console.log("Taverna War app loaded");
