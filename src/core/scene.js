@@ -40,17 +40,18 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // убираем стартовые матчи (если появились)
     this.time.delayedCall(100, () => this.resolve());
   }
 
-  // ============
-  // TILE SPAWN
-  // ============
+  // =====================
+  // SPAWN
+  // =====================
 
   spawnTile(x, y, fromTop = false) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
-    const startY = fromTop ? this.offsetY - this.tileSize : this.offsetY + y * this.tileSize + this.tileSize / 2;
+    const startY = fromTop
+      ? this.offsetY - this.tileSize
+      : this.offsetY + y * this.tileSize + this.tileSize / 2;
 
     const tile = this.add.rectangle(
       this.offsetX + x * this.tileSize + this.tileSize / 2,
@@ -80,9 +81,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ============
+  // =====================
   // INPUT
-  // ============
+  // =====================
 
   handleClick(cell) {
     if (!this.selected) {
@@ -117,14 +118,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   areNeighbors(a, b) {
-    const dx = Math.abs(a.x - b.x);
-    const dy = Math.abs(a.y - b.y);
-    return dx + dy === 1;
+    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
   }
 
-  // ============
+  // =====================
   // SWAP
-  // ============
+  // =====================
 
   swap(a, b) {
     this.isBusy = true;
@@ -144,31 +143,39 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // ============
-  // MATCH LOGIC
-  // ============
+  // =====================
+  // MATCH FIND
+  // =====================
 
   findMatches() {
     const matches = [];
 
-    // горизонталь
+    // горизонтали
     for (let y = 0; y < this.rows; y++) {
       let run = [this.grid[y][0]];
       for (let x = 1; x < this.cols; x++) {
         const c = this.grid[y][x];
-        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) run.push(c);
-        else { if (run.length >= 3) matches.push(...run); run = [c]; }
+        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) {
+          run.push(c);
+        } else {
+          if (run.length >= 3) matches.push(...run);
+          run = [c];
+        }
       }
       if (run.length >= 3) matches.push(...run);
     }
 
-    // вертикаль
+    // вертикали
     for (let x = 0; x < this.cols; x++) {
       let run = [this.grid[0][x]];
       for (let y = 1; y < this.rows; y++) {
         const c = this.grid[y][x];
-        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) run.push(c);
-        else { if (run.length >= 3) matches.push(...run); run = [c]; }
+        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) {
+          run.push(c);
+        } else {
+          if (run.length >= 3) matches.push(...run);
+          run = [c];
+        }
       }
       if (run.length >= 3) matches.push(...run);
     }
@@ -176,9 +183,9 @@ export class GameScene extends Phaser.Scene {
     return [...new Set(matches.filter(Boolean))];
   }
 
-  // ============
+  // =====================
   // RESOLVE LOOP
-  // ============
+  // =====================
 
   resolve() {
     const matches = this.findMatches();
@@ -187,6 +194,12 @@ export class GameScene extends Phaser.Scene {
       this.isBusy = false;
       return;
     }
+
+    // 🔥 НОВОЕ: считаем цвета
+    const summary = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
+    matches.forEach(c => summary[c.type]++);
+
+    console.log('MATCH SUMMARY:', summary);
 
     // подсветка
     matches.forEach(c => c.tile.setStrokeStyle(4, 0xffff00));
@@ -216,9 +229,9 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // ============
+  // =====================
   // GRAVITY
-  // ============
+  // =====================
 
   applyGravity() {
     for (let x = 0; x < this.cols; x++) {
@@ -244,9 +257,9 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ============
+  // =====================
   // RESPAWN
-  // ============
+  // =====================
 
   spawnNewTiles() {
     for (let x = 0; x < this.cols; x++) {
