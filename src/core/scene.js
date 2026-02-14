@@ -4,15 +4,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // руны
-    this.load.image('red', 'assets/rune_red.png');
-    this.load.image('blue', 'assets/rune_blue.png');
-    this.load.image('green', 'assets/rune_green.png');
-    this.load.image('purple', 'assets/rune_purple.png');
-    this.load.image('yellow', 'assets/rune_yellow.png');
+    // фон + рамка
+    this.load.image('tile_bg', 'assets/tile_bg.png');
+    this.load.image('tile_frame', 'assets/tile_frame.png');
 
-    // фон
-    this.load.image('bg', 'assets/bg.jpg');
+    // руны
+    this.load.image('rune_red', 'assets/rune_red.png');
+    this.load.image('rune_blue', 'assets/rune_blue.png');
+    this.load.image('rune_green', 'assets/rune_green.png');
+    this.load.image('rune_purple', 'assets/rune_purple.png');
+    this.load.image('rune_yellow', 'assets/rune_yellow.png');
   }
 
   create() {
@@ -30,12 +31,14 @@ export class GameScene extends Phaser.Scene {
     this.offsetY =
       (this.sys.game.config.height - this.rows * this.tileSize) / 2;
 
-    // фон
-    this.add.image(
+    // фон сцены
+    this.add.rectangle(
       this.sys.game.config.width / 2,
       this.sys.game.config.height / 2,
-      'bg'
-    ).setAlpha(0.35);
+      this.sys.game.config.width,
+      this.sys.game.config.height,
+      0x1e1e1e
+    );
 
     this.createGrid();
     console.log('Grid created');
@@ -56,18 +59,32 @@ export class GameScene extends Phaser.Scene {
   createCell(x, y) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
 
-    const tile = this.add.image(
-      this.offsetX + x * this.tileSize + this.tileSize / 2,
-      this.offsetY + y * this.tileSize + this.tileSize / 2,
-      type
+    const cx = this.offsetX + x * this.tileSize + this.tileSize / 2;
+    const cy = this.offsetY + y * this.tileSize + this.tileSize / 2;
+
+    // КОНТЕЙНЕР
+    const container = this.add.container(cx, cy);
+
+    const bg = this.add.image(0, 0, 'tile_bg').setScale(0.95);
+    const icon = this.add.image(0, 0, `rune_${type}`).setScale(0.6);
+    const frame = this.add.image(0, 0, 'tile_frame').setScale(1);
+
+    container.add([bg, icon, frame]);
+
+    container.setSize(this.tileSize, this.tileSize);
+    container.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -this.tileSize / 2,
+        -this.tileSize / 2,
+        this.tileSize,
+        this.tileSize
+      ),
+      Phaser.Geom.Rectangle.Contains
     );
 
-    tile.setDisplaySize(this.tileSize - 8, this.tileSize - 8);
-    tile.setInteractive({ useHandCursor: true });
+    const cell = { x, y, type, tile: container, icon };
 
-    const cell = { x, y, type, tile };
-
-    tile.on('pointerdown', () => this.handleClick(cell));
+    container.on('pointerdown', () => this.handleClick(cell));
     return cell;
   }
 
@@ -87,7 +104,7 @@ export class GameScene extends Phaser.Scene {
     if (this.areNeighbors(this.selected, cell)) {
       this.swap(this.selected, cell);
       this.clearSelection();
-      this.time.delayedCall(220, () => this.resolveBoard());
+      this.resolveBoard();
     } else {
       this.clearSelection();
       this.select(cell);
@@ -97,26 +114,15 @@ export class GameScene extends Phaser.Scene {
   select(cell) {
     this.selected = cell;
 
-    cell.tile.setDepth(10);
-    cell.tile.setTint(0xffffff);
-
     this.tweens.add({
-      targets: cell.tile,
-      alpha: 0.8,
-      yoyo: true,
-      repeat: -1,
-      duration: 250
+      targets: cell.icon,
+      scale: 0.7,
+      duration: 100,
+      yoyo: true
     });
   }
 
   clearSelection() {
-    if (!this.selected) return;
-
-    this.tweens.killTweensOf(this.selected.tile);
-    this.selected.tile.setAlpha(1);
-    this.selected.tile.clearTint();
-    this.selected.tile.setDepth(0);
-
     this.selected = null;
   }
 
@@ -146,14 +152,12 @@ export class GameScene extends Phaser.Scene {
 
   resolveBoard() {
     const matches = this.findMatches();
-    if (matches.length === 0) return;
+    if (!matches.length) return;
 
-    this.logMatches(matches);
     this.removeMatches(matches);
 
     this.time.delayedCall(250, () => {
       this.applyGravity();
-
       this.time.delayedCall(250, () => {
         this.fillEmpty();
         this.time.delayedCall(250, () => this.resolveBoard());
@@ -164,7 +168,6 @@ export class GameScene extends Phaser.Scene {
   findMatches() {
     const matches = [];
 
-    // горизонт
     for (let y = 0; y < this.rows; y++) {
       let run = [this.grid[y][0]];
       for (let x = 1; x < this.cols; x++) {
@@ -178,7 +181,6 @@ export class GameScene extends Phaser.Scene {
       if (run.length >= 3) matches.push(...run);
     }
 
-    // вертикаль
     for (let x = 0; x < this.cols; x++) {
       let run = [this.grid[0][x]];
       for (let y = 1; y < this.rows; y++) {
@@ -195,31 +197,12 @@ export class GameScene extends Phaser.Scene {
     return [...new Set(matches)];
   }
 
-  logMatches(matches) {
-    const summary = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
-    matches.forEach(c => summary[c.type]++);
-    console.log('MATCH SUMMARY:', summary);
-
-    if (summary.red)
-      console.log(`🔥 Урон: ${summary.red * 10}`);
-    if (summary.blue)
-      console.log(`🔵 Мана: +${summary.blue * 5}`);
-    if (summary.green)
-      console.log(`💚 Хил: +${summary.green * 5}`);
-    if (summary.purple)
-      console.log(`🟣 Проклятие: ${summary.purple}`);
-    if (summary.yellow)
-      console.log(`💰 Золото: +${summary.yellow}`);
-  }
-
-  /* ================= REMOVE / GRAVITY ================= */
-
   removeMatches(matches) {
     matches.forEach(cell => {
       this.tweens.add({
         targets: cell.tile,
+        scale: 0,
         alpha: 0,
-        scale: 0.3,
         duration: 200,
         onComplete: () => cell.tile.destroy()
       });
@@ -236,8 +219,8 @@ export class GameScene extends Phaser.Scene {
               const cell = this.grid[yy][x];
               this.grid[y][x] = cell;
               this.grid[yy][x] = null;
-
               cell.y = y;
+
               this.tweens.add({
                 targets: cell.tile,
                 y: this.offsetY + y * this.tileSize + this.tileSize / 2,
