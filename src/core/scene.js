@@ -4,15 +4,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    // ===== НАСТРОЙКИ ПОЛЯ =====
     this.cols = 8;
     this.rows = 8;
     this.tileSize = 80;
     this.grid = [];
     this.selected = null;
-    this.isBusy = false;
 
-    this.types = ['red', 'blue', 'green', 'purple', 'yellow'];
-    this.colors = {
+    // ===== ВРАГ =====
+    this.enemy = {
+      hp: 500,
+      maxHp: 500
+    };
+
+    console.log('Enemy HP:', this.enemy.hp);
+
+    const types = ['red', 'blue', 'green', 'purple', 'yellow'];
+    const colors = {
       red: 0xaa3333,
       blue: 0x3366aa,
       green: 0x33aa66,
@@ -20,10 +28,12 @@ export class GameScene extends Phaser.Scene {
       yellow: 0xaaaa33
     };
 
-    this.offsetX = (this.sys.game.config.width - this.cols * this.tileSize) / 2;
-    this.offsetY = (this.sys.game.config.height - this.rows * this.tileSize) / 2;
+    const offsetX =
+      (this.sys.game.config.width - this.cols * this.tileSize) / 2;
+    const offsetY =
+      (this.sys.game.config.height - this.rows * this.tileSize) / 2;
 
-    // фон
+    // ===== ФОН =====
     this.add.rectangle(
       this.sys.game.config.width / 2,
       this.sys.game.config.height / 2,
@@ -32,59 +42,38 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // стартовая сетка
+    // ===== СОЗДАНИЕ СЕТКИ =====
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
+
       for (let x = 0; x < this.cols; x++) {
-        this.spawnTile(x, y);
+        const type = Phaser.Utils.Array.GetRandom(types);
+
+        const tile = this.add.rectangle(
+          offsetX + x * this.tileSize + this.tileSize / 2,
+          offsetY + y * this.tileSize + this.tileSize / 2,
+          this.tileSize - 6,
+          this.tileSize - 6,
+          colors[type]
+        );
+
+        tile.setStrokeStyle(2, 0x222222);
+        tile.setInteractive();
+
+        const cell = { x, y, type, tile };
+
+        tile.on('pointerdown', () => {
+          this.handleClick(cell);
+        });
+
+        this.grid[y][x] = cell;
       }
     }
 
-    this.time.delayedCall(100, () => this.resolve());
+    console.log('Grid created');
   }
 
-  // =====================
-  // SPAWN
-  // =====================
-
-  spawnTile(x, y, fromTop = false) {
-    const type = Phaser.Utils.Array.GetRandom(this.types);
-    const startY = fromTop
-      ? this.offsetY - this.tileSize
-      : this.offsetY + y * this.tileSize + this.tileSize / 2;
-
-    const tile = this.add.rectangle(
-      this.offsetX + x * this.tileSize + this.tileSize / 2,
-      startY,
-      this.tileSize - 6,
-      this.tileSize - 6,
-      this.colors[type]
-    );
-
-    tile.setStrokeStyle(2, 0x222222);
-    tile.setInteractive();
-
-    const cell = { x, y, type, tile };
-
-    tile.on('pointerdown', () => {
-      if (!this.isBusy) this.handleClick(cell);
-    });
-
-    this.grid[y][x] = cell;
-
-    if (fromTop) {
-      this.tweens.add({
-        targets: tile,
-        y: this.offsetY + y * this.tileSize + this.tileSize / 2,
-        duration: 250
-      });
-    }
-  }
-
-  // =====================
-  // INPUT
-  // =====================
-
+  // ===== КЛИКИ =====
   handleClick(cell) {
     if (!this.selected) {
       this.select(cell);
@@ -99,6 +88,11 @@ export class GameScene extends Phaser.Scene {
     if (this.areNeighbors(this.selected, cell)) {
       this.swap(this.selected, cell);
       this.clearSelection();
+
+      // проверка матчей после свапа
+      this.time.delayedCall(250, () => {
+        this.checkMatches();
+      });
     } else {
       this.clearSelection();
       this.select(cell);
@@ -108,6 +102,7 @@ export class GameScene extends Phaser.Scene {
   select(cell) {
     this.selected = cell;
     cell.tile.setStrokeStyle(4, 0xffffff);
+    console.log(`Selected [${cell.x}, ${cell.y}]`);
   }
 
   clearSelection() {
@@ -118,155 +113,102 @@ export class GameScene extends Phaser.Scene {
   }
 
   areNeighbors(a, b) {
-    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+    const dx = Math.abs(a.x - b.x);
+    const dy = Math.abs(a.y - b.y);
+    return dx + dy === 1;
   }
 
-  // =====================
-  // SWAP
-  // =====================
-
+  // ===== СВАП =====
   swap(a, b) {
-    this.isBusy = true;
-
-    const ax = a.tile.x, ay = a.tile.y;
-    const bx = b.tile.x, by = b.tile.y;
+    const ax = a.tile.x;
+    const ay = a.tile.y;
+    const bx = b.tile.x;
+    const by = b.tile.y;
 
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
+
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
 
-    this.tweens.add({ targets: a.tile, x: bx, y: by, duration: 200 });
     this.tweens.add({
-      targets: b.tile, x: ax, y: ay, duration: 200,
-      onComplete: () => this.resolve()
+      targets: a.tile,
+      x: bx,
+      y: by,
+      duration: 200
     });
+
+    this.tweens.add({
+      targets: b.tile,
+      x: ax,
+      y: ay,
+      duration: 200
+    });
+
+    console.log('Tiles swapped');
   }
 
-  // =====================
-  // MATCH FIND
-  // =====================
+  // ===== ПОИСК МАТЧЕЙ =====
+  checkMatches() {
+    const summary = {
+      red: 0,
+      blue: 0,
+      green: 0,
+      yellow: 0,
+      purple: 0
+    };
 
-  findMatches() {
-    const matches = [];
-
-    // горизонтали
     for (let y = 0; y < this.rows; y++) {
-      let run = [this.grid[y][0]];
-      for (let x = 1; x < this.cols; x++) {
-        const c = this.grid[y][x];
-        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) {
-          run.push(c);
-        } else {
-          if (run.length >= 3) matches.push(...run);
-          run = [c];
+      for (let x = 0; x < this.cols; x++) {
+        const cell = this.grid[y][x];
+        if (!cell) continue;
+
+        // горизонталь
+        if (
+          x <= this.cols - 3 &&
+          this.grid[y][x + 1]?.type === cell.type &&
+          this.grid[y][x + 2]?.type === cell.type
+        ) {
+          summary[cell.type] += 3;
+        }
+
+        // вертикаль
+        if (
+          y <= this.rows - 3 &&
+          this.grid[y + 1][x]?.type === cell.type &&
+          this.grid[y + 2][x]?.type === cell.type
+        ) {
+          summary[cell.type] += 3;
         }
       }
-      if (run.length >= 3) matches.push(...run);
     }
-
-    // вертикали
-    for (let x = 0; x < this.cols; x++) {
-      let run = [this.grid[0][x]];
-      for (let y = 1; y < this.rows; y++) {
-        const c = this.grid[y][x];
-        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) {
-          run.push(c);
-        } else {
-          if (run.length >= 3) matches.push(...run);
-          run = [c];
-        }
-      }
-      if (run.length >= 3) matches.push(...run);
-    }
-
-    return [...new Set(matches.filter(Boolean))];
-  }
-
-  // =====================
-  // RESOLVE LOOP
-  // =====================
-
-  resolve() {
-    const matches = this.findMatches();
-
-    if (matches.length === 0) {
-      this.isBusy = false;
-      return;
-    }
-
-    // 🔥 НОВОЕ: считаем цвета
-    const summary = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
-    matches.forEach(c => summary[c.type]++);
 
     console.log('MATCH SUMMARY:', summary);
 
-    // подсветка
-    matches.forEach(c => c.tile.setStrokeStyle(4, 0xffff00));
-
-    // удаление
-    this.time.delayedCall(150, () => {
-      matches.forEach(c => {
-        this.tweens.add({
-          targets: c.tile,
-          scale: 0,
-          alpha: 0,
-          duration: 200,
-          onComplete: () => {
-            c.tile.destroy();
-            this.grid[c.y][c.x] = null;
-          }
-        });
-      });
-
-      this.time.delayedCall(220, () => {
-        this.applyGravity();
-        this.time.delayedCall(260, () => {
-          this.spawnNewTiles();
-          this.time.delayedCall(300, () => this.resolve());
-        });
-      });
-    });
+    this.applyBattleEffects(summary);
   }
 
-  // =====================
-  // GRAVITY
-  // =====================
+  // ===== БОЙ =====
+  applyBattleEffects(summary) {
+    const damagePerRed = 10;
 
-  applyGravity() {
-    for (let x = 0; x < this.cols; x++) {
-      for (let y = this.rows - 1; y >= 0; y--) {
-        if (!this.grid[y][x]) {
-          for (let yy = y - 1; yy >= 0; yy--) {
-            const above = this.grid[yy][x];
-            if (above) {
-              this.grid[y][x] = above;
-              this.grid[yy][x] = null;
-              above.y = y;
+    if (summary.red > 0) {
+      const damage = summary.red * damagePerRed;
+      this.enemy.hp -= damage;
 
-              this.tweens.add({
-                targets: above.tile,
-                y: this.offsetY + y * this.tileSize + this.tileSize / 2,
-                duration: 200
-              });
-              break;
-            }
-          }
-        }
+      if (this.enemy.hp < 0) {
+        this.enemy.hp = 0;
       }
-    }
-  }
 
-  // =====================
-  // RESPAWN
-  // =====================
+      console.log(
+        `Enemy takes ${damage} damage (${summary.red} red tiles)`
+      );
+      console.log(
+        `Enemy HP: ${this.enemy.hp} / ${this.enemy.maxHp}`
+      );
 
-  spawnNewTiles() {
-    for (let x = 0; x < this.cols; x++) {
-      for (let y = 0; y < this.rows; y++) {
-        if (!this.grid[y][x]) {
-          this.spawnTile(x, y, true);
-        }
+      if (this.enemy.hp === 0) {
+        console.log('ENEMY DEFEATED');
       }
     }
   }
