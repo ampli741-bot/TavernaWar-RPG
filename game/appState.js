@@ -1,32 +1,32 @@
-import { SLOT_NAMES } from "../data/constants.js";
+import { slotNames, adjs } from "../data/constants.js";
 
-export const appState = { 
-    player: null, 
-    mob: null, 
-    lootActive: false, 
+export const appState = {
+    player: null,
+    mob: null,
     turn: "PLAYER",
-    currentLoot: null,
-    
-    log(msg, type) {
-        const log = document.getElementById('battle-log');
-        if (!log) return;
-        const entry = document.createElement('div');
-        entry.style.color = type==='p'?'#4f4':type==='m'?'#f44':type==='crit'?'#aa44ff':'#ffd700';
-        entry.innerText = `> ${msg}`;
-        log.prepend(entry);
-    }
+    lootActive: false,
+    currentLoot: null
 };
+
+export function log(msg, type) {
+    const logBox = document.getElementById('battle-log');
+    if (!logBox) return;
+    const entry = document.createElement('div');
+    entry.style.color = type==='p'?'#4f4':type==='m'?'#f44':type==='crit'?'#aa44ff':'#ffd700';
+    entry.innerText = `> ${msg}`;
+    logBox.prepend(entry);
+}
 
 export function refreshUI() {
     const p = appState.player; const m = appState.mob;
     if (!p || !m) return;
 
     let gearAtk=0, gearArm=0, gearAgi=0, invH = "";
-    for(let s in SLOT_NAMES) { 
+    for(let s in slotNames) { 
         let i = p.equip[s]; if(i) { gearAtk+=i.atk; gearArm+=i.arm; gearAgi+=i.agi; }
         let color = i ? `var(--rar${i.rar})` : '#444';
         invH += `<div class="inv-item" style="border-left: 4px solid ${color}">
-            <div style="color:${color}"><b>${SLOT_NAMES[s]}:</b> ${i?i.n:'---'}</div>
+            <div style="color:${color}"><b>${slotNames[s]}:</b> ${i?i.n:'---'}</div>
             <div style="font-size:10px">${i?'⚔️'+i.atk+' 🛡️'+i.arm:''}</div>
         </div>`;
     }
