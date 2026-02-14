@@ -17,15 +17,26 @@ export class GameScene extends Phaser.Scene {
       yellow: 0xaaaa33
     };
 
+    // RPG-статы
+    this.player = {
+      hp: 100,
+      maxHp: 100,
+      mana: 0,
+      gold: 0
+    };
+
+    this.enemy = {
+      hp: 500,
+      maxHp: 500,
+      curse: 0
+    };
+
     this.grid = [];
     this.selected = null;
 
-    this.offsetX =
-      (this.sys.game.config.width - this.cols * this.tileSize) / 2;
-    this.offsetY =
-      (this.sys.game.config.height - this.rows * this.tileSize) / 2;
+    this.offsetX = (this.sys.game.config.width - this.cols * this.tileSize) / 2;
+    this.offsetY = (this.sys.game.config.height - this.rows * this.tileSize) / 2;
 
-    // фон
     this.add.rectangle(
       this.sys.game.config.width / 2,
       this.sys.game.config.height / 2,
@@ -44,8 +55,7 @@ export class GameScene extends Phaser.Scene {
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
       for (let x = 0; x < this.cols; x++) {
-        const cell = this.createCell(x, y);
-        this.grid[y][x] = cell;
+        this.grid[y][x] = this.createCell(x, y);
       }
     }
   }
@@ -65,23 +75,17 @@ export class GameScene extends Phaser.Scene {
     tile.setInteractive();
 
     const cell = { x, y, type, tile };
-
     tile.on('pointerdown', () => this.handleClick(cell));
+
     return cell;
   }
 
   /* ================= INPUT ================= */
 
   handleClick(cell) {
-    if (!this.selected) {
-      this.select(cell);
-      return;
-    }
+    if (!this.selected) return this.select(cell);
 
-    if (this.selected === cell) {
-      this.clearSelection();
-      return;
-    }
+    if (this.selected === cell) return this.clearSelection();
 
     if (this.areNeighbors(this.selected, cell)) {
       this.swap(this.selected, cell);
@@ -96,7 +100,6 @@ export class GameScene extends Phaser.Scene {
   select(cell) {
     this.selected = cell;
     cell.tile.setStrokeStyle(4, 0xffffff);
-    console.log(`Selected [${cell.x}, ${cell.y}]`);
   }
 
   clearSelection() {
@@ -113,10 +116,8 @@ export class GameScene extends Phaser.Scene {
   /* ================= SWAP ================= */
 
   swap(a, b) {
-    const ax = a.tile.x;
-    const ay = a.tile.y;
-    const bx = b.tile.x;
-    const by = b.tile.y;
+    const ax = a.tile.x, ay = a.tile.y;
+    const bx = b.tile.x, by = b.tile.y;
 
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
@@ -126,22 +127,19 @@ export class GameScene extends Phaser.Scene {
 
     this.tweens.add({ targets: a.tile, x: bx, y: by, duration: 200 });
     this.tweens.add({ targets: b.tile, x: ax, y: ay, duration: 200 });
-
-    console.log('Tiles swapped');
   }
 
-  /* ================= MATCH LOGIC ================= */
+  /* ================= MATCH ================= */
 
   resolveBoard() {
     const matches = this.findMatches();
-    if (matches.length === 0) return;
+    if (!matches.length) return;
 
-    this.logMatches(matches);
+    this.applyEffects(matches);
     this.removeMatches(matches);
 
     this.time.delayedCall(250, () => {
       this.applyGravity();
-
       this.time.delayedCall(250, () => {
         this.fillEmpty();
         this.time.delayedCall(250, () => this.resolveBoard());
@@ -152,29 +150,27 @@ export class GameScene extends Phaser.Scene {
   findMatches() {
     const matches = [];
 
-    // horizontal
     for (let y = 0; y < this.rows; y++) {
       let run = [this.grid[y][0]];
       for (let x = 1; x < this.cols; x++) {
-        const cell = this.grid[y][x];
-        if (cell.type === run[0].type) run.push(cell);
+        const c = this.grid[y][x];
+        if (c.type === run[0].type) run.push(c);
         else {
           if (run.length >= 3) matches.push(...run);
-          run = [cell];
+          run = [c];
         }
       }
       if (run.length >= 3) matches.push(...run);
     }
 
-    // vertical
     for (let x = 0; x < this.cols; x++) {
       let run = [this.grid[0][x]];
       for (let y = 1; y < this.rows; y++) {
-        const cell = this.grid[y][x];
-        if (cell.type === run[0].type) run.push(cell);
+        const c = this.grid[y][x];
+        if (c.type === run[0].type) run.push(c);
         else {
           if (run.length >= 3) matches.push(...run);
-          run = [cell];
+          run = [c];
         }
       }
       if (run.length >= 3) matches.push(...run);
@@ -183,47 +179,69 @@ export class GameScene extends Phaser.Scene {
     return [...new Set(matches)];
   }
 
-  logMatches(matches) {
-    const summary = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
-    matches.forEach(c => summary[c.type]++);
-    console.log('MATCH SUMMARY:', summary);
+  /* ================= EFFECTS ================= */
 
-    if (summary.red > 0) {
-      const dmg = summary.red * 10;
-      console.log(`Enemy takes ${dmg} damage (${summary.red} red tiles)`);
+  applyEffects(matches) {
+    const s = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
+    matches.forEach(c => s[c.type]++);
+
+    if (s.red) {
+      const dmg = s.red * 10;
+      this.enemy.hp = Math.max(0, this.enemy.hp - dmg);
+      console.log(`Enemy takes ${dmg} damage`);
     }
+
+    if (s.blue) {
+      this.player.mana += s.blue * 10;
+      console.log(`Player gains ${s.blue * 10} mana`);
+    }
+
+    if (s.green) {
+      this.player.hp = Math.min(this.player.maxHp, this.player.hp + s.green * 10);
+      console.log(`Player heals ${s.green * 10} HP`);
+    }
+
+    if (s.yellow) {
+      this.player.gold += s.yellow * 10;
+      console.log(`Player gains ${s.yellow * 10} gold`);
+    }
+
+    if (s.purple) {
+      this.enemy.curse += s.purple;
+      console.log(`Enemy cursed x${s.purple}`);
+    }
+
+    console.log('STATS:', this.player, this.enemy);
   }
 
-  /* ================= REMOVE / GRAVITY ================= */
+  /* ================= REMOVE / FALL ================= */
 
   removeMatches(matches) {
-    matches.forEach(cell => {
+    matches.forEach(c => {
       this.tweens.add({
-        targets: cell.tile,
+        targets: c.tile,
         scale: 0,
         alpha: 0,
         duration: 200,
-        onComplete: () => cell.tile.destroy()
+        onComplete: () => c.tile.destroy()
       });
-
-      this.grid[cell.y][cell.x] = null;
+      this.grid[c.y][c.x] = null;
     });
   }
 
   applyGravity() {
     for (let x = 0; x < this.cols; x++) {
       for (let y = this.rows - 1; y >= 0; y--) {
-        if (this.grid[y][x] === null) {
+        if (!this.grid[y][x]) {
           for (let yy = y - 1; yy >= 0; yy--) {
             if (this.grid[yy][x]) {
-              const cell = this.grid[yy][x];
-              this.grid[y][x] = cell;
+              const c = this.grid[yy][x];
+              this.grid[y][x] = c;
               this.grid[yy][x] = null;
-
-              cell.y = y;
+              c.y = y;
 
               this.tweens.add({
-                targets: cell.tile,
+                targets: c.tile,
                 y: this.offsetY + y * this.tileSize + this.tileSize / 2,
                 duration: 200
               });
@@ -238,18 +256,17 @@ export class GameScene extends Phaser.Scene {
   fillEmpty() {
     for (let x = 0; x < this.cols; x++) {
       for (let y = 0; y < this.rows; y++) {
-        if (this.grid[y][x] === null) {
-          const cell = this.createCell(x, y);
-          cell.tile.y =
-            this.offsetY - this.tileSize;
+        if (!this.grid[y][x]) {
+          const c = this.createCell(x, y);
+          c.tile.y = this.offsetY - this.tileSize;
 
           this.tweens.add({
-            targets: cell.tile,
+            targets: c.tile,
             y: this.offsetY + y * this.tileSize + this.tileSize / 2,
             duration: 300
           });
 
-          this.grid[y][x] = cell;
+          this.grid[y][x] = c;
         }
       }
     }
