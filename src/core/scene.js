@@ -127,6 +127,7 @@ export class GameScene extends Phaser.Scene {
       duration: 200
     });
 
-    console.log('Tiles swapped');
-  }
+      console.log('Tiles swapped');
 }
+}
+
