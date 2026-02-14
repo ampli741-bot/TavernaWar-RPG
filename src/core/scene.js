@@ -4,11 +4,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // фон + рамка
-    this.load.image('tile_bg', 'assets/tile_bg.png');
-    this.load.image('tile_frame', 'assets/tile_frame.png');
-
-    // руны
     this.load.image('rune_red', 'assets/rune_red.png');
     this.load.image('rune_blue', 'assets/rune_blue.png');
     this.load.image('rune_green', 'assets/rune_green.png');
@@ -31,7 +26,7 @@ export class GameScene extends Phaser.Scene {
     this.offsetY =
       (this.sys.game.config.height - this.rows * this.tileSize) / 2;
 
-    // фон сцены
+    // фон
     this.add.rectangle(
       this.sys.game.config.width / 2,
       this.sys.game.config.height / 2,
@@ -62,29 +57,14 @@ export class GameScene extends Phaser.Scene {
     const cx = this.offsetX + x * this.tileSize + this.tileSize / 2;
     const cy = this.offsetY + y * this.tileSize + this.tileSize / 2;
 
-    // КОНТЕЙНЕР
-    const container = this.add.container(cx, cy);
+    const icon = this.add.image(cx, cy, `rune_${type}`)
+      .setScale(0.75)
+      .setInteractive({ useHandCursor: true });
 
-    const bg = this.add.image(0, 0, 'tile_bg').setScale(0.95);
-    const icon = this.add.image(0, 0, `rune_${type}`).setScale(0.6);
-    const frame = this.add.image(0, 0, 'tile_frame').setScale(1);
+    const cell = { x, y, type, tile: icon };
 
-    container.add([bg, icon, frame]);
+    icon.on('pointerdown', () => this.handleClick(cell));
 
-    container.setSize(this.tileSize, this.tileSize);
-    container.setInteractive(
-      new Phaser.Geom.Rectangle(
-        -this.tileSize / 2,
-        -this.tileSize / 2,
-        this.tileSize,
-        this.tileSize
-      ),
-      Phaser.Geom.Rectangle.Contains
-    );
-
-    const cell = { x, y, type, tile: container, icon };
-
-    container.on('pointerdown', () => this.handleClick(cell));
     return cell;
   }
 
@@ -115,15 +95,23 @@ export class GameScene extends Phaser.Scene {
     this.selected = cell;
 
     this.tweens.add({
-      targets: cell.icon,
-      scale: 0.7,
-      duration: 100,
-      yoyo: true
+      targets: cell.tile,
+      scale: 0.85,
+      duration: 100
     });
+
+    console.log(`Selected [${cell.x}, ${cell.y}]`);
   }
 
   clearSelection() {
-    this.selected = null;
+    if (this.selected) {
+      this.tweens.add({
+        targets: this.selected.tile,
+        scale: 0.75,
+        duration: 100
+      });
+      this.selected = null;
+    }
   }
 
   areNeighbors(a, b) {
@@ -146,14 +134,17 @@ export class GameScene extends Phaser.Scene {
 
     this.tweens.add({ targets: a.tile, x: bx, y: by, duration: 200 });
     this.tweens.add({ targets: b.tile, x: ax, y: ay, duration: 200 });
+
+    console.log('Tiles swapped');
   }
 
-  /* ================= MATCH ================= */
+  /* ================= MATCH LOGIC ================= */
 
   resolveBoard() {
     const matches = this.findMatches();
-    if (!matches.length) return;
+    if (matches.length === 0) return;
 
+    this.logMatches(matches);
     this.removeMatches(matches);
 
     this.time.delayedCall(250, () => {
@@ -168,6 +159,7 @@ export class GameScene extends Phaser.Scene {
   findMatches() {
     const matches = [];
 
+    // horizontal
     for (let y = 0; y < this.rows; y++) {
       let run = [this.grid[y][0]];
       for (let x = 1; x < this.cols; x++) {
@@ -181,6 +173,7 @@ export class GameScene extends Phaser.Scene {
       if (run.length >= 3) matches.push(...run);
     }
 
+    // vertical
     for (let x = 0; x < this.cols; x++) {
       let run = [this.grid[0][x]];
       for (let y = 1; y < this.rows; y++) {
@@ -196,6 +189,14 @@ export class GameScene extends Phaser.Scene {
 
     return [...new Set(matches)];
   }
+
+  logMatches(matches) {
+    const summary = { red: 0, blue: 0, green: 0, yellow: 0, purple: 0 };
+    matches.forEach(c => summary[c.type]++);
+    console.log('MATCH SUMMARY:', summary);
+  }
+
+  /* ================= REMOVE / GRAVITY ================= */
 
   removeMatches(matches) {
     matches.forEach(cell => {
@@ -213,7 +214,7 @@ export class GameScene extends Phaser.Scene {
   applyGravity() {
     for (let x = 0; x < this.cols; x++) {
       for (let y = this.rows - 1; y >= 0; y--) {
-        if (!this.grid[y][x]) {
+        if (this.grid[y][x] === null) {
           for (let yy = y - 1; yy >= 0; yy--) {
             if (this.grid[yy][x]) {
               const cell = this.grid[yy][x];
@@ -237,7 +238,7 @@ export class GameScene extends Phaser.Scene {
   fillEmpty() {
     for (let x = 0; x < this.cols; x++) {
       for (let y = 0; y < this.rows; y++) {
-        if (!this.grid[y][x]) {
+        if (this.grid[y][x] === null) {
           const cell = this.createCell(x, y);
           cell.tile.y = this.offsetY - this.tileSize;
 
