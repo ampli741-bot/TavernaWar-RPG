@@ -1,3 +1,5 @@
+import { refreshUI } from '../ui/ui.js';
+
 export function spawnMob() {
   const lvl = window.app.player.level;
 
@@ -18,4 +20,6 @@ export function spawnMob() {
   window.app.lootActive = false;
 
   window.app.log(`Появился враг: ${window.app.mob.name}`, 'm');
-}
+  
+refreshUI();
+
