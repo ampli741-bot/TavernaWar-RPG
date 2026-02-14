@@ -1,3 +1,4 @@
+import { spawnMob } from './mob.js';
 import { HERO_CLASSES } from '../data/classes.js';
 
 export function startGame(key) {
@@ -28,4 +29,7 @@ export function startGame(key) {
   }
 
   window.app.log(`Выбран герой: ${base.name}`, 'sys');
+
+  // ❗ ВАЖНО: враг появляется ТОЛЬКО после выбора героя
+  spawnMob();
 }
