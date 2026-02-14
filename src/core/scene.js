@@ -4,11 +4,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image('rune_red', 'assets/rune_red.png');
-    this.load.image('rune_blue', 'assets/rune_blue.png');
-    this.load.image('rune_green', 'assets/rune_green.png');
-    this.load.image('rune_purple', 'assets/rune_purple.png');
-    this.load.image('rune_yellow', 'assets/rune_yellow.png');
+    // руны
+    this.load.image('red', 'assets/rune_red.png');
+    this.load.image('blue', 'assets/rune_blue.png');
+    this.load.image('green', 'assets/rune_green.png');
+    this.load.image('purple', 'assets/rune_purple.png');
+    this.load.image('yellow', 'assets/rune_yellow.png');
+
+    // рамка
+    this.load.image('frame', 'assets/tile_frame.png');
   }
 
   create() {
@@ -32,7 +36,7 @@ export class GameScene extends Phaser.Scene {
       this.sys.game.config.height / 2,
       this.sys.game.config.width,
       this.sys.game.config.height,
-      0x1e1e1e
+      0x141414
     );
 
     this.createGrid();
@@ -54,16 +58,59 @@ export class GameScene extends Phaser.Scene {
   createCell(x, y) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
 
-    const cx = this.offsetX + x * this.tileSize + this.tileSize / 2;
-    const cy = this.offsetY + y * this.tileSize + this.tileSize / 2;
+    const px = this.offsetX + x * this.tileSize + this.tileSize / 2;
+    const py = this.offsetY + y * this.tileSize + this.tileSize / 2;
 
-    const icon = this.add.image(cx, cy, `rune_${type}`)
-      .setScale(0.75)
-      .setInteractive({ useHandCursor: true });
+    // контейнер тайла
+    const container = this.add.container(px, py);
 
-    const cell = { x, y, type, tile: icon };
+    // рамка
+    const frame = this.add.image(0, 0, 'frame');
+    frame.setDisplaySize(this.tileSize, this.tileSize);
 
-    icon.on('pointerdown', () => this.handleClick(cell));
+    // руна (центр увеличен)
+    const rune = this.add.image(0, 0, type);
+    rune.setDisplaySize(this.tileSize * 0.75, this.tileSize * 0.75);
+
+    container.add([frame, rune]);
+    container.setSize(this.tileSize, this.tileSize);
+    container.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -this.tileSize / 2,
+        -this.tileSize / 2,
+        this.tileSize,
+        this.tileSize
+      ),
+      Phaser.Geom.Rectangle.Contains
+    );
+
+    const cell = {
+      x,
+      y,
+      type,
+      container,
+      frame,
+      rune
+    };
+
+    container.on('pointerdown', () => this.handleClick(cell));
+
+    // hover эффект
+    container.on('pointerover', () => {
+      this.tweens.add({
+        targets: rune,
+        scale: 1.1,
+        duration: 100
+      });
+    });
+
+    container.on('pointerout', () => {
+      this.tweens.add({
+        targets: rune,
+        scale: 1,
+        duration: 100
+      });
+    });
 
     return cell;
   }
@@ -93,10 +140,11 @@ export class GameScene extends Phaser.Scene {
 
   select(cell) {
     this.selected = cell;
+    cell.frame.setTint(0xffffff);
 
     this.tweens.add({
-      targets: cell.tile,
-      scale: 0.85,
+      targets: cell.container,
+      scale: 1.05,
       duration: 100
     });
 
@@ -104,14 +152,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   clearSelection() {
-    if (this.selected) {
-      this.tweens.add({
-        targets: this.selected.tile,
-        scale: 0.75,
-        duration: 100
-      });
-      this.selected = null;
-    }
+    if (!this.selected) return;
+
+    this.selected.frame.clearTint();
+
+    this.tweens.add({
+      targets: this.selected.container,
+      scale: 1,
+      duration: 100
+    });
+
+    this.selected = null;
   }
 
   areNeighbors(a, b) {
@@ -121,10 +172,10 @@ export class GameScene extends Phaser.Scene {
   /* ================= SWAP ================= */
 
   swap(a, b) {
-    const ax = a.tile.x;
-    const ay = a.tile.y;
-    const bx = b.tile.x;
-    const by = b.tile.y;
+    const ax = a.container.x;
+    const ay = a.container.y;
+    const bx = b.container.x;
+    const by = b.container.y;
 
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
@@ -132,8 +183,8 @@ export class GameScene extends Phaser.Scene {
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
 
-    this.tweens.add({ targets: a.tile, x: bx, y: by, duration: 200 });
-    this.tweens.add({ targets: b.tile, x: ax, y: ay, duration: 200 });
+    this.tweens.add({ targets: a.container, x: bx, y: by, duration: 200 });
+    this.tweens.add({ targets: b.container, x: ax, y: ay, duration: 200 });
 
     console.log('Tiles swapped');
   }
@@ -201,12 +252,13 @@ export class GameScene extends Phaser.Scene {
   removeMatches(matches) {
     matches.forEach(cell => {
       this.tweens.add({
-        targets: cell.tile,
+        targets: cell.container,
         scale: 0,
         alpha: 0,
         duration: 200,
-        onComplete: () => cell.tile.destroy()
+        onComplete: () => cell.container.destroy()
       });
+
       this.grid[cell.y][cell.x] = null;
     });
   }
@@ -220,11 +272,15 @@ export class GameScene extends Phaser.Scene {
               const cell = this.grid[yy][x];
               this.grid[y][x] = cell;
               this.grid[yy][x] = null;
+
               cell.y = y;
 
               this.tweens.add({
-                targets: cell.tile,
-                y: this.offsetY + y * this.tileSize + this.tileSize / 2,
+                targets: cell.container,
+                y:
+                  this.offsetY +
+                  y * this.tileSize +
+                  this.tileSize / 2,
                 duration: 200
               });
               break;
@@ -240,11 +296,14 @@ export class GameScene extends Phaser.Scene {
       for (let y = 0; y < this.rows; y++) {
         if (this.grid[y][x] === null) {
           const cell = this.createCell(x, y);
-          cell.tile.y = this.offsetY - this.tileSize;
+          cell.container.y = this.offsetY - this.tileSize;
 
           this.tweens.add({
-            targets: cell.tile,
-            y: this.offsetY + y * this.tileSize + this.tileSize / 2,
+            targets: cell.container,
+            y:
+              this.offsetY +
+              y * this.tileSize +
+              this.tileSize / 2,
             duration: 300
           });
 
