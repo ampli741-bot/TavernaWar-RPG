@@ -1,11 +1,11 @@
 /**
- * TAVERNA WAR - CORE SKELETON (FIXED PATHS)
- * Rigid mechanics, assets mapped to your screenshot filenames.
+ * TAVERNA WAR - CORE SKELETON
+ * Жесткая привязка к ассетам из папки assets/
  */
 
 const TILE_SIZE = 80;
 const GRID_SIZE = 8;
-// Обновленные ключи для соответствия твоим файлам
+// Названия файлов строго по твоему скриншоту
 const TYPES = ['rune_red', 'rune_blue', 'rune_green', 'rune_purple', 'rune_yellow'];
 
 window.app = {
@@ -20,23 +20,27 @@ window.app = {
     }
 };
 
-// Запуск игры из меню
+// Функция запуска
 window.startGame = function(heroType) {
+    console.log("Игра запущена для класса:", heroType);
+
+    // 1. Скрываем меню выбора (принудительно через style, если класс hidden не сработал)
     const menu = document.getElementById('menu-overlay');
-    if (menu) menu.classList.add('hidden');
-    
-    // Привязка портрета героя (исправлено написание assasin с одной 's' как в твоем HTML)
+    if (menu) {
+        menu.style.display = 'none'; 
+    }
+
+    // 2. Установка портрета (исправлено написание assasin с одной 's' под твой HTML)
     const imgName = heroType === 'assassin' ? 'hero_assasin.jpg' : `hero_${heroType}.jpg`;
     const pPort = document.getElementById('p-portrait');
     if (pPort) pPort.style.backgroundImage = `url('assets/${imgName}')`;
 
-    // Инициализация игрока
+    // 3. Данные игрока и моба
     window.app.player = {
         hp: 1000, maxHp: 1000, mana: 0, armor: 50, maxArmor: 100,
         atk: 30, gold: 0, dodge: 5
     };
 
-    // Инициализация моба
     window.app.mob = {
         name: "ГРУНТ ГОРНЫЙ", hp: 600, maxHp: 600, atk: 20
     };
@@ -50,47 +54,32 @@ function updateUI() {
     const m = window.app.mob;
     if(!p || !m) return;
 
-    // Обновление полосок и текста
-    const safeSetWidth = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.style.width = val + '%';
-    };
-    const safeSetText = (id, txt) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = txt;
-    };
+    const setW = (id, val) => { const e = document.getElementById(id); if(e) e.style.width = val + '%'; };
+    const setT = (id, txt) => { const e = document.getElementById(id); if(e) e.innerText = txt; };
 
-    safeSetWidth('p-hp-f', (p.hp / p.maxHp * 100));
-    safeSetText('p-hp-t', `${Math.ceil(p.hp)} / ${p.maxHp}`);
-    safeSetWidth('p-mn-f', p.mana);
-    safeSetText('p-mn-t', `МАНА: ${p.mana}%`);
-    safeSetWidth('p-arm-f', (p.armor / p.maxArmor * 100));
-    safeSetText('p-arm-t', `БРОНЯ: ${p.armor} / ${p.maxArmor}`);
+    setW('p-hp-f', (p.hp / p.maxHp * 100));
+    setT('p-hp-t', `${Math.ceil(p.hp)} / ${p.maxHp}`);
+    setW('p-mn-f', p.mana);
+    setT('p-mn-t', `МАНА: ${p.mana}%`);
+    setW('p-arm-f', (p.armor / p.maxArmor * 100));
+    setT('p-arm-t', `БРОНЯ: ${p.armor} / ${p.maxArmor}`);
     
-    safeSetText('stat-atk', p.atk);
-    safeSetText('stat-dodge', p.dodge + '%');
-    safeSetText('gold-val', `${p.gold} 💰`);
+    setT('stat-atk', p.atk);
+    setT('stat-dodge', p.dodge + '%');
+    setT('gold-val', `${p.gold} 💰`);
 
     const btn = document.getElementById('btn-ultra');
-    if(btn) {
-        if(p.mana >= 100) btn.classList.add('ready');
-        else btn.classList.remove('ready');
-    }
+    if(btn) btn.className = (p.mana >= 100) ? 'btn-ultra ready' : 'btn-ultra';
 
-    safeSetWidth('m-hp-f', (m.hp / m.maxHp * 100));
-    safeSetText('m-hp-t', `${Math.ceil(m.hp)} / ${m.maxHp}`);
+    setW('m-hp-f', (m.hp / m.maxHp * 100));
+    setT('m-hp-t', `${Math.ceil(m.hp)} / ${m.maxHp}`);
 }
 
-window.useUltra = function() {
-    if(!window.app.player || window.app.player.mana < 100) return;
-    window.app.player.mana = 0;
-    const dmg = window.app.player.atk * 3;
-    window.app.mob.hp -= dmg;
-    window.app.log(`СУПЕРУДАР: Враг получает ${dmg} урона!`, 'crit');
-    updateUI();
-};
-
 function initPhaser() {
+    // Удаляем старую канву, если она была (защита от дублей)
+    const container = document.getElementById('game-container');
+    if (container) container.innerHTML = '';
+
     const config = {
         type: Phaser.AUTO,
         parent: 'game-container',
@@ -106,7 +95,7 @@ class GameScene extends Phaser.Scene {
     constructor() { super('GameScene'); }
 
     preload() {
-        // ЗАГРУЗКА ИЗ ПАПКИ ASSETS (согласно твоему скриншоту)
+        // Загрузка рун строго по списку файлов в твоей папке assets
         TYPES.forEach(t => {
             this.load.image(t, `assets/${t}.png`);
         });
@@ -142,22 +131,16 @@ class GameScene extends Phaser.Scene {
         img.on('pointerdown', () => this.handleSelect(container));
 
         this.grid[r][c] = container;
-
         if (fromTop) {
-            this.tweens.add({
-                targets: container,
-                y: r * TILE_SIZE + TILE_SIZE / 2,
-                duration: 300
-            });
+            this.tweens.add({ targets: container, y: r * TILE_SIZE + TILE_SIZE / 2, duration: 300 });
         }
     }
 
     async handleSelect(tile) {
         if (this.isAnimating || window.app.turn !== "PLAYER") return;
-
         if (!this.selectedTile) {
             this.selectedTile = tile;
-            tile.setScale(1.2);
+            tile.setScale(1.1);
         } else {
             const dist = Math.abs(this.selectedTile.gridR - tile.gridR) + Math.abs(this.selectedTile.gridC - tile.gridC);
             if (dist === 1) {
@@ -170,7 +153,7 @@ class GameScene extends Phaser.Scene {
                     await this.swapTiles(this.selectedTile, tile);
                 }
             }
-            if (this.selectedTile) this.selectedTile.setScale(1);
+            if(this.selectedTile) this.selectedTile.setScale(1);
             this.selectedTile = null;
         }
     }
@@ -178,24 +161,11 @@ class GameScene extends Phaser.Scene {
     async swapTiles(t1, t2) {
         this.isAnimating = true;
         const r1 = t1.gridR, c1 = t1.gridC, r2 = t2.gridR, c2 = t2.gridC;
-        
         this.grid[r1][c1] = t2; this.grid[r2][c2] = t1;
         t1.gridR = r2; t1.gridC = c2; t2.gridR = r1; t2.gridC = c1;
-
         return new Promise(res => {
-            this.tweens.add({
-                targets: t1,
-                x: c2 * TILE_SIZE + TILE_SIZE / 2,
-                y: r2 * TILE_SIZE + TILE_SIZE / 2,
-                duration: 200
-            });
-            this.tweens.add({
-                targets: t2,
-                x: c1 * TILE_SIZE + TILE_SIZE / 2,
-                y: r1 * TILE_SIZE + TILE_SIZE / 2,
-                duration: 200,
-                onComplete: () => { this.isAnimating = false; res(); }
-            });
+            this.tweens.add({ targets: t1, x: c2*TILE_SIZE+TILE_SIZE/2, y: r2*TILE_SIZE+TILE_SIZE/2, duration: 200 });
+            this.tweens.add({ targets: t2, x: c1*TILE_SIZE+TILE_SIZE/2, y: r1*TILE_SIZE+TILE_SIZE/2, duration: 200, onComplete: () => { this.isAnimating = false; res(); } });
         });
     }
 
@@ -221,28 +191,20 @@ class GameScene extends Phaser.Scene {
     }
 
     async handleMatches(matches) {
-        this.isAnimating = true;
         const p = window.app.player;
-
         matches.forEach(t => {
-            if (t.type === 'rune_red') { window.app.mob.hp -= p.atk; }
-            if (t.type === 'rune_blue') { p.mana = Math.min(100, p.mana + 5); }
-            if (t.type === 'rune_green') { p.hp = Math.min(p.maxHp, p.hp + 15); }
-            if (t.type === 'rune_yellow') { p.gold += 10; }
-            if (t.type === 'rune_purple') { p.armor = Math.min(p.maxArmor, p.armor + 10); }
-
+            if (t.type === 'rune_red') window.app.mob.hp -= p.atk;
+            if (t.type === 'rune_blue') p.mana = Math.min(100, p.mana + 5);
+            if (t.type === 'rune_green') p.hp = Math.min(p.maxHp, p.hp + 15);
+            if (t.type === 'rune_yellow') p.gold += 10;
+            if (t.type === 'rune_purple') p.armor = Math.min(p.maxArmor, p.armor + 10);
             this.grid[t.gridR][t.gridC] = null;
             t.destroy();
         });
-
-        window.app.log(`Комбо: ${matches.length} рун!`, 'p');
         updateUI();
-
         await this.dropTiles();
-        const nextMatches = this.checkMatches();
-        if (nextMatches.length > 0) await this.handleMatches(nextMatches);
-        
-        this.isAnimating = false;
+        const next = this.checkMatches();
+        if (next.length > 0) await this.handleMatches(next);
     }
 
     async dropTiles() {
@@ -255,11 +217,7 @@ class GameScene extends Phaser.Scene {
                     this.grid[r + empty][c] = tile;
                     this.grid[r][c] = null;
                     tile.gridR = r + empty;
-                    this.tweens.add({
-                        targets: tile,
-                        y: tile.gridR * TILE_SIZE + TILE_SIZE / 2,
-                        duration: 200
-                    });
+                    this.tweens.add({ targets: tile, y: tile.gridR * TILE_SIZE + TILE_SIZE / 2, duration: 200 });
                 }
             }
             for (let i = 0; i < empty; i++) this.spawnTile(i, c, true);
@@ -268,13 +226,19 @@ class GameScene extends Phaser.Scene {
     }
 
     mobTurn() {
-        if (!window.app.mob || window.app.mob.hp <= 0) {
-            window.app.log("ПОБЕДА!", 'sys');
-            return;
-        }
+        if (!window.app.mob || window.app.mob.hp <= 0) { window.app.log("ПОБЕДА!", 'sys'); return; }
         const dmg = window.app.mob.atk;
         window.app.player.hp -= dmg;
-        window.app.log(`Враг атакует на ${dmg} урона!`, 'm');
+        window.app.log(`Враг наносит ${dmg} урона!`, 'm');
         updateUI();
     }
 }
+
+// Глобальная функция для кнопки ульты
+window.useUltra = function() {
+    if(!window.app.player || window.app.player.mana < 100) return;
+    window.app.player.mana = 0;
+    window.app.mob.hp -= (window.app.player.atk * 3);
+    window.app.log("УЛЬТРАУДАР!", 'crit');
+    updateUI();
+};
