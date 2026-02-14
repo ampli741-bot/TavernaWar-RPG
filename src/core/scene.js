@@ -32,7 +32,7 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // сетка
+    // стартовая сетка
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
       for (let x = 0; x < this.cols; x++) {
@@ -40,15 +40,21 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    console.log('Grid created');
+    // убираем стартовые матчи (если появились)
+    this.time.delayedCall(100, () => this.resolve());
   }
 
-  spawnTile(x, y) {
+  // ============
+  // TILE SPAWN
+  // ============
+
+  spawnTile(x, y, fromTop = false) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
+    const startY = fromTop ? this.offsetY - this.tileSize : this.offsetY + y * this.tileSize + this.tileSize / 2;
 
     const tile = this.add.rectangle(
       this.offsetX + x * this.tileSize + this.tileSize / 2,
-      this.offsetY + y * this.tileSize + this.tileSize / 2,
+      startY,
       this.tileSize - 6,
       this.tileSize - 6,
       this.colors[type]
@@ -64,7 +70,19 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.grid[y][x] = cell;
+
+    if (fromTop) {
+      this.tweens.add({
+        targets: tile,
+        y: this.offsetY + y * this.tileSize + this.tileSize / 2,
+        duration: 250
+      });
+    }
   }
+
+  // ============
+  // INPUT
+  // ============
 
   handleClick(cell) {
     if (!this.selected) {
@@ -80,9 +98,6 @@ export class GameScene extends Phaser.Scene {
     if (this.areNeighbors(this.selected, cell)) {
       this.swap(this.selected, cell);
       this.clearSelection();
-      this.time.delayedCall(250, () => {
-        this.applyGravity();
-      });
     } else {
       this.clearSelection();
       this.select(cell);
@@ -107,42 +122,105 @@ export class GameScene extends Phaser.Scene {
     return dx + dy === 1;
   }
 
+  // ============
+  // SWAP
+  // ============
+
   swap(a, b) {
     this.isBusy = true;
 
-    const ax = a.tile.x;
-    const ay = a.tile.y;
-    const bx = b.tile.x;
-    const by = b.tile.y;
+    const ax = a.tile.x, ay = a.tile.y;
+    const bx = b.tile.x, by = b.tile.y;
 
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
-
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
 
+    this.tweens.add({ targets: a.tile, x: bx, y: by, duration: 200 });
     this.tweens.add({
-      targets: a.tile,
-      x: bx,
-      y: by,
-      duration: 200
-    });
-
-    this.tweens.add({
-      targets: b.tile,
-      x: ax,
-      y: ay,
-      duration: 200,
-      onComplete: () => {
-        this.isBusy = false;
-      }
+      targets: b.tile, x: ax, y: ay, duration: 200,
+      onComplete: () => this.resolve()
     });
   }
 
-  applyGravity() {
-    this.isBusy = true;
-    let moved = false;
+  // ============
+  // MATCH LOGIC
+  // ============
 
+  findMatches() {
+    const matches = [];
+
+    // горизонталь
+    for (let y = 0; y < this.rows; y++) {
+      let run = [this.grid[y][0]];
+      for (let x = 1; x < this.cols; x++) {
+        const c = this.grid[y][x];
+        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) run.push(c);
+        else { if (run.length >= 3) matches.push(...run); run = [c]; }
+      }
+      if (run.length >= 3) matches.push(...run);
+    }
+
+    // вертикаль
+    for (let x = 0; x < this.cols; x++) {
+      let run = [this.grid[0][x]];
+      for (let y = 1; y < this.rows; y++) {
+        const c = this.grid[y][x];
+        if (c && run[run.length - 1] && c.type === run[run.length - 1].type) run.push(c);
+        else { if (run.length >= 3) matches.push(...run); run = [c]; }
+      }
+      if (run.length >= 3) matches.push(...run);
+    }
+
+    return [...new Set(matches.filter(Boolean))];
+  }
+
+  // ============
+  // RESOLVE LOOP
+  // ============
+
+  resolve() {
+    const matches = this.findMatches();
+
+    if (matches.length === 0) {
+      this.isBusy = false;
+      return;
+    }
+
+    // подсветка
+    matches.forEach(c => c.tile.setStrokeStyle(4, 0xffff00));
+
+    // удаление
+    this.time.delayedCall(150, () => {
+      matches.forEach(c => {
+        this.tweens.add({
+          targets: c.tile,
+          scale: 0,
+          alpha: 0,
+          duration: 200,
+          onComplete: () => {
+            c.tile.destroy();
+            this.grid[c.y][c.x] = null;
+          }
+        });
+      });
+
+      this.time.delayedCall(220, () => {
+        this.applyGravity();
+        this.time.delayedCall(260, () => {
+          this.spawnNewTiles();
+          this.time.delayedCall(300, () => this.resolve());
+        });
+      });
+    });
+  }
+
+  // ============
+  // GRAVITY
+  // ============
+
+  applyGravity() {
     for (let x = 0; x < this.cols; x++) {
       for (let y = this.rows - 1; y >= 0; y--) {
         if (!this.grid[y][x]) {
@@ -151,29 +229,32 @@ export class GameScene extends Phaser.Scene {
             if (above) {
               this.grid[y][x] = above;
               this.grid[yy][x] = null;
-
-              const newY = this.offsetY + y * this.tileSize + this.tileSize / 2;
+              above.y = y;
 
               this.tweens.add({
                 targets: above.tile,
-                y: newY,
+                y: this.offsetY + y * this.tileSize + this.tileSize / 2,
                 duration: 200
               });
-
-              above.y = y;
-              moved = true;
               break;
             }
           }
         }
       }
     }
+  }
 
-    this.time.delayedCall(250, () => {
-      this.isBusy = false;
-      if (moved) {
-        console.log('Gravity applied');
+  // ============
+  // RESPAWN
+  // ============
+
+  spawnNewTiles() {
+    for (let x = 0; x < this.cols; x++) {
+      for (let y = 0; y < this.rows; y++) {
+        if (!this.grid[y][x]) {
+          this.spawnTile(x, y, true);
+        }
       }
-    });
+    }
   }
 }
