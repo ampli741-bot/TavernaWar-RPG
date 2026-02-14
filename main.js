@@ -1,11 +1,12 @@
 /**
- * TAVERNA WAR - CORE SKELETON
- * Rigid mechanics, no changes to functions.
+ * TAVERNA WAR - CORE SKELETON (FIXED PATHS)
+ * Rigid mechanics, assets mapped to your screenshot filenames.
  */
 
 const TILE_SIZE = 80;
 const GRID_SIZE = 8;
-const TYPES = ['red', 'blue', 'green', 'purple', 'yellow'];
+// Обновленные ключи для соответствия твоим файлам
+const TYPES = ['rune_red', 'rune_blue', 'rune_green', 'rune_purple', 'rune_yellow'];
 
 window.app = {
     player: null,
@@ -13,6 +14,7 @@ window.app = {
     turn: "PLAYER",
     log: (msg, type) => {
         const log = document.getElementById('battle-log');
+        if (!log) return;
         const color = {p: '#4f4', m: '#f44', crit: '#a4f', sys: '#ffd700'}[type] || '#ccc';
         log.innerHTML = `<div style="color:${color}; margin-bottom:5px;">> ${msg}</div>` + log.innerHTML;
     }
@@ -20,11 +22,13 @@ window.app = {
 
 // Запуск игры из меню
 window.startGame = function(heroType) {
-    document.getElementById('menu-overlay').classList.add('hidden');
+    const menu = document.getElementById('menu-overlay');
+    if (menu) menu.classList.add('hidden');
     
-    // Привязка портрета героя
+    // Привязка портрета героя (исправлено написание assasin с одной 's' как в твоем HTML)
     const imgName = heroType === 'assassin' ? 'hero_assasin.jpg' : `hero_${heroType}.jpg`;
-    document.getElementById('p-portrait').style.backgroundImage = `url('assets/${imgName}')`;
+    const pPort = document.getElementById('p-portrait');
+    if (pPort) pPort.style.backgroundImage = `url('assets/${imgName}')`;
 
     // Инициализация игрока
     window.app.player = {
@@ -34,7 +38,7 @@ window.startGame = function(heroType) {
 
     // Инициализация моба
     window.app.mob = {
-        name: "Гоблин-разбойник", hp: 600, maxHp: 600, atk: 20
+        name: "ГРУНТ ГОРНЫЙ", hp: 600, maxHp: 600, atk: 20
     };
 
     updateUI();
@@ -46,30 +50,39 @@ function updateUI() {
     const m = window.app.mob;
     if(!p || !m) return;
 
-    // Игрок
-    document.getElementById('p-hp-f').style.width = (p.hp / p.maxHp * 100) + '%';
-    document.getElementById('p-hp-t').innerText = `${Math.ceil(p.hp)} / ${p.maxHp}`;
-    document.getElementById('p-mn-f').style.width = p.mana + '%';
-    document.getElementById('p-mn-t').innerText = `МАНА: ${p.mana}%`;
-    document.getElementById('p-arm-f').style.width = (p.armor / p.maxArmor * 100) + '%';
-    document.getElementById('p-arm-t').innerText = `БРОНЯ: ${p.armor} / ${p.maxArmor}`;
+    // Обновление полосок и текста
+    const safeSetWidth = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.style.width = val + '%';
+    };
+    const safeSetText = (id, txt) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = txt;
+    };
+
+    safeSetWidth('p-hp-f', (p.hp / p.maxHp * 100));
+    safeSetText('p-hp-t', `${Math.ceil(p.hp)} / ${p.maxHp}`);
+    safeSetWidth('p-mn-f', p.mana);
+    safeSetText('p-mn-t', `МАНА: ${p.mana}%`);
+    safeSetWidth('p-arm-f', (p.armor / p.maxArmor * 100));
+    safeSetText('p-arm-t', `БРОНЯ: ${p.armor} / ${p.maxArmor}`);
     
-    document.getElementById('stat-atk').innerText = p.atk;
-    document.getElementById('stat-dodge').innerText = p.dodge + '%';
-    document.getElementById('gold-val').innerText = `${p.gold} 💰`;
+    safeSetText('stat-atk', p.atk);
+    safeSetText('stat-dodge', p.dodge + '%');
+    safeSetText('gold-val', `${p.gold} 💰`);
 
-    // Кнопка ульты
     const btn = document.getElementById('btn-ultra');
-    if(p.mana >= 100) btn.classList.add('ready');
-    else btn.classList.remove('ready');
+    if(btn) {
+        if(p.mana >= 100) btn.classList.add('ready');
+        else btn.classList.remove('ready');
+    }
 
-    // Моб
-    document.getElementById('m-hp-f').style.width = (m.hp / m.maxHp * 100) + '%';
-    document.getElementById('m-hp-t').innerText = `${Math.ceil(m.hp)} / ${m.maxHp}`;
+    safeSetWidth('m-hp-f', (m.hp / m.maxHp * 100));
+    safeSetText('m-hp-t', `${Math.ceil(m.hp)} / ${m.maxHp}`);
 }
 
 window.useUltra = function() {
-    if(window.app.player.mana < 100) return;
+    if(!window.app.player || window.app.player.mana < 100) return;
     window.app.player.mana = 0;
     const dmg = window.app.player.atk * 3;
     window.app.mob.hp -= dmg;
@@ -93,7 +106,7 @@ class GameScene extends Phaser.Scene {
     constructor() { super('GameScene'); }
 
     preload() {
-        // Загрузка рун из твоих активов
+        // ЗАГРУЗКА ИЗ ПАПКИ ASSETS (согласно твоему скриншоту)
         TYPES.forEach(t => {
             this.load.image(t, `assets/${t}.png`);
         });
@@ -157,7 +170,7 @@ class GameScene extends Phaser.Scene {
                     await this.swapTiles(this.selectedTile, tile);
                 }
             }
-            this.selectedTile.setScale(1);
+            if (this.selectedTile) this.selectedTile.setScale(1);
             this.selectedTile = null;
         }
     }
@@ -188,20 +201,18 @@ class GameScene extends Phaser.Scene {
 
     checkMatches() {
         let matched = new Set();
-        // Rows
         for (let r = 0; r < GRID_SIZE; r++) {
             for (let c = 0; c < GRID_SIZE - 2; c++) {
                 let t1 = this.grid[r][c], t2 = this.grid[r][c+1], t3 = this.grid[r][c+2];
-                if (t1.type === t2.type && t2.type === t3.type) {
+                if (t1 && t2 && t3 && t1.type === t2.type && t2.type === t3.type) {
                     matched.add(t1); matched.add(t2); matched.add(t3);
                 }
             }
         }
-        // Cols
         for (let c = 0; c < GRID_SIZE; c++) {
             for (let r = 0; r < GRID_SIZE - 2; r++) {
                 let t1 = this.grid[r][c], t2 = this.grid[r+1][c], t3 = this.grid[r+2][c];
-                if (t1.type === t2.type && t2.type === t3.type) {
+                if (t1 && t2 && t3 && t1.type === t2.type && t2.type === t3.type) {
                     matched.add(t1); matched.add(t2); matched.add(t3);
                 }
             }
@@ -214,18 +225,17 @@ class GameScene extends Phaser.Scene {
         const p = window.app.player;
 
         matches.forEach(t => {
-            // Механика рун
-            if (t.type === 'red') { window.app.mob.hp -= p.atk; }
-            if (t.type === 'blue') { p.mana = Math.min(100, p.mana + 5); }
-            if (t.type === 'green') { p.hp = Math.min(p.maxHp, p.hp + 15); }
-            if (t.type === 'yellow') { p.gold += 10; }
-            if (t.type === 'purple') { p.armor = Math.min(p.maxArmor, p.armor + 10); }
+            if (t.type === 'rune_red') { window.app.mob.hp -= p.atk; }
+            if (t.type === 'rune_blue') { p.mana = Math.min(100, p.mana + 5); }
+            if (t.type === 'rune_green') { p.hp = Math.min(p.maxHp, p.hp + 15); }
+            if (t.type === 'rune_yellow') { p.gold += 10; }
+            if (t.type === 'rune_purple') { p.armor = Math.min(p.maxArmor, p.armor + 10); }
 
             this.grid[t.gridR][t.gridC] = null;
             t.destroy();
         });
 
-        window.app.log(`Собрано ${matches.length} рун!`, 'p');
+        window.app.log(`Комбо: ${matches.length} рун!`, 'p');
         updateUI();
 
         await this.dropTiles();
@@ -258,7 +268,7 @@ class GameScene extends Phaser.Scene {
     }
 
     mobTurn() {
-        if (window.app.mob.hp <= 0) {
+        if (!window.app.mob || window.app.mob.hp <= 0) {
             window.app.log("ПОБЕДА!", 'sys');
             return;
         }
