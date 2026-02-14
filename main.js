@@ -1,124 +1,88 @@
-import { GameScene } from "./phaser/GameScene.js";
-import { appState, refreshUI, log } from "./game/appState.js";
-import { slotNames } from "./data/constants.js";
-
 // --- Инициализация игры ---
-window.startGame = () => {
+window.startGame = (heroType) => {
+    // Проверяем, загружен ли Phaser и GameScene
+    if (typeof Phaser === 'undefined') {
+        console.error("Phaser не загружен!");
+        return;
+    }
+
     const config = {
         type: Phaser.AUTO,
         parent: 'game-container',
         width: 680,
         height: 680,
-        scene: GameScene,
+        // GameScene должна быть объявлена глобально в GameScene.js или подключена в HTML выше
+        scene: window.GameScene, 
         transparent: true,
         physics: { default: 'arcade' }
     };
+
     window.phaserGame = new Phaser.Game(config);
     
     // Скрываем меню, показываем интерфейс
-    document.getElementById('start-screen').classList.add('hidden');
-    document.getElementById('game-ui').classList.remove('hidden');
+    document.getElementById('menu-overlay').classList.add('hidden');
+    document.getElementById('ui-left').classList.remove('hidden');
+    document.getElementById('ui-right').classList.remove('hidden');
+    
+    console.log("Игра запущена за класс:", heroType);
 };
 
 // --- Система ЛУТА ---
 window.showLootScreen = () => {
-    appState.lootActive = true;
+    if (typeof appState !== 'undefined') appState.lootActive = true;
     const container = document.getElementById('loot-container');
+    if (!container) return;
+    
     const list = document.getElementById('loot-list');
     list.innerHTML = '';
     
-    // Генерируем 3 случайных предмета
-    for(let i=0; i<3; i++) {
-        const item = generateRandomItem();
-        const div = document.createElement('div');
-        div.className = 'loot-item';
-        div.innerHTML = `
-            <img src="assets/items/${item.type}.png" onerror="this.src='assets/rune_yellow.png'">
-            <div class="loot-info">
-                <strong>${item.name}</strong><br>
-                <small>${item.statText}</small>
-            </div>
-        `;
-        div.onclick = () => pickLoot(item);
-        list.appendChild(div);
-    }
-    container.classList.remove('hidden');
-};
-
-function generateRandomItem() {
-    const types = [
+    const items = [
         { id: 'sword', name: 'Стальной меч', slot: 'weapon', stat: { atk: 5 }, text: '+5 к атаке' },
         { id: 'shield', name: 'Кожаный щит', slot: 'armor', stat: { def: 3 }, text: '+3 к броне' },
         { id: 'pendant', name: 'Амулет маны', slot: 'pendant', stat: { mp: 20 }, text: '+20 макс. маны' }
     ];
-    return types[Math.floor(Math.random() * types.length)];
-}
+
+    items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'loot-item';
+        div.innerHTML = `<strong>${item.name}</strong><br><small>${item.text}</small>`;
+        div.onclick = () => pickLoot(item);
+        list.appendChild(div);
+    });
+    
+    container.classList.remove('hidden');
+};
 
 function pickLoot(item) {
-    // Экипируем предмет
-    appState.player.equip[item.slot] = item.stat;
-    
-    // Обновляем статы игрока на основе экипировки
-    if(item.slot === 'armor') appState.player.armor += item.stat.def;
-    
-    log(`Экипировано: ${item.name}`, 'crit');
-    
-    // Возвращаем игру в строй
-    appState.lootActive = false;
+    console.log("Выбран лут:", item.name);
     document.getElementById('loot-container').classList.add('hidden');
-    
-    // Спавним нового моба
-    spawnNewMob();
-}
-
-function spawnNewMob() {
-    appState.mob.hp = 100;
-    appState.mob.maxHp = 100;
-    appState.mob.atk += 2; // Моб становится сильнее
-    log("Появился новый враг!", "m");
-    refreshUI();
+    if (typeof appState !== 'undefined') {
+        appState.lootActive = false;
+        // Здесь можно добавить логику обновления статов в appState
+    }
 }
 
 // --- Суперспособности (Ульта) ---
 window.useAbility = (type) => {
-    const p = appState.player;
-    const scene = window.gameScene;
-
-    if (!scene || scene.isAnimating || appState.turn !== "PLAYER") return;
-
-    if (type === 'strike' && p.mana >= 40) {
-        p.mana -= 40;
-        log("УЛЬТА: Огненный шквал!", "crit");
-        
-        // Взрываем все красные плитки на поле
-        const redTiles = [];
-        scene.grid.forEach(row => row.forEach(tile => {
-            if (tile && tile.type === 'red') redTiles.push(tile);
-        }));
-        
-        if (redTiles.length > 0) {
-            scene.explode(redTiles).then(() => scene.refill());
-        }
-    } 
-    else if (type === 'heal' && p.mana >= 30) {
-        p.mana -= 30;
-        p.hp = Math.min(p.maxHp, p.hp + 50);
-        log("МАГИЯ: Исцеление +50 HP", "p");
-    }
-    else {
-        log("Недостаточно маны!", "m");
-    }
+    // Берем сцену напрямую из Phaser
+    const scene = window.phaserGame ? window.phaserGame.scene.scenes[0] : null;
     
-    refreshUI();
+    if (!scene || scene.isAnimating) return;
+
+    if (type === 'strike') {
+        console.log("Используем УДАР");
+        // Логика взрыва плиток в GameScene
+        if (scene.handleUltimate) scene.handleUltimate('red');
+    } else if (type === 'heal') {
+        console.log("Используем ЛЕЧЕНИЕ");
+        if (typeof appState !== 'undefined') {
+            appState.player.hp = Math.min(appState.player.maxHp, appState.player.hp + 50);
+            if (window.refreshUI) window.refreshUI();
+        }
+    }
 };
 
-// --- Вспомогательные функции для UI ---
-window.toggleInventory = () => {
-    const inv = document.getElementById('inventory-screen');
-    inv.classList.toggle('hidden');
-};
-
-// Запуск при загрузке
+// Запуск начального UI
 window.addEventListener('load', () => {
-    refreshUI();
+    console.log("Main.js загружен и готов");
 });
