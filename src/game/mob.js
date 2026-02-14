@@ -4,7 +4,7 @@ export function spawnMob() {
   const lvl = window.app.player.level;
 
   window.app.mob = {
-    name: `Гоблин Ур.${lvl}`,
+    name: `Goblin Lv.${lvl}`,
     hp: 200 + lvl * 100,
     maxHp: 200 + lvl * 100,
     atk: 20 + lvl * 10,
@@ -19,7 +19,7 @@ export function spawnMob() {
   window.app.turn = "PLAYER";
   window.app.lootActive = false;
 
-  window.app.log(`Появился враг: ${window.app.mob.name}`, 'm');
+  window.app.log(`Enemy appeared: ${window.app.mob.name}`, 'm');
 
   refreshUI();
 }
