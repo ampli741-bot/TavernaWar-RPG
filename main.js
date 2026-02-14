@@ -6,8 +6,10 @@ import { adjs, slotNames } from "./data/constants.js";
 let currentLoot = null;
 
 // --- ИНИЦИАЛИЗАЦИЯ ИГРЫ ---
+// Экспортируем функцию в window, чтобы HTML её видел
 window.startGame = function(key) {
-    document.getElementById('menu-overlay').style.display = 'none';
+    const overlay = document.getElementById('menu-overlay');
+    if (overlay) overlay.style.display = 'none';
     
     const baseStats = { 
         'warrior': { hp: 1600, atk: 25, agi: 5 }, 
@@ -38,7 +40,8 @@ window.startGame = function(key) {
     };
     
     // Установка портрета
-    document.getElementById('p-portrait').style.backgroundImage = `url('assets/hero_${imgKey}.jpg')`;
+    const portrait = document.getElementById('p-portrait');
+    if (portrait) portrait.style.backgroundImage = `url('assets/hero_${imgKey}.jpg')`;
     
     // Запуск Phaser
     window.phaserGame = new Phaser.Game({
@@ -50,11 +53,14 @@ window.startGame = function(key) {
         transparent: true
     });
 
+    // Важно: спавним моба ПОСЛЕ инициализации игрока
     spawnMob();
 };
 
 // --- МОНСТРЫ ---
 function spawnMob() {
+    if (!appState.player) return;
+
     let lvl = appState.player.level;
     appState.mob = { 
         name: "Гоблин Ур." + lvl, 
@@ -63,13 +69,21 @@ function spawnMob() {
         atk: 20 + (lvl * 10), 
         mana: 0 
     };
-    document.getElementById('m-name').innerText = appState.mob.name;
-    document.getElementById('m-portrait').style.backgroundImage = `url('assets/monster_goblin.jpg')`;
+
+    const mName = document.getElementById('m-name');
+    const mPortrait = document.getElementById('m-portrait');
+    
+    if (mName) mName.innerText = appState.mob.name;
+    if (mPortrait) mPortrait.style.backgroundImage = `url('assets/monster_goblin.jpg')`;
     
     appState.turn = "PLAYER";
     appState.lootActive = false;
-    refreshUI();
-    log(`Появился ${appState.mob.name}!`, 'sys');
+    
+    // Даем Phaser время на загрузку перед логом
+    setTimeout(() => {
+        refreshUI();
+        log(`Появился ${appState.mob.name}!`, 'sys');
+    }, 100);
 }
 
 // --- СИСТЕМА ЛУТА ---
@@ -79,18 +93,21 @@ window.showLootScreen = function() {
     
     let old = appState.player.equip[currentLoot.slot] || { n: "Пусто", atk: 0, arm: 0, agi: 0, rar: 0 };
     
-    document.getElementById('loot-compare').innerHTML = `
-        <div style="background:#222; padding:10px; border: 1px solid #444;">
-            <div style="font-size:10px; color:#888;">ТЕКУЩИЙ ПРЕДМЕТ:</div>
-            <b style="color:var(--rar${old.rar})">${old.n}</b><br>
-            ⚔️${old.atk} 🛡️${old.arm} 💨${old.agi}
-        </div>
-        <div style="background:#222; padding:10px; border: 1px solid var(--gold);">
-            <div style="font-size:10px; color:var(--gold);">НОВЫЙ ТРОФЕЙ:</div>
-            <b style="color:var(--rar${currentLoot.rar})">${currentLoot.n}</b><br>
-            ⚔️${currentLoot.atk} 🛡️${currentLoot.arm} 💨${currentLoot.agi}
-        </div>
-    `;
+    const compareBox = document.getElementById('loot-compare');
+    if (compareBox) {
+        compareBox.innerHTML = `
+            <div style="background:#222; padding:10px; border: 1px solid #444;">
+                <div style="font-size:10px; color:#888;">ТЕКУЩИЙ ПРЕДМЕТ:</div>
+                <b style="color:var(--rar${old.rar})">${old.n}</b><br>
+                ⚔️${old.atk} 🛡️${old.arm} 💨${old.agi}
+            </div>
+            <div style="background:#222; padding:10px; border: 1px solid var(--gold);">
+                <div style="font-size:10px; color:var(--gold);">НОВЫЙ ТРОФЕЙ:</div>
+                <b style="color:var(--rar${currentLoot.rar})">${currentLoot.n}</b><br>
+                ⚔️${currentLoot.atk} 🛡️${currentLoot.arm} 💨${currentLoot.agi}
+            </div>
+        `;
+    }
     document.getElementById('loot-overlay').style.display = 'flex';
 };
 
@@ -112,7 +129,7 @@ function generateLoot() {
 
 window.takeLoot = function() {
     appState.player.equip[currentLoot.slot] = currentLoot;
-    appState.player.armor = appState.player.maxArmor; // Восстанавливаем броню при экипировке
+    appState.player.armor = appState.player.maxArmor; 
     closeLoot();
 };
 
@@ -131,9 +148,9 @@ function closeLoot() {
 // --- СУПЕРСПОСОБНОСТИ (УЛЬТА) ---
 window.useUltra = async function() {
     const p = appState.player;
-    if (p.mana < 100 || appState.lootActive) return;
+    if (!p || p.mana < 100 || appState.lootActive) return;
     
-    const scene = window.gameScene; // Ссылка из GameScene.js
+    const scene = window.gameScene; 
     if (!scene || scene.isAnimating) return;
 
     p.mana = 0;
@@ -147,7 +164,6 @@ window.useUltra = async function() {
     } else if (p.key === 'mage') {
         toExplode = gridFlat.filter(t => t.type === 'purple' || t.type === 'yellow');
     } else if (p.key === 'archer') {
-        // 4 случайных линии
         for(let i=0; i<4; i++) {
             let r = Math.floor(Math.random() * 8);
             for(let c=0; c<8; c++) if(scene.grid[r][c]) toExplode.push(scene.grid[r][c]);
