@@ -8,6 +8,7 @@ export class GameScene extends Phaser.Scene {
     this.rows = 8;
     this.tileSize = 80;
     this.grid = [];
+    this.selected = null;
 
     const types = ['red', 'blue', 'green', 'purple', 'yellow'];
     const colors = {
@@ -30,7 +31,7 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // создаём тайлы
+    // создание тайлов
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
 
@@ -48,14 +49,82 @@ export class GameScene extends Phaser.Scene {
         tile.setStrokeStyle(2, 0x222222);
         tile.setInteractive();
 
+        const cell = { x, y, type, tile };
+
         tile.on('pointerdown', () => {
-          console.log(`Tile clicked → [${x}, ${y}] type=${type}`);
+          this.handleClick(cell);
         });
 
-        this.grid[y][x] = { x, y, type, tile };
+        this.grid[y][x] = cell;
       }
     }
 
-    console.log('Typed grid created');
+    console.log('Swap-ready grid created');
+  }
+
+  handleClick(cell) {
+    if (!this.selected) {
+      this.select(cell);
+      return;
+    }
+
+    if (this.selected === cell) {
+      this.clearSelection();
+      return;
+    }
+
+    if (this.areNeighbors(this.selected, cell)) {
+      this.swap(this.selected, cell);
+      this.clearSelection();
+    } else {
+      this.clearSelection();
+      this.select(cell);
+    }
+  }
+
+  select(cell) {
+    this.selected = cell;
+    cell.tile.setStrokeStyle(4, 0xffffff);
+    console.log(`Selected [${cell.x}, ${cell.y}]`);
+  }
+
+  clearSelection() {
+    if (this.selected) {
+      this.selected.tile.setStrokeStyle(2, 0x222222);
+      this.selected = null;
+    }
+  }
+
+  areNeighbors(a, b) {
+    const dx = Math.abs(a.x - b.x);
+    const dy = Math.abs(a.y - b.y);
+    return dx + dy === 1;
+  }
+
+  swap(a, b) {
+    // меняем в массиве
+    this.grid[a.y][a.x] = b;
+    this.grid[b.y][b.x] = a;
+
+    // меняем координаты
+    [a.x, b.x] = [b.x, a.x];
+    [a.y, b.y] = [b.y, a.y];
+
+    // анимация
+    this.tweens.add({
+      targets: a.tile,
+      x: b.tile.x,
+      y: b.tile.y,
+      duration: 200
+    });
+
+    this.tweens.add({
+      targets: b.tile,
+      x: a.tile.x,
+      y: a.tile.y,
+      duration: 200
+    });
+
+    console.log('Tiles swapped');
   }
 }
