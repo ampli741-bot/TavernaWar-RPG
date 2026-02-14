@@ -1,6 +1,6 @@
 import { appState, log, refreshUI } from "./game/appState.js";
 import { GameScene } from "./phaser/GameScene.js";
-import { adjs, slotNames } from "./data/constants.js";
+import { adjs, slotNames } from "./data/constants.js"; // Проверь, что constants.js в data, а не в data/text
 
 // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 let currentLoot = null;
