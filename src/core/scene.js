@@ -31,7 +31,7 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // создание тайлов
+    // сетка
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
 
@@ -59,7 +59,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    console.log('Swap-ready grid created');
+    console.log('Grid created');
   }
 
   handleClick(cell) {
@@ -101,36 +101,32 @@ export class GameScene extends Phaser.Scene {
     return dx + dy === 1;
   }
 
- swap(a, b) {
-  // 1. сохраняем реальные позиции тайлов
-  const ax = a.tile.x;
-  const ay = a.tile.y;
-  const bx = b.tile.x;
-  const by = b.tile.y;
+  swap(a, b) {
+    const ax = a.tile.x;
+    const ay = a.tile.y;
+    const bx = b.tile.x;
+    const by = b.tile.y;
 
-  // 2. меняем в логической сетке
-  this.grid[a.y][a.x] = b;
-  this.grid[b.y][b.x] = a;
+    this.grid[a.y][a.x] = b;
+    this.grid[b.y][b.x] = a;
 
-  // 3. меняем логические координаты
-  [a.x, b.x] = [b.x, a.x];
-  [a.y, b.y] = [b.y, a.y];
+    [a.x, b.x] = [b.x, a.x];
+    [a.y, b.y] = [b.y, a.y];
 
-  // 4. анимируем В СОХРАНЁННЫЕ координаты
-  this.tweens.add({
-    targets: a.tile,
-    x: bx,
-    y: by,
-    duration: 200
-  });
+    this.tweens.add({
+      targets: a.tile,
+      x: bx,
+      y: by,
+      duration: 200
+    });
 
-  this.tweens.add({
-    targets: b.tile,
-    x: ax,
-    y: ay,
-    duration: 200
-  });
+    this.tweens.add({
+      targets: b.tile,
+      x: ax,
+      y: ay,
+      duration: 200
+    });
 
-  console.log('Tiles swapped');
+    console.log('Tiles swapped');
+  }
 }
-
