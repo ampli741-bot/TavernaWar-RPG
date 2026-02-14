@@ -30,14 +30,14 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // создаём сетку
+    // создаём тайлы
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
 
       for (let x = 0; x < this.cols; x++) {
         const type = Phaser.Utils.Array.GetRandom(types);
 
-        const rect = this.add.rectangle(
+        const tile = this.add.rectangle(
           offsetX + x * this.tileSize + this.tileSize / 2,
           offsetY + y * this.tileSize + this.tileSize / 2,
           this.tileSize - 6,
@@ -45,14 +45,14 @@ export class GameScene extends Phaser.Scene {
           colors[type]
         );
 
-        rect.setStrokeStyle(2, 0x222222);
-        rect.setInteractive();
+        tile.setStrokeStyle(2, 0x222222);
+        tile.setInteractive();
 
-        rect.on('pointerdown', () => {
+        tile.on('pointerdown', () => {
           console.log(`Tile clicked → [${x}, ${y}] type=${type}`);
         });
 
-        this.grid[y][x] = { x, y, type, rect };
+        this.grid[y][x] = { x, y, type, tile };
       }
     }
 
