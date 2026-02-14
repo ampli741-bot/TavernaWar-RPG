@@ -20,8 +20,8 @@ export class GameScene extends Phaser.Scene {
       yellow: 0xaaaa33
     };
 
-    const offsetX = (this.sys.game.config.width - this.cols * this.tileSize) / 2;
-    const offsetY = (this.sys.game.config.height - this.rows * this.tileSize) / 2;
+    this.offsetX = (this.sys.game.config.width - this.cols * this.tileSize) / 2;
+    this.offsetY = (this.sys.game.config.height - this.rows * this.tileSize) / 2;
 
     // фон
     this.add.rectangle(
@@ -32,42 +32,41 @@ export class GameScene extends Phaser.Scene {
       0x1e1e1e
     );
 
-    // создаём сетку
+    // сетка
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
-
       for (let x = 0; x < this.cols; x++) {
-        const type = Phaser.Utils.Array.GetRandom(this.types);
-
-        const tile = this.add.rectangle(
-          offsetX + x * this.tileSize + this.tileSize / 2,
-          offsetY + y * this.tileSize + this.tileSize / 2,
-          this.tileSize - 6,
-          this.tileSize - 6,
-          this.colors[type]
-        );
-
-        tile.setStrokeStyle(2, 0x222222);
-        tile.setInteractive();
-
-        const cell = { x, y, type, tile };
-
-        tile.on('pointerdown', () => this.handleClick(cell));
-
-        this.grid[y][x] = cell;
+        this.spawnTile(x, y);
       }
     }
 
     console.log('Grid created');
   }
 
-  // =======================
-  // INPUT
-  // =======================
+  spawnTile(x, y) {
+    const type = Phaser.Utils.Array.GetRandom(this.types);
+
+    const tile = this.add.rectangle(
+      this.offsetX + x * this.tileSize + this.tileSize / 2,
+      this.offsetY + y * this.tileSize + this.tileSize / 2,
+      this.tileSize - 6,
+      this.tileSize - 6,
+      this.colors[type]
+    );
+
+    tile.setStrokeStyle(2, 0x222222);
+    tile.setInteractive();
+
+    const cell = { x, y, type, tile };
+
+    tile.on('pointerdown', () => {
+      if (!this.isBusy) this.handleClick(cell);
+    });
+
+    this.grid[y][x] = cell;
+  }
 
   handleClick(cell) {
-    if (this.isBusy) return;
-
     if (!this.selected) {
       this.select(cell);
       return;
@@ -81,6 +80,9 @@ export class GameScene extends Phaser.Scene {
     if (this.areNeighbors(this.selected, cell)) {
       this.swap(this.selected, cell);
       this.clearSelection();
+      this.time.delayedCall(250, () => {
+        this.applyGravity();
+      });
     } else {
       this.clearSelection();
       this.select(cell);
@@ -105,10 +107,6 @@ export class GameScene extends Phaser.Scene {
     return dx + dy === 1;
   }
 
-  // =======================
-  // SWAP
-  // =======================
-
   swap(a, b) {
     this.isBusy = true;
 
@@ -117,7 +115,6 @@ export class GameScene extends Phaser.Scene {
     const bx = b.tile.x;
     const by = b.tile.y;
 
-    // логическая сетка
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
 
@@ -136,96 +133,47 @@ export class GameScene extends Phaser.Scene {
       x: ax,
       y: ay,
       duration: 200,
-      onComplete: () => this.afterSwap()
+      onComplete: () => {
+        this.isBusy = false;
+      }
     });
   }
 
-  afterSwap() {
-    const matches = this.findMatches();
+  applyGravity() {
+    this.isBusy = true;
+    let moved = false;
 
-    if (matches.length > 0) {
-      this.highlightMatches(matches);
-
-      this.time.delayedCall(300, () => {
-        this.removeMatches(matches);
-      });
-    } else {
-      this.isBusy = false;
-    }
-  }
-
-  // =======================
-  // MATCH FIND
-  // =======================
-
-  findMatches() {
-    const matches = [];
-
-    // горизонталь
-    for (let y = 0; y < this.rows; y++) {
-      let run = [this.grid[y][0]];
-
-      for (let x = 1; x < this.cols; x++) {
-        const cell = this.grid[y][x];
-        const prev = run[run.length - 1];
-
-        if (cell.type === prev.type) {
-          run.push(cell);
-        } else {
-          if (run.length >= 3) matches.push(...run);
-          run = [cell];
-        }
-      }
-      if (run.length >= 3) matches.push(...run);
-    }
-
-    // вертикаль
     for (let x = 0; x < this.cols; x++) {
-      let run = [this.grid[0][x]];
+      for (let y = this.rows - 1; y >= 0; y--) {
+        if (!this.grid[y][x]) {
+          for (let yy = y - 1; yy >= 0; yy--) {
+            const above = this.grid[yy][x];
+            if (above) {
+              this.grid[y][x] = above;
+              this.grid[yy][x] = null;
 
-      for (let y = 1; y < this.rows; y++) {
-        const cell = this.grid[y][x];
-        const prev = run[run.length - 1];
+              const newY = this.offsetY + y * this.tileSize + this.tileSize / 2;
 
-        if (cell.type === prev.type) {
-          run.push(cell);
-        } else {
-          if (run.length >= 3) matches.push(...run);
-          run = [cell];
+              this.tweens.add({
+                targets: above.tile,
+                y: newY,
+                duration: 200
+              });
+
+              above.y = y;
+              moved = true;
+              break;
+            }
+          }
         }
       }
-      if (run.length >= 3) matches.push(...run);
     }
 
-    return [...new Set(matches)];
-  }
-
-  // =======================
-  // HIGHLIGHT + REMOVE
-  // =======================
-
-  highlightMatches(matches) {
-    matches.forEach(cell => {
-      cell.tile.setStrokeStyle(4, 0xffff00);
-    });
-  }
-
-  removeMatches(matches) {
-    matches.forEach(cell => {
-      this.tweens.add({
-        targets: cell.tile,
-        scale: 0,
-        alpha: 0,
-        duration: 250,
-        onComplete: () => {
-          cell.tile.destroy();
-          this.grid[cell.y][cell.x] = null;
-        }
-      });
-    });
-
-    this.time.delayedCall(300, () => {
+    this.time.delayedCall(250, () => {
       this.isBusy = false;
+      if (moved) {
+        console.log('Gravity applied');
+      }
     });
   }
 }
