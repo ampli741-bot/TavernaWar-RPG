@@ -47,3 +47,24 @@ window.spawnMob = function() {
 window.useUltra = () => { /* твоя логика ульты */ };
 window.takeLoot = () => { /* твоя логика взять лут */ };
 window.sellLoot = () => { /* твоя логика продать */ };
+
+window.showLootScreen = function() {
+    appState.lootActive = true;
+    document.getElementById('loot-overlay').style.display = 'flex';
+    // Тут можно добавить логику генерации предмета
+};
+
+window.takeLoot = function() {
+    document.getElementById('loot-overlay').style.display = 'none';
+    appState.player.level++;
+    window.spawnMob();
+};
+
+window.useUltra = function() {
+    if(appState.player.mana >= 100 && window.gameScene) {
+        appState.player.mana = 0;
+        // Здесь можно вызвать какой-то метод взрыва из gameScene
+        log("ИСПОЛЬЗОВАНА СУПЕРСПОСОБНОСТЬ!", "crit");
+        refreshUI();
+    }
+};
