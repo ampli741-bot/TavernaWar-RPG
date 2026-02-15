@@ -1,6 +1,5 @@
-const TILE = 64;
-const COLS = 8;
-const ROWS = 8;
+const BASE_COLS = 8;
+const BASE_ROWS = 8;
 
 const COLORS = ["red", "blue", "green", "yellow", "purple"];
 const MAP = {
@@ -27,42 +26,59 @@ export default class GameScene extends Phaser.Scene {
     create() {
         const { width, height } = this.scale;
 
+        // фон
         this.add.image(width / 2, height / 2, "bg")
             .setDisplaySize(width, height)
             .setDepth(-10);
 
-        this.boardX = width / 2 - (COLS * TILE) / 2;
-        this.boardY = height / 2 - (ROWS * TILE) / 2;
+        // вычисляем размер плитки АДАПТИВНО
+        const maxBoardWidth = width * 0.45;
+        const maxBoardHeight = height * 0.8;
+
+        this.TILE = Math.floor(
+            Math.min(
+                maxBoardWidth / BASE_COLS,
+                maxBoardHeight / BASE_ROWS
+            )
+        );
+
+        this.boardWidth = this.TILE * BASE_COLS;
+        this.boardHeight = this.TILE * BASE_ROWS;
+
+        this.boardX = width / 2 - this.boardWidth / 2;
+        this.boardY = height / 2 - this.boardHeight / 2;
 
         this.createBoard();
     }
 
     createBoard() {
-        for (let y = 0; y < ROWS; y++) {
+        for (let y = 0; y < BASE_ROWS; y++) {
             this.grid[y] = [];
-            for (let x = 0; x < COLS; x++) {
-                const c = Phaser.Utils.Array.GetRandom(COLORS);
-                const t = this.createTile(x, y, c);
-                this.grid[y][x] = t;
+            for (let x = 0; x < BASE_COLS; x++) {
+                const color = Phaser.Utils.Array.GetRandom(COLORS);
+                const tile = this.createTile(x, y, color);
+                this.grid[y][x] = tile;
             }
         }
     }
 
     createTile(x, y, color) {
-        const r = this.add.rectangle(
-            this.boardX + x * TILE + TILE / 2,
-            this.boardY + y * TILE + TILE / 2,
-            TILE - 6,
-            TILE - 6,
+        const tile = this.add.rectangle(
+            this.boardX + x * this.TILE + this.TILE / 2,
+            this.boardY + y * this.TILE + this.TILE / 2,
+            this.TILE - 6,
+            this.TILE - 6,
             MAP[color]
-        ).setInteractive();
+        )
+        .setInteractive({ useHandCursor: true });
 
-        r.data = { x, y, color };
-        r.on("pointerdown", () => this.clickTile(r));
-        return r;
+        tile.data = { x, y, color };
+
+        tile.on("pointerdown", () => this.onTileClick(tile));
+        return tile;
     }
 
-    clickTile(tile) {
+    onTileClick(tile) {
         if (this.locked || this.turn !== "player") return;
 
         if (!this.selected) {
@@ -71,28 +87,34 @@ export default class GameScene extends Phaser.Scene {
         }
 
         if (this.isNeighbor(this.selected, tile)) {
-            this.swap(this.selected, tile, () => {
+            this.swapTiles(this.selected, tile, () => {
                 this.turn = "mob";
-                this.time.delayedCall(500, () => this.mobTurn());
+                this.time.delayedCall(600, () => this.mobTurn());
             });
-            this.selected.setStrokeStyle();
-            this.selected = null;
+            this.clearSelection();
         } else {
             this.select(tile);
         }
     }
 
     select(tile) {
-        if (this.selected) this.selected.setStrokeStyle();
+        this.clearSelection();
         this.selected = tile;
         tile.setStrokeStyle(3, 0xffffff);
+    }
+
+    clearSelection() {
+        if (this.selected) {
+            this.selected.setStrokeStyle();
+            this.selected = null;
+        }
     }
 
     isNeighbor(a, b) {
         return Math.abs(a.data.x - b.data.x) + Math.abs(a.data.y - b.data.y) === 1;
     }
 
-    swap(a, b, cb) {
+    swapTiles(a, b, onComplete) {
         this.locked = true;
 
         const ax = a.data.x, ay = a.data.y;
@@ -106,25 +128,28 @@ export default class GameScene extends Phaser.Scene {
 
         this.tweens.add({
             targets: [a, b],
-            x: (_, t) => this.boardX + t.data.x * TILE + TILE / 2,
-            y: (_, t) => this.boardY + t.data.y * TILE + TILE / 2,
-            duration: 180,
+            x: t => this.boardX + t.data.x * this.TILE + this.TILE / 2,
+            y: t => this.boardY + t.data.y * this.TILE + this.TILE / 2,
+            duration: 200,
+            ease: "Cubic.Out",
             onComplete: () => {
                 this.locked = false;
-                cb && cb();
+                onComplete && onComplete();
             }
         });
     }
 
     mobTurn() {
-        // простая ИИ-заглушка (не автоигра!)
-        const x = Phaser.Math.Between(0, COLS - 2);
-        const y = Phaser.Math.Between(0, ROWS - 1);
+        // простой ИИ: случайный допустимый swap
+        let a, b;
+        do {
+            const x = Phaser.Math.Between(0, BASE_COLS - 2);
+            const y = Phaser.Math.Between(0, BASE_ROWS - 1);
+            a = this.grid[y][x];
+            b = this.grid[y][x + 1];
+        } while (!a || !b);
 
-        const a = this.grid[y][x];
-        const b = this.grid[y][x + 1];
-
-        this.swap(a, b, () => {
+        this.swapTiles(a, b, () => {
             this.turn = "player";
         });
     }
