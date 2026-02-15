@@ -2,9 +2,9 @@ import { app } from "./core/app.js";
 import { createPlayer } from "./core/player.js";
 import { createMob } from "./core/mob.js";
 import { initPhaser } from "./phaser/game.js";
-import refreshUI from "./ui/ui.js";
+import refreshUi from "./ui/ui.js";
 
-console.log("🔥 main.js loaded");
+console.log("🔥 main.js FINAL loaded");
 
 window.startGame = function (key) {
     console.log("▶ startGame:", key);
@@ -19,5 +19,5 @@ window.startGame = function (key) {
         `url('assets/hero_${imgKey}.jpg')`;
 
     initPhaser();
-    refreshUI();
+    refreshUi();
 };
