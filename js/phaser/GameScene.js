@@ -4,8 +4,6 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        console.log("🎮 GameScene create");
-
         this.tileSize = 80;
         this.gridSize = 8;
         this.tiles = [];
@@ -23,18 +21,45 @@ export default class GameScene extends Phaser.Scene {
         for (let r = 0; r < this.gridSize; r++) {
             this.tiles[r] = [];
             for (let c = 0; c < this.gridSize; c++) {
-                this.spawnTile(r, c);
+                this.spawnTileSafe(r, c);
             }
         }
+
+        console.log("✅ Field generated without matches");
     }
 
-    spawnTile(row, col, fromTop = false) {
-        const color = Phaser.Utils.Array.GetRandom(this.colors);
+    /* ---------------- FIELD GENERATION ---------------- */
 
+    spawnTileSafe(row, col, fromTop = false) {
+        let color;
+        do {
+            color = Phaser.Utils.Array.GetRandom(this.colors);
+        } while (this.createsMatch(row, col, color));
+
+        this.spawnTile(row, col, color, fromTop);
+    }
+
+    createsMatch(row, col, color) {
+        // horizontal
+        if (
+            col >= 2 &&
+            this.tiles[row][col - 1]?.colorValue === color &&
+            this.tiles[row][col - 2]?.colorValue === color
+        ) return true;
+
+        // vertical
+        if (
+            row >= 2 &&
+            this.tiles[row - 1]?.[col]?.colorValue === color &&
+            this.tiles[row - 2]?.[col]?.colorValue === color
+        ) return true;
+
+        return false;
+    }
+
+    spawnTile(row, col, color, fromTop = false) {
         const x = col * this.tileSize + this.tileSize / 2;
-        const y = fromTop
-            ? -this.tileSize
-            : row * this.tileSize + this.tileSize / 2;
+        const y = fromTop ? -this.tileSize : row * this.tileSize + this.tileSize / 2;
 
         const tile = this.add.rectangle(
             x,
@@ -52,7 +77,6 @@ export default class GameScene extends Phaser.Scene {
         tile.colorValue = color;
 
         tile.on("pointerdown", () => this.onTileClick(tile));
-
         this.tiles[row][col] = tile;
 
         if (fromTop) {
@@ -64,29 +88,24 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    /* ---------------- INPUT ---------------- */
+
     onTileClick(tile) {
         if (this.isAnimating) return;
 
-        console.log(`CLICK [${tile.row},${tile.col}]`);
-
-        // первый выбор
         if (!this.selected) {
             this.selectTile(tile);
             return;
         }
 
-        // повторный клик
         if (this.selected === tile) {
             this.clearSelection();
             return;
         }
 
-        // swap с соседом
         if (this.isNeighbor(this.selected, tile)) {
-            console.log("SWAP!");
-            this.swapTiles(this.selected, tile);
+            this.trySwap(this.selected, tile);
         } else {
-            console.log("NOT NEIGHBOR");
             this.selectTile(tile);
         }
     }
@@ -95,54 +114,66 @@ export default class GameScene extends Phaser.Scene {
         this.clearSelection();
         this.selected = tile;
         tile.setStrokeStyle(6, 0xffffff);
-        tile.setDepth(10);
     }
 
     clearSelection() {
         if (this.selected) {
             this.selected.setStrokeStyle(2, 0x000000);
-            this.selected.setDepth(1);
             this.selected = null;
         }
     }
 
     isNeighbor(a, b) {
-        const dr = Math.abs(a.row - b.row);
-        const dc = Math.abs(a.col - b.col);
-        return dr + dc === 1;
+        return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
+    }
+
+    /* ---------------- SWAP LOGIC ---------------- */
+
+    async trySwap(a, b) {
+        this.isAnimating = true;
+        await this.swapTiles(a, b);
+
+        const matches = this.findMatches();
+        if (matches.length === 0) {
+            // ❌ invalid move → swap back
+            await this.swapTiles(a, b);
+        } else {
+            await this.resolveMatches();
+        }
+
+        this.clearSelection();
+        this.isAnimating = false;
     }
 
     swapTiles(a, b) {
-        this.isAnimating = true;
+        return new Promise(resolve => {
+            const aRow = a.row, aCol = a.col;
+            const bRow = b.row, bCol = b.col;
 
-        const aRow = a.row, aCol = a.col;
-        const bRow = b.row, bCol = b.col;
+            this.tiles[aRow][aCol] = b;
+            this.tiles[bRow][bCol] = a;
 
-        this.tiles[aRow][aCol] = b;
-        this.tiles[bRow][bCol] = a;
+            a.row = bRow; a.col = bCol;
+            b.row = aRow; b.col = aCol;
 
-        a.row = bRow; a.col = bCol;
-        b.row = aRow; b.col = aCol;
+            this.tweens.add({
+                targets: a,
+                x: a.col * this.tileSize + this.tileSize / 2,
+                y: a.row * this.tileSize + this.tileSize / 2,
+                duration: 150
+            });
 
-        this.tweens.add({
-            targets: a,
-            x: bCol * this.tileSize + this.tileSize / 2,
-            y: bRow * this.tileSize + this.tileSize / 2,
-            duration: 150
-        });
-
-        this.tweens.add({
-            targets: b,
-            x: aCol * this.tileSize + this.tileSize / 2,
-            y: aRow * this.tileSize + this.tileSize / 2,
-            duration: 150,
-            onComplete: async () => {
-                this.clearSelection();
-                await this.resolveMatches();
-                this.isAnimating = false;
-            }
+            this.tweens.add({
+                targets: b,
+                x: b.col * this.tileSize + this.tileSize / 2,
+                y: b.row * this.tileSize + this.tileSize / 2,
+                duration: 150,
+                onComplete: resolve
+            });
         });
     }
+
+    /* ---------------- MATCH / FALL ---------------- */
 
     async resolveMatches() {
         const matches = this.findMatches();
@@ -156,47 +187,37 @@ export default class GameScene extends Phaser.Scene {
     findMatches() {
         const result = new Set();
 
-        // горизонталь
         for (let r = 0; r < this.gridSize; r++) {
             let count = 1;
             for (let c = 1; c <= this.gridSize; c++) {
                 const curr = this.tiles[r][c];
                 const prev = this.tiles[r][c - 1];
-
-                if (curr && prev && curr.colorValue === prev.colorValue) {
-                    count++;
-                } else {
-                    if (count >= 3) {
-                        for (let k = 0; k < count; k++) {
+                if (curr && prev && curr.colorValue === prev.colorValue) count++;
+                else {
+                    if (count >= 3)
+                        for (let k = 0; k < count; k++)
                             result.add(this.tiles[r][c - 1 - k]);
-                        }
-                    }
                     count = 1;
                 }
             }
         }
 
-        // вертикаль
         for (let c = 0; c < this.gridSize; c++) {
             let count = 1;
             for (let r = 1; r <= this.gridSize; r++) {
                 const curr = this.tiles[r]?.[c];
                 const prev = this.tiles[r - 1]?.[c];
-
-                if (curr && prev && curr.colorValue === prev.colorValue) {
-                    count++;
-                } else {
-                    if (count >= 3) {
-                        for (let k = 0; k < count; k++) {
+                if (curr && prev && curr.colorValue === prev.colorValue) count++;
+                else {
+                    if (count >= 3)
+                        for (let k = 0; k < count; k++)
                             result.add(this.tiles[r - 1 - k][c]);
-                        }
-                    }
                     count = 1;
                 }
             }
         }
 
-        return Array.from(result);
+        return [...result];
     }
 
     async removeMatches(matches) {
@@ -207,9 +228,9 @@ export default class GameScene extends Phaser.Scene {
                 alpha: 0,
                 duration: 200,
                 onComplete: () => {
-                    matches.forEach(tile => {
-                        this.tiles[tile.row][tile.col] = null;
-                        tile.destroy();
+                    matches.forEach(t => {
+                        this.tiles[t.row][t.col] = null;
+                        t.destroy();
                     });
                     resolve();
                 }
@@ -220,16 +241,13 @@ export default class GameScene extends Phaser.Scene {
     async dropTiles() {
         for (let c = 0; c < this.gridSize; c++) {
             let empty = 0;
-
             for (let r = this.gridSize - 1; r >= 0; r--) {
                 const tile = this.tiles[r][c];
-                if (!tile) {
-                    empty++;
-                } else if (empty > 0) {
+                if (!tile) empty++;
+                else if (empty > 0) {
                     this.tiles[r + empty][c] = tile;
                     this.tiles[r][c] = null;
                     tile.row = r + empty;
-
                     this.tweens.add({
                         targets: tile,
                         y: tile.row * this.tileSize + this.tileSize / 2,
@@ -237,12 +255,10 @@ export default class GameScene extends Phaser.Scene {
                     });
                 }
             }
-
             for (let i = 0; i < empty; i++) {
-                this.spawnTile(i, c, true);
+                this.spawnTileSafe(i, c, true);
             }
         }
-
         return new Promise(r => this.time.delayedCall(300, r));
     }
 }
