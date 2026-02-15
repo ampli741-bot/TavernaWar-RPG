@@ -1,3 +1,4 @@
+alert('SCENE.JS LOADED');
 // =====================================================
 // CONFIG
 // =====================================================
@@ -336,5 +337,5 @@ export class GameScene extends Phaser.Scene {
     await new Promise(r => this.time.delayedCall(300, r));
   }
 }
-alert('SCENE.JS LOADED');
+
 
