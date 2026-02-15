@@ -1,25 +1,36 @@
-export function createPlayer(key) {
-    const base = {
-        warrior: { hp:1600, atk:25, agi:5 },
-        mage: { hp:800, atk:65, agi:2 },
-        archer: { hp:1000, atk:40, agi:18 },
-        assassin: { hp:900, atk:55, agi:14 }
-    }[key];
+export default class Player {
+    constructor() {
+        this.maxHp = 100;
+        this.hp = 100;
 
-    return {
-        job: key.toUpperCase(),
-        key,
-        hp: base.hp,
-        maxHp: base.hp,
-        armor: 0,
-        maxArmor: 0,
-        mana: 0,
-        gold: 0,
-        level: 1,
-        baseAtk: base.atk,
-        baseAgi: base.agi,
-        equip: {
-            weapon: { n:"Старая палка", atk:12, arm:0, agi:0, rar:0 }
+        this.maxMana = 100;
+        this.mana = 0;
+
+        this.gold = 0;
+    }
+
+    applyTurn(result) {
+        if (result.damage) {
+            console.log("⚔️ Player deals", result.damage);
         }
-    };
+
+        if (result.mana) {
+            this.mana = Math.min(this.maxMana, this.mana + result.mana * 10);
+            console.log("🔵 Player mana +", result.mana * 10);
+        }
+
+        if (result.heal) {
+            this.hp = Math.min(this.maxHp, this.hp + result.heal * 5);
+            console.log("💚 Player heal +", result.heal * 5);
+        }
+
+        if (result.gold) {
+            this.gold += result.gold;
+            console.log("💰 Gold +", result.gold);
+        }
+
+        if (result.curse) {
+            console.log("💜 Curse applied:", result.curse);
+        }
+    }
 }

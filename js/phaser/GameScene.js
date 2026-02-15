@@ -1,3 +1,41 @@
+console.log("🧨 MAIN VERSION CLEAN");
+
+import Player from "./core/player.js";
+import Mob from "./core/mob.js";
+
+window.player = new Player();
+window.mob = new Mob();
+
+
+import { app } from "./core/app.js";
+import { createPlayer } from "./core/player.js";
+import { createMob } from "./core/mob.js";
+import { initPhaser } from "./phaser/game.js";
+import refreshUi from "./ui/ui.js";
+
+window.startGame = function (key) {
+    console.log("▶ startGame:", key);
+
+    // 🔥 БОЛЬШЕ НИКАКИХ style ВООБЩЕ
+    const menu = document.getElementById("menu-overlay");
+    if (menu) {
+        menu.remove(); // безопасно, без .style
+    }
+
+    // === INIT GAME STATE ===
+    app.player = createPlayer(key);
+    app.mob = createMob(1);
+
+    // === START PHASER ===
+    initPhaser();
+
+    // === SAFE UI ===
+    try {
+        refreshUi();
+    } catch (e) {
+        console.warn("UI not ready yet (ok)");
+    }
+};
 export default class GameScene extends Phaser.Scene {
     constructor() {
         super("GameScene");
@@ -235,9 +273,17 @@ export default class GameScene extends Phaser.Scene {
 
         // конец хода
         if (!matches.length) {
-            console.log("TURN RESULT:", this.turnResult);
-            return;
-        }
+    console.log("TURN RESULT:", this.turnResult);
+
+    window.player.applyTurn(this.turnResult);
+
+    if (this.turnResult.damage) {
+        window.mob.takeDamage(this.turnResult.damage * 10);
+    }
+
+    return;
+}
+
 
         // считаем цвета
         matches.forEach(tile => {

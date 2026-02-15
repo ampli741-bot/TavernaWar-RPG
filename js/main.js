@@ -1,5 +1,12 @@
 console.log("🧨 MAIN VERSION CLEAN");
 
+import Player from "./core/player.js";
+import Mob from "./core/mob.js";
+
+window.player = new Player();
+window.mob = new Mob();
+
+
 import { app } from "./core/app.js";
 import { createPlayer } from "./core/player.js";
 import { createMob } from "./core/mob.js";
