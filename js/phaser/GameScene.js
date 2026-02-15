@@ -3,10 +3,9 @@ const COLS = 8;
 const ROWS = 8;
 
 const COLORS = ["red", "blue", "green", "yellow", "purple"];
-
-const COLOR_MAP = {
+const MAP = {
     red: 0xff4d4d,
-    blue: 0x4d88ff,
+    blue: 0x4d7cff,
     green: 0x4dff4d,
     yellow: 0xffdd4d,
     purple: 0xaa4dff
@@ -18,17 +17,20 @@ export default class GameScene extends Phaser.Scene {
         this.grid = [];
         this.selected = null;
         this.locked = false;
+        this.turn = "player";
+    }
+
+    preload() {
+        this.load.image("bg", "assets/bg.jpg");
     }
 
     create() {
         const { width, height } = this.scale;
 
-        // === BACKGROUND ===
-        this.add.image(width / 2, height / 2, null)
+        this.add.image(width / 2, height / 2, "bg")
             .setDisplaySize(width, height)
             .setDepth(-10);
 
-        // === BOARD ORIGIN (НЕ зависит от UI) ===
         this.boardX = width / 2 - (COLS * TILE) / 2;
         this.boardY = height / 2 - (ROWS * TILE) / 2;
 
@@ -39,38 +41,41 @@ export default class GameScene extends Phaser.Scene {
         for (let y = 0; y < ROWS; y++) {
             this.grid[y] = [];
             for (let x = 0; x < COLS; x++) {
-                const color = Phaser.Utils.Array.GetRandom(COLORS);
-                const tile = this.createTile(x, y, color);
-                this.grid[y][x] = tile;
+                const c = Phaser.Utils.Array.GetRandom(COLORS);
+                const t = this.createTile(x, y, c);
+                this.grid[y][x] = t;
             }
         }
     }
 
     createTile(x, y, color) {
-        const rect = this.add.rectangle(
+        const r = this.add.rectangle(
             this.boardX + x * TILE + TILE / 2,
             this.boardY + y * TILE + TILE / 2,
-            TILE - 4,
-            TILE - 4,
-            COLOR_MAP[color]
+            TILE - 6,
+            TILE - 6,
+            MAP[color]
         ).setInteractive();
 
-        rect.data = { x, y, color };
-
-        rect.on("pointerdown", () => this.clickTile(rect));
-        return rect;
+        r.data = { x, y, color };
+        r.on("pointerdown", () => this.clickTile(r));
+        return r;
     }
 
     clickTile(tile) {
-        if (this.locked) return;
+        if (this.locked || this.turn !== "player") return;
 
         if (!this.selected) {
             this.select(tile);
             return;
         }
 
-        if (this.areNeighbors(this.selected, tile)) {
-            this.swap(this.selected, tile);
+        if (this.isNeighbor(this.selected, tile)) {
+            this.swap(this.selected, tile, () => {
+                this.turn = "mob";
+                this.time.delayedCall(500, () => this.mobTurn());
+            });
+            this.selected.setStrokeStyle();
             this.selected = null;
         } else {
             this.select(tile);
@@ -83,19 +88,15 @@ export default class GameScene extends Phaser.Scene {
         tile.setStrokeStyle(3, 0xffffff);
     }
 
-    areNeighbors(a, b) {
-        const dx = Math.abs(a.data.x - b.data.x);
-        const dy = Math.abs(a.data.y - b.data.y);
-        return dx + dy === 1;
+    isNeighbor(a, b) {
+        return Math.abs(a.data.x - b.data.x) + Math.abs(a.data.y - b.data.y) === 1;
     }
 
-    swap(a, b) {
+    swap(a, b, cb) {
         this.locked = true;
 
-        const ax = a.data.x;
-        const ay = a.data.y;
-        const bx = b.data.x;
-        const by = b.data.y;
+        const ax = a.data.x, ay = a.data.y;
+        const bx = b.data.x, by = b.data.y;
 
         this.grid[ay][ax] = b;
         this.grid[by][bx] = a;
@@ -105,18 +106,26 @@ export default class GameScene extends Phaser.Scene {
 
         this.tweens.add({
             targets: [a, b],
-            x: (_, t) => t.data.x * TILE + this.boardX + TILE / 2,
-            y: (_, t) => t.data.y * TILE + this.boardY + TILE / 2,
-            duration: 150,
+            x: (_, t) => this.boardX + t.data.x * TILE + TILE / 2,
+            y: (_, t) => this.boardY + t.data.y * TILE + TILE / 2,
+            duration: 180,
             onComplete: () => {
-                this.resolveTurn();
+                this.locked = false;
+                cb && cb();
             }
         });
     }
 
-    resolveTurn() {
-        // логика подсчёта совпадений — ОСТАЁТСЯ КАК У ТЕБЯ
-        // здесь только разблокировка
-        this.locked = false;
+    mobTurn() {
+        // простая ИИ-заглушка (не автоигра!)
+        const x = Phaser.Math.Between(0, COLS - 2);
+        const y = Phaser.Math.Between(0, ROWS - 1);
+
+        const a = this.grid[y][x];
+        const b = this.grid[y][x + 1];
+
+        this.swap(a, b, () => {
+            this.turn = "player";
+        });
     }
 }

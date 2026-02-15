@@ -1,21 +1,19 @@
-// js/phaser/game.js
 import GameScene from "./GameScene.js";
 
-let game = null;
+let game;
 
 export function initPhaser() {
     if (game) return;
 
     game = new Phaser.Game({
         type: Phaser.AUTO,
-        backgroundColor: "#000",
         parent: "game-container",
+        width: window.innerWidth,
+        height: window.innerHeight,
+        backgroundColor: "#000",
+        scene: GameScene,
         scale: {
-            mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.CENTER_BOTH,
-            width: 1280,
-            height: 720
-        },
-        scene: GameScene
+            mode: Phaser.Scale.RESIZE
+        }
     });
 }
