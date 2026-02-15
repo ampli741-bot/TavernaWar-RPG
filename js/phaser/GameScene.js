@@ -4,11 +4,11 @@ const SIZE = 8;
 const TILE = 80;
 
 const COLORS = [
-    { key: "damage", color: 0xff4444 },
-    { key: "mana",   color: 0x4488ff },
-    { key: "heal",   color: 0x44ff44 },
-    { key: "gold",   color: 0xffdd44 },
-    { key: "curse",  color: 0xaa44ff }
+    { key: "damage", color: 0xff4444 }, // красный
+    { key: "mana",   color: 0x4488ff }, // синий
+    { key: "heal",   color: 0x44ff44 }, // зелёный
+    { key: "gold",   color: 0xffdd44 }, // жёлтый
+    { key: "curse",  color: 0xaa44ff }  // фиолетовый
 ];
 
 export default class GameScene extends Phaser.Scene {
@@ -41,12 +41,17 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    /* =========================
+       UTILS
+    ========================= */
+
     emptyTurn() {
         return { damage: 0, mana: 0, heal: 0, gold: 0, curse: 0 };
     }
 
     spawnTile(x, y) {
         const t = Phaser.Utils.Array.GetRandom(COLORS);
+
         const rect = this.add.rectangle(
             x * TILE + TILE / 2,
             y * TILE + TILE / 2,
@@ -55,8 +60,7 @@ export default class GameScene extends Phaser.Scene {
             t.color
         ).setInteractive();
 
-        rect.data = { x, y, type: t.key };
-        rect.on("pointerdown", () => this.clickTile(rect));
+        rect.on("pointerdown", () => this.clickTile(x, y));
 
         return { rect, type: t.key };
     }
@@ -72,28 +76,37 @@ export default class GameScene extends Phaser.Scene {
         );
     }
 
-    clickTile(tile) {
+    /* =========================
+       INPUT
+    ========================= */
+
+    clickTile(x, y) {
         if (this.locked) return;
+        if (!this.tiles[y][x]) return;
 
         if (!this.selected) {
-            this.selected = tile;
-            tile.setStrokeStyle(3, 0xffffff);
+            this.selected = { x, y };
+            this.tiles[y][x].rect.setStrokeStyle(3, 0xffffff);
             return;
         }
 
         const a = this.selected;
-        const b = tile;
+        const b = { x, y };
 
-        this.selected.setStrokeStyle();
+        this.tiles[a.y][a.x].rect.setStrokeStyle();
         this.selected = null;
 
-        const dx = Math.abs(a.data.x - b.data.x);
-        const dy = Math.abs(a.data.y - b.data.y);
+        const dx = Math.abs(a.x - b.x);
+        const dy = Math.abs(a.y - b.y);
 
         if (dx + dy !== 1) return;
 
-        this.swap(a.data.x, a.data.y, b.data.x, b.data.y);
+        this.swap(a.x, a.y, b.x, b.y);
     }
+
+    /* =========================
+       SWAP
+    ========================= */
 
     swap(ax, ay, bx, by) {
         if (this.locked) return;
@@ -104,6 +117,7 @@ export default class GameScene extends Phaser.Scene {
         this.swapData(ax, ay, bx, by);
 
         if (!this.hasMatches()) {
+            // ❌ пустой ход — вернуть назад
             this.time.delayedCall(150, () => {
                 this.swapData(ax, ay, bx, by);
                 this.locked = false;
@@ -127,10 +141,11 @@ export default class GameScene extends Phaser.Scene {
 
         a.rect.setPosition(bx * TILE + TILE / 2, by * TILE + TILE / 2);
         b.rect.setPosition(ax * TILE + TILE / 2, ay * TILE + TILE / 2);
-
-        a.rect.data.x = bx; a.rect.data.y = by;
-        b.rect.data.x = ax; b.rect.data.y = ay;
     }
+
+    /* =========================
+       MATCH LOGIC
+    ========================= */
 
     hasMatches() {
         return this.findMatches().length > 0;
@@ -138,22 +153,23 @@ export default class GameScene extends Phaser.Scene {
 
     findMatches() {
         const matches = [];
+
         for (let y = 0; y < SIZE; y++) {
             for (let x = 0; x < SIZE; x++) {
                 const t = this.grid[y][x];
                 if (!t) continue;
 
-                if (x < SIZE - 2 &&
+                if (
+                    x < SIZE - 2 &&
                     t === this.grid[y][x + 1] &&
-                    t === this.grid[y][x + 2]) {
-                    matches.push({ x, y, type: t });
-                }
+                    t === this.grid[y][x + 2]
+                ) matches.push({ x, y, type: t });
 
-                if (y < SIZE - 2 &&
+                if (
+                    y < SIZE - 2 &&
                     t === this.grid[y + 1][x] &&
-                    t === this.grid[y + 2][x]) {
-                    matches.push({ x, y, type: t });
-                }
+                    t === this.grid[y + 2][x]
+                ) matches.push({ x, y, type: t });
             }
         }
         return matches;
@@ -161,8 +177,18 @@ export default class GameScene extends Phaser.Scene {
 
     resolveMatches() {
         const matches = this.findMatches();
+
         if (!matches.length) {
             console.log("TURN RESULT:", this.turnResult);
+
+            // 🔥 пример применения (можно расширять)
+            if (app.player && app.mob) {
+                app.mob.hp -= this.turnResult.damage * 10;
+                app.player.mana += this.turnResult.mana * 5;
+                app.player.gold += this.turnResult.gold;
+                app.player.curse += this.turnResult.curse;
+            }
+
             this.turnResult = this.emptyTurn();
             this.locked = false;
             return;
@@ -181,6 +207,10 @@ export default class GameScene extends Phaser.Scene {
         this.time.delayedCall(200, () => this.dropTiles());
     }
 
+    /* =========================
+       GRAVITY
+    ========================= */
+
     dropTiles() {
         for (let x = 0; x < SIZE; x++) {
             for (let y = SIZE - 1; y >= 0; y--) {
@@ -192,9 +222,8 @@ export default class GameScene extends Phaser.Scene {
                             this.grid[yy][x] = null;
                             this.tiles[yy][x] = null;
 
-                            const tile = this.tiles[y][x];
-                            tile.rect.data.y = y;
-                            tile.rect.y = y * TILE + TILE / 2;
+                            this.tiles[y][x].rect.y =
+                                y * TILE + TILE / 2;
                             break;
                         }
                     }
@@ -202,6 +231,7 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
+        // новые плитки сверху
         for (let x = 0; x < SIZE; x++) {
             for (let y = 0; y < SIZE; y++) {
                 if (this.grid[y][x] === null) {
