@@ -1,3 +1,5 @@
+console.log('SCENE VERSION: NEW CENTERED VISUAL');
+
 export class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
