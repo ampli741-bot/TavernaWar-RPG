@@ -1,3 +1,5 @@
+console.log("🧨 MAIN VERSION 999");
+
 import { app } from "./core/app.js";
 import { createPlayer } from "./core/player.js";
 import { createMob } from "./core/mob.js";
