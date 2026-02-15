@@ -1,41 +1,5 @@
-console.log("🧨 MAIN VERSION CLEAN");
+import { app } from "../core/app.js";
 
-import Player from "./core/player.js";
-import Mob from "./core/mob.js";
-
-window.player = new Player();
-window.mob = new Mob();
-
-
-import { app } from "./core/app.js";
-import { createPlayer } from "./core/player.js";
-import { createMob } from "./core/mob.js";
-import { initPhaser } from "./phaser/game.js";
-import refreshUi from "./ui/ui.js";
-
-window.startGame = function (key) {
-    console.log("▶ startGame:", key);
-
-    // 🔥 БОЛЬШЕ НИКАКИХ style ВООБЩЕ
-    const menu = document.getElementById("menu-overlay");
-    if (menu) {
-        menu.remove(); // безопасно, без .style
-    }
-
-    // === INIT GAME STATE ===
-    app.player = createPlayer(key);
-    app.mob = createMob(1);
-
-    // === START PHASER ===
-    initPhaser();
-
-    // === SAFE UI ===
-    try {
-        refreshUi();
-    } catch (e) {
-        console.warn("UI not ready yet (ok)");
-    }
-};
 export default class GameScene extends Phaser.Scene {
     constructor() {
         super("GameScene");
@@ -47,16 +11,15 @@ export default class GameScene extends Phaser.Scene {
         this.selected = null;
         this.isAnimating = false;
 
-        // итог за ход
         this.turnResult = null;
 
-        // соответствие цветов → логика
+        // цвет → эффект
         this.colorMap = {
-            0xff0000: "damage",   // красный
-            0x3399ff: "mana",     // синий
-            0x33ff33: "heal",     // зелёный
-            0xffdd33: "gold",     // жёлтый
-            0xaa44ff: "curse"     // фиолетовый
+            0xff0000: "damage", // красный
+            0x3399ff: "mana",   // синий
+            0x33ff33: "heal",   // зелёный
+            0xffdd33: "gold",   // жёлтый
+            0xaa44ff: "curse"   // фиолетовый
         };
 
         this.colors = Object.keys(this.colorMap).map(c => Number(c));
@@ -65,7 +28,6 @@ export default class GameScene extends Phaser.Scene {
     create() {
         console.log("🎮 GameScene create");
 
-        // создаём пустую сетку
         for (let r = 0; r < this.size; r++) {
             this.grid[r] = [];
             for (let c = 0; c < this.size; c++) {
@@ -74,12 +36,11 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        // гарантируем отсутствие стартовых матчей
         this.resolveStartMatches();
     }
 
     /* =========================
-       СПАВН ПЛИТКИ
+       TILE SPAWN
     ========================= */
 
     spawnTile(row, col, fromTop = false) {
@@ -91,7 +52,7 @@ export default class GameScene extends Phaser.Scene {
         const x = col * this.tileSize + this.tileSize / 2;
         const y = fromTop ? -this.tileSize : row * this.tileSize + this.tileSize / 2;
 
-        const rect = this.add.rectangle(
+        const tile = this.add.rectangle(
             x,
             y,
             this.tileSize - 4,
@@ -99,34 +60,32 @@ export default class GameScene extends Phaser.Scene {
             color
         );
 
-        rect.setStrokeStyle(2, 0x000000);
-        rect.setInteractive();
+        tile.setStrokeStyle(2, 0x000000);
+        tile.setInteractive();
 
-        rect.row = row;
-        rect.col = col;
-        rect.colorValue = color;
+        tile.row = row;
+        tile.col = col;
+        tile.colorValue = color;
 
-        rect.on("pointerdown", () => this.onTileClick(rect));
+        tile.on("pointerdown", () => this.onTileClick(tile));
 
         if (fromTop) {
             this.tweens.add({
-                targets: rect,
+                targets: tile,
                 y: row * this.tileSize + this.tileSize / 2,
-                duration: 300
+                duration: 250
             });
         }
 
-        return rect;
+        return tile;
     }
 
     /* =========================
-       КЛИКИ
+       INPUT
     ========================= */
 
     onTileClick(tile) {
         if (this.isAnimating) return;
-
-        console.log(`CLICK [${tile.row},${tile.col}]`);
 
         if (!this.selected) {
             this.selectTile(tile);
@@ -180,14 +139,13 @@ export default class GameScene extends Phaser.Scene {
         const matches = this.findMatches();
 
         if (!matches.length) {
-            // откат если нет матча
+            // откат
             this.swapGrid(a, b);
             await this.animateSwap(a, b);
             this.isAnimating = false;
             return;
         }
 
-        // старт подсчёта хода
         this.turnResult = {
             damage: 0,
             mana: 0,
@@ -197,6 +155,8 @@ export default class GameScene extends Phaser.Scene {
         };
 
         await this.resolveMatches();
+        this.applyTurnResult();
+
         this.isAnimating = false;
     }
 
@@ -231,7 +191,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     /* =========================
-       ПОИСК МАТЧЕЙ
+       MATCH FIND
     ========================= */
 
     findMatches() {
@@ -265,27 +225,14 @@ export default class GameScene extends Phaser.Scene {
     }
 
     /* =========================
-       РАЗРЕШЕНИЕ МАТЧЕЙ
+       RESOLVE
     ========================= */
 
     async resolveMatches() {
         const matches = this.findMatches();
 
-        // конец хода
-        if (!matches.length) {
-    console.log("TURN RESULT:", this.turnResult);
+        if (!matches.length) return;
 
-    window.player.applyTurn(this.turnResult);
-
-    if (this.turnResult.damage) {
-        window.mob.takeDamage(this.turnResult.damage * 10);
-    }
-
-    return;
-}
-
-
-        // считаем цвета
         matches.forEach(tile => {
             const type = this.colorMap[tile.colorValue];
             if (type) this.turnResult[type]++;
@@ -341,18 +288,32 @@ export default class GameScene extends Phaser.Scene {
     }
 
     /* =========================
-       СТАРТ БЕЗ МАТЧЕЙ
+       APPLY TURN
+    ========================= */
+
+    applyTurnResult() {
+        console.log("TURN RESULT:", this.turnResult);
+
+        if (app.player) {
+            app.player.applyTurn(this.turnResult);
+        }
+
+        if (app.mob && this.turnResult.damage) {
+            app.mob.takeDamage(this.turnResult.damage * 10);
+        }
+    }
+
+    /* =========================
+       START SAFETY
     ========================= */
 
     causesMatch(r, c, color) {
-        // горизонталь
         if (c >= 2) {
             const a = this.grid[r]?.[c - 1];
             const b = this.grid[r]?.[c - 2];
             if (a && b && a.colorValue === color && b.colorValue === color) return true;
         }
 
-        // вертикаль
         if (r >= 2) {
             const a = this.grid[r - 1]?.[c];
             const b = this.grid[r - 2]?.[c];
