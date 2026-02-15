@@ -4,107 +4,242 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        console.log("🎮 GameScene create v3");
+        console.log("🎮 GameScene V4 create");
 
-        // === VERSION LABEL ===
-        this.add.text(20, 20, "v3", {
-            fontSize: "18px",
-            color: "#ffffff",
-            backgroundColor: "#000000"
-        }).setPadding(6);
+        this.VERSION = "v4";
 
-        // === CONSTANTS ===
-        this.cols = 8;
         this.rows = 8;
-        this.tileSize = 64;
+        this.cols = 8;
+        this.tileSize = 70;
+        this.offsetX = 300;
+        this.offsetY = 40;
 
-        this.boardWidth = this.cols * this.tileSize;
-        this.boardHeight = this.rows * this.tileSize;
+        this.colors = [
+            { key: "damage", color: 0xff4444 }, // red
+            { key: "mana",   color: 0x4488ff }, // blue
+            { key: "heal",   color: 0x44ff44 }, // green
+            { key: "gold",   color: 0xffdd44 }, // yellow
+            { key: "curse",  color: 0xaa44ff }  // purple
+        ];
 
-        // === CENTERED BOARD POSITION ===
-        this.boardX = 640 - this.boardWidth / 2;
-        this.boardY = 100;
+        this.board = [];
+        this.selected = null;
+        this.isBusy = false;
 
-        // === TILE COLORS (LOGIC) ===
-        this.colors = {
-            red: 0xff4444,     // damage
-            blue: 0x4488ff,    // mana
-            green: 0x44ff44,   // heal
-            yellow: 0xffdd44,  // gold
-            purple: 0xaa44ff   // curse
+        this.drawVersion();
+        this.generateBoard();
+        this.input.on("gameobjectdown", this.onTileClick, this);
+    }
+
+    /* ===================== INIT ===================== */
+
+    drawVersion() {
+        this.add.text(10, 10, this.VERSION, {
+            fontSize: "14px",
+            color: "#ffffff"
+        });
+    }
+
+    generateBoard() {
+        for (let y = 0; y < this.rows; y++) {
+            this.board[y] = [];
+            for (let x = 0; x < this.cols; x++) {
+                let tile;
+                do {
+                    tile = this.createTile(x, y);
+                } while (this.causesMatch(x, y, tile.type));
+                this.board[y][x] = tile;
+            }
+        }
+    }
+
+    createTile(x, y) {
+        const type = Phaser.Math.Between(0, this.colors.length - 1);
+        const rect = this.add.rectangle(
+            this.offsetX + x * this.tileSize,
+            this.offsetY + y * this.tileSize,
+            this.tileSize - 6,
+            this.tileSize - 6,
+            this.colors[type].color
+        ).setOrigin(0).setInteractive();
+
+        rect.gridX = x;
+        rect.gridY = y;
+        rect.type = type;
+
+        return rect;
+    }
+
+    /* ===================== INPUT ===================== */
+
+    onTileClick(pointer, tile) {
+        if (this.isBusy) return;
+
+        if (!this.selected) {
+            this.selectTile(tile);
+            return;
+        }
+
+        if (this.isNeighbor(this.selected, tile)) {
+            this.swapTiles(this.selected, tile, true);
+            this.selected = null;
+        } else {
+            this.clearSelection();
+            this.selectTile(tile);
+        }
+    }
+
+    selectTile(tile) {
+        this.clearSelection();
+        this.selected = tile;
+        tile.setStrokeStyle(4, 0xffffff);
+    }
+
+    clearSelection() {
+        this.children.list.forEach(o => o.setStrokeStyle?.());
+        this.selected = null;
+    }
+
+    isNeighbor(a, b) {
+        return Math.abs(a.gridX - b.gridX) + Math.abs(a.gridY - b.gridY) === 1;
+    }
+
+    /* ===================== SWAP ===================== */
+
+    swapTiles(a, b, checkMatch) {
+        this.isBusy = true;
+
+        this.swapData(a, b);
+        this.moveTile(a);
+        this.moveTile(b);
+
+        if (checkMatch && !this.hasAnyMatches()) {
+            // rollback
+            this.time.delayedCall(200, () => {
+                this.swapData(a, b);
+                this.moveTile(a);
+                this.moveTile(b);
+                this.isBusy = false;
+            });
+            return;
+        }
+
+        this.time.delayedCall(200, () => this.resolveBoard());
+    }
+
+    swapData(a, b) {
+        const ax = a.gridX, ay = a.gridY;
+        const bx = b.gridX, by = b.gridY;
+
+        this.board[ay][ax] = b;
+        this.board[by][bx] = a;
+
+        a.gridX = bx; a.gridY = by;
+        b.gridX = ax; b.gridY = ay;
+    }
+
+    moveTile(tile) {
+        tile.x = this.offsetX + tile.gridX * this.tileSize;
+        tile.y = this.offsetY + tile.gridY * this.tileSize;
+    }
+
+    /* ===================== MATCH ===================== */
+
+    causesMatch(x, y, type) {
+        let h = 1, v = 1;
+
+        for (let i = 1; i <= 2; i++) {
+            if (this.board[y]?.[x - i]?.type === type) h++;
+            if (this.board[y]?.[x + i]?.type === type) h++;
+            if (this.board[y - i]?.[x]?.type === type) v++;
+            if (this.board[y + i]?.[x]?.type === type) v++;
+        }
+
+        return h >= 3 || v >= 3;
+    }
+
+    hasAnyMatches() {
+        return this.findMatches().length > 0;
+    }
+
+    findMatches() {
+        const matches = [];
+
+        // horizontal
+        for (let y = 0; y < this.rows; y++) {
+            let run = [this.board[y][0]];
+            for (let x = 1; x <= this.cols; x++) {
+                const cur = this.board[y][x];
+                if (cur && run[0].type === cur.type) {
+                    run.push(cur);
+                } else {
+                    if (run.length >= 3) matches.push(...run);
+                    run = [cur];
+                }
+            }
+        }
+
+        // vertical
+        for (let x = 0; x < this.cols; x++) {
+            let run = [this.board[0][x]];
+            for (let y = 1; y <= this.rows; y++) {
+                const cur = this.board[y]?.[x];
+                if (cur && run[0].type === cur.type) {
+                    run.push(cur);
+                } else {
+                    if (run.length >= 3) matches.push(...run);
+                    run = [cur];
+                }
+            }
+        }
+
+        return [...new Set(matches)];
+    }
+
+    /* ===================== RESOLVE ===================== */
+
+    resolveBoard() {
+        const matches = this.findMatches();
+        if (matches.length === 0) {
+            this.isBusy = false;
+            return;
+        }
+
+        const result = {
+            damage: 0,
+            mana: 0,
+            heal: 0,
+            gold: 0,
+            curse: 0
         };
 
-        this.colorKeys = Object.keys(this.colors);
-
-        // === ARRAYS ===
-        this.grid = [];
-        this.tiles = [];
-
-        // === DRAW UI PANELS ===
-        this.drawSidePanels();
-
-        // === CREATE GRID ===
-        this.createGrid();
-    }
-
-    // ===============================
-    // UI PANELS
-    // ===============================
-    drawSidePanels() {
-        // LEFT PANEL (PLAYER)
-        this.add.rectangle(120, 360, 220, 520, 0x222222)
-            .setStrokeStyle(2, 0xffffff);
-
-        this.add.text(60, 120, "PLAYER", {
-            fontSize: "18px",
-            color: "#ffffff"
+        matches.forEach(tile => {
+            result[this.colors[tile.type].key]++;
+            this.board[tile.gridY][tile.gridX] = null;
+            tile.destroy();
         });
 
-        this.add.rectangle(120, 170, 100, 100, 0x333333)
-            .setStrokeStyle(2, 0xffffff);
+        console.log("TURN RESULT:", result);
 
-        // RIGHT PANEL (MOB)
-        this.add.rectangle(1160, 360, 220, 520, 0x222222)
-            .setStrokeStyle(2, 0xffffff);
-
-        this.add.text(1100, 120, "ENEMY", {
-            fontSize: "18px",
-            color: "#ffffff"
-        });
-
-        this.add.rectangle(1160, 170, 100, 100, 0x333333)
-            .setStrokeStyle(2, 0xffffff);
+        this.dropTiles();
+        this.time.delayedCall(200, () => this.resolveBoard());
     }
 
-    // ===============================
-    // GRID
-    // ===============================
-    createGrid() {
-        for (let y = 0; y < this.rows; y++) {
-            this.grid[y] = [];
-            this.tiles[y] = [];
-
-            for (let x = 0; x < this.cols; x++) {
-                const key = Phaser.Utils.Array.GetRandom(this.colorKeys);
-                this.grid[y][x] = key;
-
-                const tile = this.add.rectangle(
-                    this.boardX + x * this.tileSize + this.tileSize / 2,
-                    this.boardY + y * this.tileSize + this.tileSize / 2,
-                    this.tileSize - 4,
-                    this.tileSize - 4,
-                    this.colors[key]
-                );
-
-                tile.setInteractive();
-                tile.gridX = x;
-                tile.gridY = y;
-
-                tile.on("pointerdown", () => {
-                    console.log(`CLICK [${x},${y}] ${key}`);
-                });
-
-                this.tiles[y][x] = tile;
+    dropTiles() {
+        for (let x = 0; x < this.cols; x++) {
+            let pointer = this.rows - 1;
+            for (let y = this.rows - 1; y >= 0; y--) {
+                const tile = this.board[y][x];
+                if (tile) {
+                    this.board[pointer][x] = tile;
+                    tile.gridY = pointer;
+                    this.moveTile(tile);
+                    pointer--;
+                }
+            }
+            for (let y = pointer; y >= 0; y--) {
+                const tile = this.createTile(x, y);
+                this.board[y][x] = tile;
             }
         }
     }
