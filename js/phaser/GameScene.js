@@ -1,317 +1,290 @@
+const VERSION = "v6.3";
+
+const TILE_SIZE = 64;
+const COLS = 8;
+const ROWS = 8;
+
+const COLORS = ["red", "blue", "green", "yellow", "purple"];
+
+const COLOR_MAP = {
+    red: 0xff4d4d,
+    blue: 0x4d8cff,
+    green: 0x4dff4d,
+    yellow: 0xffe04d,
+    purple: 0xb04dff
+};
+
 export default class GameScene extends Phaser.Scene {
     constructor() {
         super("GameScene");
     }
 
-    create() {
-        console.log("GameScene create V6.2");
-
-        this.SIZE = 8;
-        this.TILE = 64;
-
-        this.centerX = this.scale.width / 2;
-        this.centerY = this.scale.height / 2;
-
-        this.BOARD_W = this.SIZE * this.TILE;
-        this.BOARD_H = this.SIZE * this.TILE;
-
-        this.OFFSET_X = this.centerX - this.BOARD_W / 2;
-        this.OFFSET_Y = this.centerY - this.BOARD_H / 2;
-
-        this.colors = ["red", "blue", "green", "yellow", "purple"];
-        this.colorMap = {
-            red: 0xff4b4b,
-            blue: 0x4b8bff,
-            green: 0x4bff6a,
-            yellow: 0xffe04b,
-            purple: 0xb44bff
-        };
-
-        this.grid = [];
-        this.tiles = [];
-
-        this.selected = null;
-        this.turn = "player";
-        this.inputLocked = false;
-
-        this.drawPanels();
-        this.drawVersion();
-        this.createGrid();
+    preload() {
+        this.load.image("bg", "assets/bg.jpg");
+        this.load.image("hero_warrior", "assets/hero_warrior.jpg");
+        this.load.image("hero_mage", "assets/hero_mage.jpg");
+        this.load.image("hero_archer", "assets/hero_archer.jpg");
+        this.load.image("hero_assassin", "assets/hero_assassin.jpg");
     }
 
-    drawVersion() {
-        this.add.text(10, 10, "v6.2", {
-            fontFamily: "monospace",
+    create() {
+        const { width, height } = this.scale;
+
+        // ===== VERSION =====
+        this.add.text(width / 2, 10, VERSION, {
             fontSize: "16px",
             color: "#ffffff"
-        }).setDepth(1000);
+        }).setOrigin(0.5, 0);
+
+        // ===== PANELS =====
+        this.createPanels(width, height);
+
+        // ===== BOARD POSITION =====
+        this.boardOffsetX = width / 2 - (COLS * TILE_SIZE) / 2;
+        this.boardOffsetY = height / 2 - (ROWS * TILE_SIZE) / 2;
+
+        // ===== BACKGROUND =====
+        this.add.image(
+            width / 2,
+            height / 2,
+            "bg"
+        ).setDisplaySize(
+            COLS * TILE_SIZE + 40,
+            ROWS * TILE_SIZE + 40
+        ).setDepth(-1);
+
+        // ===== BOARD =====
+        this.tiles = [];
+        this.selected = null;
+        this.isBusy = false;
+        this.isPlayerTurn = true;
+
+        this.createBoard();
     }
 
-    drawPanels() {
-        const panelW = 220;
-        const panelH = this.BOARD_H + 80;
+    createPanels(width, height) {
+        // LEFT (PLAYER)
+        const leftX = 40;
+        this.add.rectangle(leftX, height / 2, 200, height - 80, 0x222222)
+            .setStrokeStyle(2, 0xffffff);
 
-        // PLAYER
-        this.add.rectangle(
-            40 + panelW / 2,
-            this.centerY,
-            panelW,
-            panelH,
-            0x222222
-        ).setStrokeStyle(2, 0xffffff);
+        this.add.image(leftX, 100, "hero_warrior")
+            .setDisplaySize(96, 96);
 
-        this.add.text(60, this.centerY - panelH / 2 + 10, "PLAYER", {
-            fontFamily: "Cinzel",
-            fontSize: "20px",
-            color: "#ffffff"
-        });
+        // RIGHT (MOB)
+        const rightX = width - 40;
+        this.add.rectangle(rightX, height / 2, 200, height - 80, 0x222222)
+            .setStrokeStyle(2, 0xffffff);
 
-        // MOB
-        this.add.rectangle(
-            this.scale.width - 40 - panelW / 2,
-            this.centerY,
-            panelW,
-            panelH,
-            0x222222
-        ).setStrokeStyle(2, 0xffffff);
-
-        this.add.text(
-            this.scale.width - panelW - 20,
-            this.centerY - panelH / 2 + 10,
-            "MOB",
-            {
-                fontFamily: "Cinzel",
-                fontSize: "20px",
-                color: "#ffffff"
-            }
-        );
+        this.add.image(rightX, 100, "hero_assassin")
+            .setDisplaySize(96, 96);
     }
 
-    createGrid() {
-        for (let y = 0; y < this.SIZE; y++) {
-            this.grid[y] = [];
+    createBoard() {
+        for (let y = 0; y < ROWS; y++) {
             this.tiles[y] = [];
-
-            for (let x = 0; x < this.SIZE; x++) {
+            for (let x = 0; x < COLS; x++) {
                 let color;
                 do {
-                    color = Phaser.Utils.Array.GetRandom(this.colors);
+                    color = Phaser.Utils.Array.GetRandom(COLORS);
                 } while (
                     (x >= 2 &&
-                        this.grid[y][x - 1] === color &&
-                        this.grid[y][x - 2] === color) ||
+                        this.tiles[y][x - 1]?.color === color &&
+                        this.tiles[y][x - 2]?.color === color) ||
                     (y >= 2 &&
-                        this.grid[y - 1][x] === color &&
-                        this.grid[y - 2][x] === color)
+                        this.tiles[y - 1][x]?.color === color &&
+                        this.tiles[y - 2][x]?.color === color)
                 );
 
-                this.grid[y][x] = color;
-                this.spawnTile(x, y, color);
+                const tile = this.createTile(x, y, color);
+                this.tiles[y][x] = tile;
             }
         }
     }
 
-    spawnTile(x, y, color) {
+    createTile(x, y, color) {
         const rect = this.add.rectangle(
-            this.OFFSET_X + x * this.TILE + this.TILE / 2,
-            this.OFFSET_Y + y * this.TILE + this.TILE / 2,
-            this.TILE - 6,
-            this.TILE - 6,
-            this.colorMap[color]
-        );
+            this.boardOffsetX + x * TILE_SIZE + TILE_SIZE / 2,
+            this.boardOffsetY + y * TILE_SIZE + TILE_SIZE / 2,
+            TILE_SIZE - 4,
+            TILE_SIZE - 4,
+            COLOR_MAP[color]
+        ).setInteractive();
 
-        rect.setInteractive();
-        rect.on("pointerdown", () => this.clickTile(x, y));
-
+        rect.color = color;
         rect.gridX = x;
         rect.gridY = y;
-        rect.color = color;
 
-        this.tiles[y][x] = rect;
+        rect.on("pointerdown", () => this.onTileClick(rect));
+        return rect;
     }
 
-    clickTile(x, y) {
-        if (this.turn !== "player" || this.inputLocked) return;
+    onTileClick(tile) {
+        if (this.isBusy || !this.isPlayerTurn) return;
 
         if (!this.selected) {
-            this.selected = { x, y };
-            this.tiles[y][x].setStrokeStyle(3, 0xffffff);
+            this.selected = tile;
+            tile.setStrokeStyle(4, 0xffffff);
             return;
         }
 
-        const a = this.selected;
-        const b = { x, y };
-        this.clearSelection();
+        if (this.isNeighbor(this.selected, tile)) {
+            this.trySwap(this.selected, tile);
+        }
 
-        if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) return;
-
-        this.trySwap(a, b);
+        this.selected.setStrokeStyle();
+        this.selected = null;
     }
 
-    clearSelection() {
-        if (this.selected) {
-            this.tiles[this.selected.y][this.selected.x].setStrokeStyle();
-        }
-        this.selected = null;
+    isNeighbor(a, b) {
+        return (
+            Math.abs(a.gridX - b.gridX) +
+            Math.abs(a.gridY - b.gridY) === 1
+        );
     }
 
     trySwap(a, b) {
-        this.swapData(a, b);
+        this.swapTiles(a, b);
 
-        if (this.findMatches().length === 0) {
-            this.swapData(a, b);
-            return;
-        }
-
-        this.inputLocked = true;
-
-        this.resolveBoard(() => {
-            this.turn = "mob";
-            this.mobTurn();
-        });
-    }
-
-    mobTurn() {
-        console.log("MOB TURN");
-
-        const moves = this.findAllValidMoves();
-        if (moves.length === 0) {
-            this.turn = "player";
-            this.inputLocked = false;
-            return;
-        }
-
-        const move = Phaser.Utils.Array.GetRandom(moves);
-        this.swapData(move.a, move.b);
-
-        this.resolveBoard(() => {
-            this.turn = "player";
-            this.inputLocked = false;
-        });
-    }
-
-    resolveBoard(done) {
         const matches = this.findMatches();
-
         if (matches.length === 0) {
-            done && done();
+            this.swapTiles(a, b);
             return;
         }
 
-        matches.forEach(({ x, y }) => {
-            this.tiles[y][x].destroy();
-            this.tiles[y][x] = null;
-            this.grid[y][x] = null;
-        });
-
-        this.time.delayedCall(200, () => {
-            this.dropTiles();
-            this.time.delayedCall(200, () => {
-                this.resolveBoard(done);
-            });
+        this.isBusy = true;
+        this.resolveMatches(matches, () => {
+            this.isPlayerTurn = false;
+            this.time.delayedCall(400, () => this.enemyTurn());
         });
     }
 
-    dropTiles() {
-        for (let x = 0; x < this.SIZE; x++) {
-            for (let y = this.SIZE - 1; y >= 0; y--) {
-                if (this.grid[y][x] === null) {
-                    for (let yy = y - 1; yy >= 0; yy--) {
-                        if (this.grid[yy][x]) {
-                            this.grid[y][x] = this.grid[yy][x];
-                            this.tiles[y][x] = this.tiles[yy][x];
+    swapTiles(a, b) {
+        const ax = a.gridX, ay = a.gridY;
+        const bx = b.gridX, by = b.gridY;
 
-                            this.tweens.add({
-                                targets: this.tiles[y][x],
-                                y: this.OFFSET_Y + y * this.TILE + this.TILE / 2,
-                                duration: 150
-                            });
+        this.tiles[ay][ax] = b;
+        this.tiles[by][bx] = a;
 
-                            this.grid[yy][x] = null;
-                            this.tiles[yy][x] = null;
-                            break;
-                        }
-                    }
+        a.gridX = bx; a.gridY = by;
+        b.gridX = ax; b.gridY = ay;
 
-                    if (!this.grid[y][x]) {
-                        const color = Phaser.Utils.Array.GetRandom(this.colors);
-                        this.grid[y][x] = color;
-                        this.spawnTile(x, y, color);
-                    }
-                }
-            }
-        }
+        this.moveTile(a);
+        this.moveTile(b);
     }
 
-    swapData(a, b) {
-        [this.grid[a.y][a.x], this.grid[b.y][b.x]] =
-            [this.grid[b.y][b.x], this.grid[a.y][a.x]];
-
-        [this.tiles[a.y][a.x], this.tiles[b.y][b.x]] =
-            [this.tiles[b.y][b.x], this.tiles[a.y][a.x]];
-
-        this.moveTile(this.tiles[a.y][a.x], a.x, a.y);
-        this.moveTile(this.tiles[b.y][b.x], b.x, b.y);
-    }
-
-    moveTile(tile, x, y) {
-        tile.gridX = x;
-        tile.gridY = y;
-
+    moveTile(tile) {
         this.tweens.add({
             targets: tile,
-            x: this.OFFSET_X + x * this.TILE + this.TILE / 2,
-            y: this.OFFSET_Y + y * this.TILE + this.TILE / 2,
+            x: this.boardOffsetX + tile.gridX * TILE_SIZE + TILE_SIZE / 2,
+            y: this.boardOffsetY + tile.gridY * TILE_SIZE + TILE_SIZE / 2,
             duration: 150
         });
     }
 
     findMatches() {
-        const res = [];
+        const matches = [];
 
-        for (let y = 0; y < this.SIZE; y++) {
-            for (let x = 0; x < this.SIZE - 2; x++) {
-                const c = this.grid[y][x];
-                if (c && c === this.grid[y][x + 1] && c === this.grid[y][x + 2]) {
-                    res.push({ x, y }, { x: x + 1, y }, { x: x + 2, y });
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                const t = this.tiles[y][x];
+                if (!t) continue;
+
+                const h = [t];
+                for (let i = x + 1; i < COLS; i++) {
+                    if (this.tiles[y][i]?.color === t.color) h.push(this.tiles[y][i]);
+                    else break;
                 }
+                if (h.length >= 3) matches.push(...h);
+
+                const v = [t];
+                for (let i = y + 1; i < ROWS; i++) {
+                    if (this.tiles[i][x]?.color === t.color) v.push(this.tiles[i][x]);
+                    else break;
+                }
+                if (v.length >= 3) matches.push(...v);
             }
         }
 
-        for (let x = 0; x < this.SIZE; x++) {
-            for (let y = 0; y < this.SIZE - 2; y++) {
-                const c = this.grid[y][x];
-                if (c && c === this.grid[y + 1][x] && c === this.grid[y + 2][x]) {
-                    res.push({ x, y }, { x, y: y + 1 }, { x, y: y + 2 });
-                }
-            }
-        }
-
-        return res;
+        return [...new Set(matches)];
     }
 
-    findAllValidMoves() {
+    resolveMatches(matches, done) {
+        matches.forEach(t => {
+            this.tiles[t.gridY][t.gridX] = null;
+            this.tweens.add({
+                targets: t,
+                alpha: 0,
+                scale: 0,
+                duration: 200,
+                onComplete: () => t.destroy()
+            });
+        });
+
+        this.time.delayedCall(250, () => {
+            this.dropTiles();
+            done();
+        });
+    }
+
+    dropTiles() {
+        for (let x = 0; x < COLS; x++) {
+            let pointer = ROWS - 1;
+            for (let y = ROWS - 1; y >= 0; y--) {
+                if (this.tiles[y][x]) {
+                    this.tiles[pointer][x] = this.tiles[y][x];
+                    this.tiles[pointer][x].gridY = pointer;
+                    this.moveTile(this.tiles[pointer][x]);
+                    pointer--;
+                }
+            }
+            for (let y = pointer; y >= 0; y--) {
+                const color = Phaser.Utils.Array.GetRandom(COLORS);
+                const t = this.createTile(x, y, color);
+                t.y = this.boardOffsetY - TILE_SIZE;
+                this.tiles[y][x] = t;
+                this.moveTile(t);
+            }
+        }
+
+        const chain = this.findMatches();
+        if (chain.length > 0) {
+            this.resolveMatches(chain, () => {});
+        } else {
+            this.isBusy = false;
+            this.isPlayerTurn = true;
+        }
+    }
+
+    enemyTurn() {
+        // простой умный ход (лучший матч)
         const moves = [];
 
-        for (let y = 0; y < this.SIZE; y++) {
-            for (let x = 0; x < this.SIZE; x++) {
-                const dirs = [
-                    { x: x + 1, y },
-                    { x, y: y + 1 }
-                ];
-
-                dirs.forEach(d => {
-                    if (d.x < this.SIZE && d.y < this.SIZE) {
-                        this.swapData({ x, y }, d);
-                        if (this.findMatches().length > 0) {
-                            moves.push({ a: { x, y }, b: d });
-                        }
-                        this.swapData({ x, y }, d);
-                    }
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                const t = this.tiles[y][x];
+                [[1,0],[0,1]].forEach(([dx,dy]) => {
+                    const nx = x + dx, ny = y + dy;
+                    if (!this.tiles[ny]?.[nx]) return;
+                    this.swapTiles(t, this.tiles[ny][nx]);
+                    const m = this.findMatches();
+                    this.swapTiles(t, this.tiles[ny][nx]);
+                    if (m.length) moves.push({ a: t, b: this.tiles[ny][nx], score: m.length });
                 });
             }
         }
 
-        return moves;
+        if (moves.length === 0) {
+            this.isPlayerTurn = true;
+            return;
+        }
+
+        moves.sort((a, b) => b.score - a.score);
+        const move = moves[0];
+
+        this.swapTiles(move.a, move.b);
+        this.resolveMatches(this.findMatches(), () => {
+            this.isPlayerTurn = true;
+        });
     }
 }
