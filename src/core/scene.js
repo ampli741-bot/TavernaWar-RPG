@@ -1,4 +1,5 @@
-alert('SCENE.JS LOADED');
+alert('SCENE.JS REAL VERSION LOADED');
+
 // =====================================================
 // CONFIG
 // =====================================================
@@ -39,13 +40,14 @@ export class GameScene extends Phaser.Scene {
   // ===================================================
   // PRELOAD
   // ===================================================
-  preload() {
-    this.load.image('bg', 'assets/bg.jpg');
+ preload() {
+  this.load.image('bg', '/assets/bg.jpg');
 
-    TYPES.forEach(t => {
-      this.load.image(`t_${t}`, `assets/rune_${t}.png`);
-    });
-  }
+  TYPES.forEach(t => {
+    this.load.image(`t_${t}`, `/assets/rune_${t}.png`);
+  });
+}
+
 
   // ===================================================
   // CREATE
