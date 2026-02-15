@@ -1,7 +1,7 @@
 import { app } from "../core/app.js";
 import { SLOT_NAMES } from "../config/constants.js";
 
-function refreshUI() {
+export default function refreshUI() {
     const p = app.player;
     const m = app.mob;
 
@@ -82,6 +82,3 @@ function refreshUI() {
     document.getElementById("m-mn-f").style.width =
         m.mana + "%";
 }
-
-// 🔴 ВАЖНО: ИМЕННО ТАКОЙ ЭКСПОРТ
-export { refreshUI };
