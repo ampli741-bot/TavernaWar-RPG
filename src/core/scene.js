@@ -1,8 +1,8 @@
 // =====================================================
 // CONFIG
 // =====================================================
-export const TILE_S = 85;          // шаг сетки
-export const TILE_P = 4;           // padding
+export const TILE_S = 85;
+export const TILE_P = 4;
 export const VISUAL_S = TILE_S - TILE_P * 2;
 export const GRID = 8;
 
@@ -35,23 +35,24 @@ export class GameScene extends Phaser.Scene {
     this.isAnimating = false;
   }
 
-  // ===================================================
-  // PRELOAD
-  // ===================================================
   preload() {
-    TYPES.forEach(t => {
-      this.load.image(`t_${t}`, `assets/rune_${t}.png`);
-    });
+    this.load.image('bg', 'assets/bg.jpg');
+    TYPES.forEach(t => this.load.image(`t_${t}`, `assets/rune_${t}.png`));
   }
 
-  // ===================================================
-  // CREATE
-  // ===================================================
   create() {
-    console.log('SCENE LOADED: STABLE MATCH-3');
+    console.log('SCENE LOADED: FIXED VISUAL');
+
+    // --- BACKGROUND ---
+    const bg = this.add.image(0, 0, 'bg').setOrigin(0);
+    bg.displayWidth = this.scale.width;
+    bg.displayHeight = this.scale.height;
+
+    // --- CENTER OFFSET ---
+    this.OFFSET_X = (this.scale.width - GRID * TILE_S) / 2;
+    this.OFFSET_Y = (this.scale.height - GRID * TILE_S) / 2;
 
     this.grid = [];
-
     for (let r = 0; r < GRID; r++) {
       this.grid[r] = [];
       for (let c = 0; c < GRID; c++) {
@@ -61,123 +62,80 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ===================================================
-  // TILE VISUAL
+  // TILE
   // ===================================================
   spawnTile(r, c, fromTop = false) {
     const type = Phaser.Utils.Array.GetRandom(TYPES);
 
-    const x = c * TILE_S + TILE_S / 2;
-    const y = fromTop ? -TILE_S : r * TILE_S + TILE_S / 2;
+    const x = this.OFFSET_X + c * TILE_S + TILE_S / 2;
+    const y = fromTop
+      ? this.OFFSET_Y - TILE_S
+      : this.OFFSET_Y + r * TILE_S + TILE_S / 2;
 
     const container = this.add.container(x, y);
     container.type = type;
     container.gridR = r;
     container.gridC = c;
 
-    // --- glow ---
+    // glow
     const glow = this.add.graphics();
     glow.fillStyle(GLOW_COLORS[type], 0.35);
-    glow.fillRoundedRect(
-      -VISUAL_S / 2 - 3,
-      -VISUAL_S / 2 - 3,
-      VISUAL_S + 6,
-      VISUAL_S + 6,
-      16
-    );
+    glow.fillRoundedRect(-VISUAL_S/2-3, -VISUAL_S/2-3, VISUAL_S+6, VISUAL_S+6, 14);
 
-    // --- bg ---
+    // bg
     const bg = this.add.graphics();
     bg.fillStyle(BG_COLORS[type], 1);
-    bg.fillRoundedRect(
-      -VISUAL_S / 2,
-      -VISUAL_S / 2,
-      VISUAL_S,
-      VISUAL_S,
-      14
-    );
+    bg.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
 
-    // --- rune image ---
+    // icon scale FIX
     const img = this.add.image(0, 0, `t_${type}`);
-    img.setDisplaySize(VISUAL_S * 2.2, VISUAL_S * 2.2);
+    const zoom =
+      type === 'yellow' ? 1.55 :
+      type === 'green'  ? 1.55 :
+      1.9;
+    img.setDisplaySize(VISUAL_S * zoom, VISUAL_S * zoom);
 
-    // --- mask (HIDES WHITE) ---
+    // LOCAL MASK (CRITICAL FIX)
     const maskG = this.make.graphics();
     maskG.fillStyle(0xffffff);
-    maskG.fillRoundedRect(
-      x - VISUAL_S / 2,
-      y - VISUAL_S / 2,
-      VISUAL_S,
-      VISUAL_S,
-      14
-    );
+    maskG.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
     img.setMask(maskG.createGeometryMask());
 
-    // --- frame (spikes feel) ---
+    // frame
     const frame = this.add.graphics();
-    frame.lineStyle(6, 0x2b2b2b, 1);
-    frame.strokeRoundedRect(
-      -VISUAL_S / 2,
-      -VISUAL_S / 2,
-      VISUAL_S,
-      VISUAL_S,
-      12
-    );
+    frame.lineStyle(5, 0x2b2b2b, 1);
+    frame.strokeRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
     frame.lineStyle(2, 0xbc962c, 0.8);
-    frame.strokeRoundedRect(
-      -VISUAL_S / 2 + 4,
-      -VISUAL_S / 2 + 4,
-      VISUAL_S - 8,
-      VISUAL_S - 8,
-      10
-    );
+    frame.strokeRoundedRect(-VISUAL_S/2+4, -VISUAL_S/2+4, VISUAL_S-8, VISUAL_S-8, 10);
 
-    // --- hover ---
+    // hover
     const hover = this.add.graphics();
     hover.alpha = 0;
-    hover.lineStyle(4, 0xffffff, 0.8);
-    hover.strokeRoundedRect(
-      -VISUAL_S / 2 - 4,
-      -VISUAL_S / 2 - 4,
-      VISUAL_S + 8,
-      VISUAL_S + 8,
-      16
-    );
+    hover.lineStyle(4, 0xffffff, 0.7);
+    hover.strokeRoundedRect(-VISUAL_S/2-4, -VISUAL_S/2-4, VISUAL_S+8, VISUAL_S+8, 14);
 
-    // --- ghost (selection) ---
+    // ghost
     const ghost = this.add.graphics();
     ghost.alpha = 0;
-    ghost.lineStyle(6, 0xffffff, 0.6);
-    ghost.strokeRoundedRect(
-      -VISUAL_S / 2 - 2,
-      -VISUAL_S / 2 - 2,
-      VISUAL_S + 4,
-      VISUAL_S + 4,
-      14
-    );
+    ghost.lineStyle(6, 0xffffff, 0.5);
+    ghost.strokeRoundedRect(-VISUAL_S/2-2, -VISUAL_S/2-2, VISUAL_S+4, VISUAL_S+4, 12);
 
     container.add([glow, bg, img, frame, hover, ghost]);
-    container.maskShape = maskG;
     container.hover = hover;
     container.ghost = ghost;
 
-    // --- hit area ---
-    const hit = this.add.rectangle(0, 0, TILE_S, TILE_S, 0x000000, 0)
-      .setInteractive();
-    hit.container = container;
+    const hit = this.add.rectangle(0, 0, TILE_S, TILE_S, 0, 0).setInteractive();
+    hit.on('pointerdown', () => this.handlePointer(container));
+    hit.on('pointerover', () => hover.setAlpha(0.6));
+    hit.on('pointerout', () => hover.setAlpha(0));
     container.add(hit);
 
-    hit.on('pointerdown', () => this.handlePointer(container));
-    hit.on('pointerover', () => this.setHover(container, true));
-    hit.on('pointerout', () => this.setHover(container, false));
-
-    // idle breathing
     this.tweens.add({
       targets: container,
-      scale: 1.04,
-      duration: 900 + Math.random() * 400,
+      scale: 1.03,
+      duration: 900 + Math.random()*400,
       yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
+      repeat: -1
     });
 
     this.grid[r][c] = container;
@@ -185,7 +143,7 @@ export class GameScene extends Phaser.Scene {
     if (fromTop) {
       this.tweens.add({
         targets: container,
-        y: r * TILE_S + TILE_S / 2,
+        y: this.OFFSET_Y + r * TILE_S + TILE_S / 2,
         duration: 300
       });
     }
@@ -194,25 +152,17 @@ export class GameScene extends Phaser.Scene {
   // ===================================================
   // INPUT
   // ===================================================
-  setHover(t, v) {
-    this.tweens.add({
-      targets: t.hover,
-      alpha: v ? 0.6 : 0,
-      duration: 150
-    });
-  }
-
   async handlePointer(t) {
     if (this.isAnimating) return;
 
     if (!this.sel) {
       this.sel = t;
-      t.ghost.alpha = 1;
+      t.ghost.setAlpha(1);
       return;
     }
 
     if (this.sel === t) {
-      t.ghost.alpha = 0;
+      t.ghost.setAlpha(0);
       this.sel = null;
       return;
     }
@@ -226,122 +176,79 @@ export class GameScene extends Phaser.Scene {
       await this.check();
     }
 
-    this.sel.ghost.alpha = 0;
+    this.sel.ghost.setAlpha(0);
     this.sel = null;
   }
 
   // ===================================================
-  // MATCH LOGIC
+  // MATCH
   // ===================================================
   async swap(a, b) {
     this.isAnimating = true;
 
-    const ar = a.gridR, ac = a.gridC;
-    const br = b.gridR, bc = b.gridC;
+    const ar=a.gridR, ac=a.gridC;
+    const br=b.gridR, bc=b.gridC;
 
-    this.grid[ar][ac] = b;
-    this.grid[br][bc] = a;
+    this.grid[ar][ac]=b;
+    this.grid[br][bc]=a;
+    a.gridR=br; a.gridC=bc;
+    b.gridR=ar; b.gridC=ac;
 
-    a.gridR = br; a.gridC = bc;
-    b.gridR = ar; b.gridC = ac;
-
-    return new Promise(res => {
-      this.tweens.add({ targets: a, x: bc * TILE_S + TILE_S / 2, y: br * TILE_S + TILE_S / 2, duration: 200 });
-      this.tweens.add({
-        targets: b,
-        x: ac * TILE_S + TILE_S / 2,
-        y: ar * TILE_S + TILE_S / 2,
-        duration: 200,
-        onComplete: () => { this.isAnimating = false; res(); }
-      });
+    return new Promise(res=>{
+      this.tweens.add({targets:a,x:this.OFFSET_X+bc*TILE_S+TILE_S/2,y:this.OFFSET_Y+br*TILE_S+TILE_S/2,duration:200});
+      this.tweens.add({targets:b,x:this.OFFSET_X+ac*TILE_S+TILE_S/2,y:this.OFFSET_Y+ar*TILE_S+TILE_S/2,duration:200,onComplete:()=>{this.isAnimating=false;res();}});
     });
   }
 
   findMatches() {
-    const out = [];
-
-    for (let r = 0; r < GRID; r++) {
-      for (let c = 0; c < GRID - 2; c++) {
-        const a = this.grid[r][c];
-        const b = this.grid[r][c + 1];
-        const d = this.grid[r][c + 2];
-        if (a && b && d && a.type === b.type && a.type === d.type) {
-          out.push(a, b, d);
-        }
-      }
+    const out=[];
+    for(let r=0;r<GRID;r++)for(let c=0;c<GRID-2;c++){
+      const a=this.grid[r][c],b=this.grid[r][c+1],d=this.grid[r][c+2];
+      if(a&&b&&d&&a.type===b.type&&a.type===d.type)out.push(a,b,d);
     }
-
-    for (let c = 0; c < GRID; c++) {
-      for (let r = 0; r < GRID - 2; r++) {
-        const a = this.grid[r][c];
-        const b = this.grid[r + 1][c];
-        const d = this.grid[r + 2][c];
-        if (a && b && d && a.type === b.type && a.type === d.type) {
-          out.push(a, b, d);
-        }
-      }
+    for(let c=0;c<GRID;c++)for(let r=0;r<GRID-2;r++){
+      const a=this.grid[r][c],b=this.grid[r+1][c],d=this.grid[r+2][c];
+      if(a&&b&&d&&a.type===b.type&&a.type===d.type)out.push(a,b,d);
     }
-
     return [...new Set(out)];
   }
 
   async check() {
-    const m = this.findMatches();
-    if (m.length) {
-      await this.explode(m);
-      await this.refill();
-      await this.check();
-    }
+    const m=this.findMatches();
+    if(m.length){await this.explode(m);await this.refill();await this.check();}
   }
 
-  // ===================================================
-  // EXPLOSION
-  // ===================================================
   async explode(list) {
-    this.isAnimating = true;
-
-    return new Promise(res => {
+    this.isAnimating=true;
+    return new Promise(res=>{
       this.tweens.add({
-        targets: list,
-        scale: 0,
-        alpha: 0,
-        duration: 250,
-        onComplete: () => {
-          list.forEach(t => {
-            this.grid[t.gridR][t.gridC] = null;
-            t.destroy();
-          });
-          this.isAnimating = false;
-          res();
+        targets:list,
+        scale:0,
+        alpha:0,
+        duration:260,
+        onComplete:()=>{
+          list.forEach(t=>{this.grid[t.gridR][t.gridC]=null;t.destroy();});
+          this.isAnimating=false;res();
         }
       });
     });
   }
 
-  // ===================================================
-  // GRAVITY / REFILL
-  // ===================================================
   async refill() {
-    for (let c = 0; c < GRID; c++) {
-      let empty = 0;
-      for (let r = GRID - 1; r >= 0; r--) {
-        if (!this.grid[r][c]) empty++;
-        else if (empty) {
-          const t = this.grid[r][c];
-          this.grid[r + empty][c] = t;
-          this.grid[r][c] = null;
-          t.gridR += empty;
-          this.tweens.add({
-            targets: t,
-            y: t.gridR * TILE_S + TILE_S / 2,
-            duration: 250
-          });
+    for(let c=0;c<GRID;c++){
+      let empty=0;
+      for(let r=GRID-1;r>=0;r--){
+        if(!this.grid[r][c])empty++;
+        else if(empty){
+          const t=this.grid[r][c];
+          this.grid[r+empty][c]=t;
+          this.grid[r][c]=null;
+          t.gridR+=empty;
+          this.tweens.add({targets:t,y:this.OFFSET_Y+t.gridR*TILE_S+TILE_S/2,duration:260});
         }
       }
-      for (let i = 0; i < empty; i++) {
-        this.spawnTile(i, c, true);
-      }
+      for(let i=0;i<empty;i++)this.spawnTile(i,c,true);
     }
-    await new Promise(r => this.time.delayedCall(300, r));
+    await new Promise(r=>this.time.delayedCall(300,r));
   }
 }
