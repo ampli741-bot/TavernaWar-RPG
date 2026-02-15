@@ -1,19 +1,17 @@
-// ================================
-// SCENE: MATCH-3 CORE
+// ===================================================
+// TAVERNA WAR — MATCH-3 CORE SCENE
 // FILE: src/core/scene.js
-// ================================
+// ===================================================
 
 export class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
   }
 
-  // ================================
-  // PRELOAD: LOAD ALL ASSETS
-  // ================================
+  // ===================================================
+  // PRELOAD — ЗАГРУЗКА РЕСУРСОВ
+  // ===================================================
   preload() {
-    console.log('PRELOAD START');
-
     this.load.image('bg', './assets/bg.jpg');
 
     this.load.image('red', './assets/rune_red.png');
@@ -21,145 +19,189 @@ export class GameScene extends Phaser.Scene {
     this.load.image('green', './assets/rune_green.png');
     this.load.image('purple', './assets/rune_purple.png');
     this.load.image('yellow', './assets/rune_yellow.png');
-
-    this.load.on('complete', () => {
-      console.log('ALL ASSETS LOADED');
-    });
   }
 
-  // ================================
-  // CREATE: INIT SCENE
-  // ================================
+  // ===================================================
+  // CREATE — ИНИЦИАЛИЗАЦИЯ СЦЕНЫ
+  // ===================================================
   create() {
-    console.log('SCENE CREATE');
-
-    // ---- GRID CONFIG ----
+    // ---------- CONFIG ----------
     this.cols = 8;
     this.rows = 8;
     this.tileSize = 96;
+    this.innerSize = 76;
 
     this.types = ['red', 'blue', 'green', 'purple', 'yellow'];
-
     this.grid = [];
     this.selected = null;
 
-    // ---- CENTER CALC ----
-    const gw = this.cols * this.tileSize;
-    const gh = this.rows * this.tileSize;
-
-    this.offsetX = (this.scale.width - gw) / 2;
-    this.offsetY = (this.scale.height - gh) / 2;
-
-    // ---- BACKGROUND ----
-    this.add.image(
+    // ---------- BACKGROUND FULLSCREEN ----------
+    this.bg = this.add.image(
       this.scale.width / 2,
       this.scale.height / 2,
       'bg'
-    ).setDepth(-10);
+    );
+    this.bg.setDisplaySize(this.scale.width, this.scale.height);
+    this.bg.setDepth(-10);
 
-    // ---- CREATE GRID ----
-    this.createGrid();
+    // ---------- CENTER GRID ----------
+    this.gridWidth = this.cols * this.tileSize;
+    this.gridHeight = this.rows * this.tileSize;
 
-    console.log('GRID CREATED');
-  }
+    this.offsetX = (this.scale.width - this.gridWidth) / 2;
+    this.offsetY = (this.scale.height - this.gridHeight) / 2;
 
-  // ================================
-  // GRID CREATION
-  // ================================
-  createGrid() {
+    // ---------- CREATE GRID ----------
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
       for (let x = 0; x < this.cols; x++) {
-        const cell = this.createCell(x, y);
-        this.grid[y][x] = cell;
+        this.grid[y][x] = this.createTile(x, y);
       }
     }
   }
 
-  createCell(x, y) {
+  // ===================================================
+  // TILE CREATION — ПЛИТКА С МАСКОЙ И РАМКОЙ
+  // ===================================================
+  createTile(x, y) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
 
     const px = this.offsetX + x * this.tileSize + this.tileSize / 2;
     const py = this.offsetY + y * this.tileSize + this.tileSize / 2;
 
-    // ---- TILE IMAGE ----
-    const tile = this.add.image(px, py, type);
-    tile.setDisplaySize(this.tileSize - 12, this.tileSize - 12);
-    tile.setInteractive({ useHandCursor: true });
+    // ---------- CONTAINER ----------
+    const container = this.add.container(px, py);
 
-    const cell = { x, y, type, tile };
+    // ---------- MASK (CUT WHITE BG) ----------
+    const maskShape = this.make.graphics();
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRect(
+      -this.innerSize / 2,
+      -this.innerSize / 2,
+      this.innerSize,
+      this.innerSize
+    );
+    const mask = maskShape.createGeometryMask();
 
-    tile.on('pointerdown', () => this.handleClick(cell));
+    // ---------- TILE IMAGE ----------
+    const img = this.add.image(0, 0, type);
+    img.setDisplaySize(this.innerSize * 1.25, this.innerSize * 1.25);
+    img.setMask(mask);
+
+    // ---------- FRAME (SPIKES STYLE) ----------
+    const frame = this.add.graphics();
+    frame.lineStyle(4, 0x1a1a1a);
+    frame.strokeRect(
+      -this.tileSize / 2 + 6,
+      -this.tileSize / 2 + 6,
+      this.tileSize - 12,
+      this.tileSize - 12
+    );
+
+    frame.lineStyle(2, 0xffcc00);
+    frame.strokeRect(
+      -this.tileSize / 2 + 10,
+      -this.tileSize / 2 + 10,
+      this.tileSize - 20,
+      this.tileSize - 20
+    );
+
+    container.add([img, frame]);
+    container.setSize(this.tileSize, this.tileSize);
+    container.setInteractive();
+
+    const cell = { x, y, type, container, img };
+
+    container.on('pointerdown', () => this.onTileClick(cell));
 
     return cell;
   }
 
-  // ================================
-  // INPUT HANDLING
-  // ================================
-  handleClick(cell) {
+  // ===================================================
+  // INPUT — КЛИКИ ПО ПЛИТКАМ
+  // ===================================================
+  onTileClick(cell) {
     if (!this.selected) {
       this.select(cell);
       return;
     }
 
     if (this.selected === cell) {
-      this.clearSelection();
+      this.deselect();
       return;
     }
 
-    if (this.areNeighbors(this.selected, cell)) {
+    if (this.isNeighbor(this.selected, cell)) {
       this.swap(this.selected, cell);
-      this.clearSelection();
+      this.deselect();
+      this.time.delayedCall(250, () => this.resolveMatches());
     } else {
-      this.clearSelection();
+      this.deselect();
       this.select(cell);
     }
   }
 
   select(cell) {
     this.selected = cell;
-    cell.tile.setScale(1.1);
+    cell.container.setScale(1.1);
   }
 
-  clearSelection() {
+  deselect() {
     if (this.selected) {
-      this.selected.tile.setScale(1);
+      this.selected.container.setScale(1);
       this.selected = null;
     }
   }
 
-  // ================================
-  // LOGIC
-  // ================================
-  areNeighbors(a, b) {
+  isNeighbor(a, b) {
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
   }
 
+  // ===================================================
+  // SWAP — ОБМЕН ПЛИТОК
+  // ===================================================
   swap(a, b) {
-    const ax = a.tile.x;
-    const ay = a.tile.y;
-    const bx = b.tile.x;
-    const by = b.tile.y;
-
-    this.grid[a.y][a.x] = b;
-    this.grid[b.y][b.x] = a;
-
+    [this.grid[a.y][a.x], this.grid[b.y][b.x]] = [b, a];
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
 
-    this.tweens.add({
-      targets: a.tile,
-      x: bx,
-      y: by,
-      duration: 200
-    });
+    const ax = this.offsetX + a.x * this.tileSize + this.tileSize / 2;
+    const ay = this.offsetY + a.y * this.tileSize + this.tileSize / 2;
+    const bx = this.offsetX + b.x * this.tileSize + this.tileSize / 2;
+    const by = this.offsetY + b.y * this.tileSize + this.tileSize / 2;
 
-    this.tweens.add({
-      targets: b.tile,
-      x: ax,
-      y: ay,
-      duration: 200
+    this.tweens.add({ targets: a.container, x: ax, y: ay, duration: 200 });
+    this.tweens.add({ targets: b.container, x: bx, y: by, duration: 200 });
+  }
+
+  // ===================================================
+  // MATCH LOGIC — ПОИСК И УДАЛЕНИЕ
+  // ===================================================
+  resolveMatches() {
+    const matches = [];
+
+    // horizontal
+    for (let y = 0; y < this.rows; y++) {
+      for (let x = 0; x < this.cols - 2; x++) {
+        const a = this.grid[y][x];
+        const b = this.grid[y][x + 1];
+        const c = this.grid[y][x + 2];
+        if (a.type === b.type && b.type === c.type) {
+          matches.push(a, b, c);
+        }
+      }
+    }
+
+    if (matches.length === 0) return;
+
+    matches.forEach(cell => {
+      this.tweens.add({
+        targets: cell.container,
+        scale: 0,
+        alpha: 0,
+        duration: 250,
+        onComplete: () => cell.container.destroy()
+      });
     });
   }
 }
