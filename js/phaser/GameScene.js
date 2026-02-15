@@ -30,8 +30,11 @@ export default class GameScene extends Phaser.Scene {
 
     spawnTile(row, col, fromTop = false) {
         const color = Phaser.Utils.Array.GetRandom(this.colors);
+
         const x = col * this.tileSize + this.tileSize / 2;
-        const y = fromTop ? -this.tileSize : row * this.tileSize + this.tileSize / 2;
+        const y = fromTop
+            ? -this.tileSize
+            : row * this.tileSize + this.tileSize / 2;
 
         const tile = this.add.rectangle(
             x,
@@ -56,7 +59,7 @@ export default class GameScene extends Phaser.Scene {
             this.tweens.add({
                 targets: tile,
                 y: row * this.tileSize + this.tileSize / 2,
-                duration: 200
+                duration: 250
             });
         }
     }
@@ -64,19 +67,26 @@ export default class GameScene extends Phaser.Scene {
     onTileClick(tile) {
         if (this.isAnimating) return;
 
+        console.log(`CLICK [${tile.row},${tile.col}]`);
+
+        // первый выбор
         if (!this.selected) {
             this.selectTile(tile);
             return;
         }
 
+        // повторный клик
         if (this.selected === tile) {
             this.clearSelection();
             return;
         }
 
+        // swap с соседом
         if (this.isNeighbor(this.selected, tile)) {
+            console.log("SWAP!");
             this.swapTiles(this.selected, tile);
         } else {
+            console.log("NOT NEIGHBOR");
             this.selectTile(tile);
         }
     }
@@ -84,12 +94,14 @@ export default class GameScene extends Phaser.Scene {
     selectTile(tile) {
         this.clearSelection();
         this.selected = tile;
-        tile.setStrokeStyle(4, 0xffffff);
+        tile.setStrokeStyle(6, 0xffffff);
+        tile.setDepth(10);
     }
 
     clearSelection() {
         if (this.selected) {
             this.selected.setStrokeStyle(2, 0x000000);
+            this.selected.setDepth(1);
             this.selected = null;
         }
     }
@@ -144,7 +156,7 @@ export default class GameScene extends Phaser.Scene {
     findMatches() {
         const result = new Set();
 
-        // horizontal
+        // горизонталь
         for (let r = 0; r < this.gridSize; r++) {
             let count = 1;
             for (let c = 1; c <= this.gridSize; c++) {
@@ -164,7 +176,7 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        // vertical
+        // вертикаль
         for (let c = 0; c < this.gridSize; c++) {
             let count = 1;
             for (let r = 1; r <= this.gridSize; r++) {
@@ -231,6 +243,6 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        return new Promise(r => this.time.delayedCall(250, r));
+        return new Promise(r => this.time.delayedCall(300, r));
     }
 }
