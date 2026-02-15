@@ -1,34 +1,26 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<title>Taverna War v7.5</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <title>Taverna War v7.6</title>
 
-<link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: black;
+            overflow: hidden;
+        }
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
 </head>
 <body>
-
-<div id="ui">
-    <div id="player-panel">
-        <img id="player-icon" src="assets/hero_warrior.jpg">
-        <div class="bar red"><div id="player-hp"></div></div>
-        <div class="bar blue"><div id="player-mana"></div></div>
-    </div>
-
-    <div id="game-wrap">
-        <div id="version">v7.5</div>
-        <div id="game-container"></div>
-    </div>
-
-    <div id="mob-panel">
-        <img id="mob-icon" src="assets/hero_mage.jpg">
-        <div class="bar red"><div id="mob-hp"></div></div>
-    </div>
-</div>
-
-<script type="module" src="js/main.js"></script>
+    <div id="game-container"></div>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
