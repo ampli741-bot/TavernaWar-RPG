@@ -129,16 +129,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   select(cell) {
-    this.selected = cell;
-    cell.frame.setTint(0xffcc00);
-  }
+  cell.bg.setTint(0xffff66);
+}
 
-  clearSelection() {
-    if (this.selected) {
-      this.selected.frame.clearTint();
-      this.selected = null;
-    }
+clearSelection() {
+  if (this.selected) {
+    this.selected.bg.clearTint();
+    this.selected = null;
   }
+}
+
 
   areNeighbors(a, b) {
     return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
