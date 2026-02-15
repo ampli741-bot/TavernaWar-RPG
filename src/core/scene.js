@@ -8,6 +8,7 @@ export const TILE_P = 4;
 export const VISUAL_S = TILE_S - TILE_P * 2;
 export const GRID = 8;
 
+// ИМЕНА СТРОГО КАК ФАЙЛЫ В assets/
 const TYPES = ['red', 'blue', 'green', 'purple', 'yellow'];
 
 const BG_COLORS = {
@@ -38,15 +39,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ===================================================
-  // PRELOAD
+  // PRELOAD — 100% СОВПАДЕНИЕ С assets/
   // ===================================================
- preload() {
-  this.load.image('bg', '/assets/bg.jpg');
+  preload() {
+    this.load.image('bg', 'assets/bg.jpg');
 
-  TYPES.forEach(t => {
-    this.load.image(`t_${t}`, `/assets/rune_${t}.png`);
-  });
-}
+    this.load.image('t_red',    'assets/rune_red.png');
+    this.load.image('t_blue',   'assets/rune_blue.png');
+    this.load.image('t_green',  'assets/rune_green.png');
+    this.load.image('t_purple', 'assets/rune_purple.png');
+    this.load.image('t_yellow', 'assets/rune_yellow.png');
+  }
 
 
   // ===================================================
