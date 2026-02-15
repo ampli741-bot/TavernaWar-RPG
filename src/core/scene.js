@@ -4,6 +4,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
+    this.load.image('bg', 'assets/bg.jpg');
+
     this.load.image('rune_red', 'assets/rune_red.png');
     this.load.image('rune_blue', 'assets/rune_blue.png');
     this.load.image('rune_green', 'assets/rune_green.png');
@@ -12,39 +14,46 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    /* ====== GRID CONFIG ====== */
     this.cols = 8;
     this.rows = 8;
-    this.tileSize = 90;
-    this.cellPadding = 12;
+    this.tileSize = 96;
+    this.gap = 8;
 
     this.types = ['red', 'blue', 'green', 'purple', 'yellow'];
-
     this.grid = [];
     this.selected = null;
     this.locked = false;
 
-    this.offsetX =
-      (this.sys.game.config.width -
-        this.cols * (this.tileSize + this.cellPadding)) / 2;
-    this.offsetY =
-      (this.sys.game.config.height -
-        this.rows * (this.tileSize + this.cellPadding)) / 2;
+    const boardWidth =
+      this.cols * this.tileSize + (this.cols - 1) * this.gap;
+    const boardHeight =
+      this.rows * this.tileSize + (this.rows - 1) * this.gap;
 
-    this.add.rectangle(
-      this.sys.game.config.width / 2,
-      this.sys.game.config.height / 2,
-      this.sys.game.config.width,
-      this.sys.game.config.height,
-      0x0f0f0f
+    /* ====== CENTER ====== */
+    this.centerX = this.sys.game.config.width / 2;
+    this.centerY = this.sys.game.config.height / 2;
+
+    this.offsetX = this.centerX - boardWidth / 2;
+    this.offsetY = this.centerY - boardHeight / 2;
+
+    /* ====== BACKGROUND ====== */
+    const bg = this.add.image(this.centerX, this.centerY, 'bg');
+    bg.setDisplaySize(boardWidth + 120, boardHeight + 120);
+    bg.setDepth(-10);
+
+    /* ====== BOARD FRAME ====== */
+    const boardBg = this.add.rectangle(
+      this.centerX,
+      this.centerY,
+      boardWidth + 20,
+      boardHeight + 20,
+      0x0b0b0b
     );
+    boardBg.setStrokeStyle(4, 0x000000);
+    boardBg.setDepth(-5);
 
-    this.createGrid();
-    this.resolveBoard();
-  }
-
-  /* ================= GRID ================= */
-
-  createGrid() {
+    /* ====== CREATE GRID ====== */
     for (let y = 0; y < this.rows; y++) {
       this.grid[y] = [];
       for (let x = 0; x < this.cols; x++) {
@@ -52,38 +61,41 @@ export class GameScene extends Phaser.Scene {
         this.grid[y][x] = cell;
       }
     }
+
+    this.resolveBoard();
   }
+
+  /* ================= CELL ================= */
 
   createCell(x, y) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
-    const richType = Math.random() < 0.08 ? 'double' : null;
+    const rich = Math.random() < 0.1;
 
     const px =
-      this.offsetX +
-      x * (this.tileSize + this.cellPadding) +
-      this.tileSize / 2;
+      this.offsetX + x * (this.tileSize + this.gap) + this.tileSize / 2;
     const py =
-      this.offsetY +
-      y * (this.tileSize + this.cellPadding) +
-      this.tileSize / 2;
+      this.offsetY + y * (this.tileSize + this.gap) + this.tileSize / 2;
 
-    const container = this.add.container(px, py);
+    const c = this.add.container(px, py);
 
-    const bg = this.add.rectangle(
+    /* tile base */
+    const base = this.add.rectangle(
       0,
       0,
       this.tileSize,
       this.tileSize,
-      0x1a1a1a
+      0x121212
     );
-    bg.setStrokeStyle(2, 0x000000);
-    container.add(bg);
+    base.setStrokeStyle(2, rich ? 0xffd700 : 0x000000);
+    c.add(base);
 
+    /* icon */
     const icon = this.add.image(0, 0, `rune_${type}`);
-    icon.setDisplaySize(this.tileSize * 0.65, this.tileSize * 0.65);
-    container.add(icon);
+    icon.setDisplaySize(this.tileSize * 0.85, this.tileSize * 0.85);
+    c.add(icon);
 
-    if (richType === 'double') {
+    /* rich glow */
+    if (rich) {
       const glow = this.add.rectangle(
         0,
         0,
@@ -92,34 +104,25 @@ export class GameScene extends Phaser.Scene {
       );
       glow.setStrokeStyle(3, 0xffd700);
       glow.setAlpha(0.9);
-      container.addAt(glow, 0);
+      c.addAt(glow, 0);
     }
 
-    container.setSize(this.tileSize, this.tileSize);
-    container.setInteractive();
+    c.setSize(this.tileSize, this.tileSize);
+    c.setInteractive();
 
-    container.on('pointerover', () => {
+    c.on('pointerover', () => {
       if (this.locked) return;
-      this.tweens.killTweensOf(container);
-      this.tweens.add({
-        targets: container,
-        scale: 1.08,
-        duration: 120
-      });
+      this.tweens.killTweensOf(c);
+      this.tweens.add({ targets: c, scale: 1.05, duration: 120 });
     });
 
-    container.on('pointerout', () => {
-      this.tweens.killTweensOf(container);
-      this.tweens.add({
-        targets: container,
-        scale: 1,
-        duration: 120
-      });
+    c.on('pointerout', () => {
+      this.tweens.add({ targets: c, scale: 1, duration: 120 });
     });
 
-    const cell = { x, y, type, richType, container };
+    const cell = { x, y, type, rich, c };
 
-    container.on('pointerdown', () => this.handleClick(cell));
+    c.on('pointerdown', () => this.handleClick(cell));
     return cell;
   }
 
@@ -152,12 +155,12 @@ export class GameScene extends Phaser.Scene {
 
   select(cell) {
     this.selected = cell;
-    cell.container.setScale(1.12);
+    cell.c.setScale(1.08);
   }
 
   clearSelection() {
     if (this.selected) {
-      this.selected.container.setScale(1);
+      this.selected.c.setScale(1);
       this.selected = null;
     }
   }
@@ -168,30 +171,24 @@ export class GameScene extends Phaser.Scene {
 
   /* ================= SWAP ================= */
 
-  swap(a, b, onComplete) {
-    const ax = a.container.x;
-    const ay = a.container.y;
-    const bx = b.container.x;
-    const by = b.container.y;
+  swap(a, b, cb) {
+    const ax = a.c.x,
+      ay = a.c.y;
+    const bx = b.c.x,
+      by = b.c.y;
 
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
 
+    this.tweens.add({ targets: a.c, x: bx, y: by, duration: 200 });
     this.tweens.add({
-      targets: a.container,
-      x: bx,
-      y: by,
-      duration: 200
-    });
-
-    this.tweens.add({
-      targets: b.container,
+      targets: b.c,
       x: ax,
       y: ay,
       duration: 200,
-      onComplete
+      onComplete: cb
     });
   }
 
@@ -216,7 +213,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   findMatches() {
-    const result = [];
+    const out = [];
 
     for (let y = 0; y < this.rows; y++) {
       let run = [this.grid[y][0]];
@@ -224,11 +221,11 @@ export class GameScene extends Phaser.Scene {
         const c = this.grid[y][x];
         if (c.type === run[0].type) run.push(c);
         else {
-          if (run.length >= 3) result.push(...run);
+          if (run.length >= 3) out.push(...run);
           run = [c];
         }
       }
-      if (run.length >= 3) result.push(...run);
+      if (run.length >= 3) out.push(...run);
     }
 
     for (let x = 0; x < this.cols; x++) {
@@ -237,14 +234,14 @@ export class GameScene extends Phaser.Scene {
         const c = this.grid[y][x];
         if (c.type === run[0].type) run.push(c);
         else {
-          if (run.length >= 3) result.push(...run);
+          if (run.length >= 3) out.push(...run);
           run = [c];
         }
       }
-      if (run.length >= 3) result.push(...run);
+      if (run.length >= 3) out.push(...run);
     }
 
-    return [...new Set(result)];
+    return [...new Set(out)];
   }
 
   /* ================= REMOVE / FALL ================= */
@@ -252,11 +249,11 @@ export class GameScene extends Phaser.Scene {
   removeMatches(matches) {
     matches.forEach(c => {
       this.tweens.add({
-        targets: c.container,
+        targets: c.c,
         scale: 0,
         alpha: 0,
         duration: 200,
-        onComplete: () => c.container.destroy()
+        onComplete: () => c.c.destroy()
       });
       this.grid[c.y][c.x] = null;
     });
@@ -274,10 +271,10 @@ export class GameScene extends Phaser.Scene {
               c.y = y;
 
               this.tweens.add({
-                targets: c.container,
+                targets: c.c,
                 y:
                   this.offsetY +
-                  y * (this.tileSize + this.cellPadding) +
+                  y * (this.tileSize + this.gap) +
                   this.tileSize / 2,
                 duration: 220
               });
@@ -294,14 +291,14 @@ export class GameScene extends Phaser.Scene {
       for (let y = 0; y < this.rows; y++) {
         if (!this.grid[y][x]) {
           const c = this.createCell(x, y);
-          c.container.y = this.offsetY - this.tileSize;
+          c.c.y = this.offsetY - this.tileSize;
           this.grid[y][x] = c;
 
           this.tweens.add({
-            targets: c.container,
+            targets: c.c,
             y:
               this.offsetY +
-              y * (this.tileSize + this.cellPadding) +
+              y * (this.tileSize + this.gap) +
               this.tileSize / 2,
             duration: 300
           });
