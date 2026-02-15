@@ -4,36 +4,41 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        console.log("🎮 GameScene V5 create");
+        console.log("🎮 GameScene V6 create");
 
-        this.VERSION = "v5";
+        this.VERSION = "v6";
 
         const { width, height } = this.scale;
 
-        // ===== GRID =====
+        /* ===================== GRID ===================== */
         this.rows = 8;
         this.cols = 8;
-        this.tileSize = Math.floor(Math.min(height * 0.8 / this.rows, 80));
 
-        // ===== LAYOUT ZONES =====
-        this.leftPanelWidth  = Math.floor(width * 0.22);
-        this.rightPanelWidth = Math.floor(width * 0.22);
-        this.fieldWidth      = this.cols * this.tileSize;
+        this.tileSize = Math.floor(
+            Math.min(height * 0.75 / this.rows, 80)
+        );
+
+        /* ===================== LAYOUT ===================== */
+        this.panelWidth = Math.floor(width * 0.18);
+        this.panelGap   = Math.floor(width * 0.05);
+
+        this.fieldWidth = this.cols * this.tileSize;
 
         this.offsetX = Math.floor(
             (width - this.fieldWidth) / 2
         );
+
         this.offsetY = Math.floor(
             (height - this.rows * this.tileSize) / 2
         );
 
-        // ===== COLORS =====
+        /* ===================== COLORS ===================== */
         this.colors = [
-            { key: "damage", color: 0xff4444 },
-            { key: "mana",   color: 0x4488ff },
-            { key: "heal",   color: 0x44ff44 },
-            { key: "gold",   color: 0xffdd44 },
-            { key: "curse",  color: 0xaa44ff }
+            { key: "damage", color: 0xff4444, weight: 3 },
+            { key: "mana",   color: 0x4488ff, weight: 1 },
+            { key: "heal",   color: 0x44ff44, weight: 1 },
+            { key: "gold",   color: 0xffdd44, weight: 2 }, // weak damage for mob
+            { key: "curse",  color: 0xaa44ff, weight: 1 }
         ];
 
         this.board = [];
@@ -53,10 +58,10 @@ export default class GameScene extends Phaser.Scene {
     drawPanels(w, h) {
         // PLAYER PANEL
         this.add.rectangle(
-            this.leftPanelWidth / 2,
+            this.panelWidth / 2,
             h / 2,
-            this.leftPanelWidth - 10,
-            h - 20,
+            this.panelWidth - 10,
+            h - 40,
             0x222222
         ).setStrokeStyle(2, 0xffffff);
 
@@ -67,23 +72,25 @@ export default class GameScene extends Phaser.Scene {
 
         // MOB PANEL
         this.add.rectangle(
-            w - this.rightPanelWidth / 2,
+            w - this.panelWidth / 2,
             h / 2,
-            this.rightPanelWidth - 10,
-            h - 20,
+            this.panelWidth - 10,
+            h - 40,
             0x222222
         ).setStrokeStyle(2, 0xffffff);
 
-        this.add.text(w - this.rightPanelWidth + 20, 30, "MOB", {
-            fontSize: "20px",
-            color: "#ffffff"
-        });
+        this.add.text(
+            w - this.panelWidth + 20,
+            30,
+            "MOB",
+            { fontSize: "20px", color: "#ffffff" }
+        );
     }
 
     drawVersion() {
         this.add.text(
             this.offsetX,
-            this.offsetY - 30,
+            this.offsetY - 28,
             this.VERSION,
             { fontSize: "14px", color: "#ffffff" }
         );
@@ -106,7 +113,7 @@ export default class GameScene extends Phaser.Scene {
 
     createTile(x, y) {
         const type = Phaser.Math.Between(0, this.colors.length - 1);
-        const tile = this.add.rectangle(
+        const t = this.add.rectangle(
             this.offsetX + x * this.tileSize,
             this.offsetY + y * this.tileSize,
             this.tileSize - 6,
@@ -114,11 +121,11 @@ export default class GameScene extends Phaser.Scene {
             this.colors[type].color
         ).setOrigin(0).setInteractive();
 
-        tile.gridX = x;
-        tile.gridY = y;
-        tile.type = type;
+        t.gridX = x;
+        t.gridY = y;
+        t.type = type;
 
-        return tile;
+        return t;
     }
 
     /* ===================== INPUT ===================== */
@@ -155,7 +162,7 @@ export default class GameScene extends Phaser.Scene {
         return Math.abs(a.gridX - b.gridX) + Math.abs(a.gridY - b.gridY) === 1;
     }
 
-    /* ===================== SWAP & MATCH ===================== */
+    /* ===================== SWAP ===================== */
 
     swapTiles(a, b, check) {
         this.isBusy = true;
@@ -192,6 +199,8 @@ export default class GameScene extends Phaser.Scene {
         t.y = this.offsetY + t.gridY * this.tileSize;
     }
 
+    /* ===================== MATCH ===================== */
+
     causesMatch(x, y, type) {
         let h = 1, v = 1;
         for (let i = 1; i <= 2; i++) {
@@ -213,10 +222,12 @@ export default class GameScene extends Phaser.Scene {
             for (let x = 0; x < this.cols; x++) {
                 const t = this.board[y][x];
                 if (!t) continue;
+
                 if (
                     this.board[y][x+1]?.type === t.type &&
                     this.board[y][x+2]?.type === t.type
                 ) out.push(t, this.board[y][x+1], this.board[y][x+2]);
+
                 if (
                     this.board[y+1]?.[x]?.type === t.type &&
                     this.board[y+2]?.[x]?.type === t.type
@@ -225,6 +236,8 @@ export default class GameScene extends Phaser.Scene {
         }
         return [...new Set(out)];
     }
+
+    /* ===================== RESOLVE ===================== */
 
     resolveBoard(player) {
         const matches = this.findMatches();
@@ -266,13 +279,56 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    /* ===================== MOB ===================== */
+    /* ===================== SMART MOB ===================== */
 
     enemyTurn() {
         this.playerTurn = false;
-        this.time.delayedCall(400, () => {
-            console.log("🤖 MOB MOVE");
+        console.log("🤖 MOB TURN");
+
+        let bestMove = null;
+        let bestScore = -1;
+
+        for (let y = 0; y < this.rows; y++) {
+            for (let x = 0; x < this.cols; x++) {
+                const t = this.board[y][x];
+                if (!t) continue;
+
+                const neighbors = [
+                    this.board[y]?.[x+1],
+                    this.board[y]?.[x-1],
+                    this.board[y+1]?.[x],
+                    this.board[y-1]?.[x]
+                ];
+
+                neighbors.forEach(n => {
+                    if (!n) return;
+
+                    this.swapData(t, n);
+                    const matches = this.findMatches();
+                    this.swapData(t, n);
+
+                    if (matches.length) {
+                        let score = 0;
+                        matches.forEach(m => {
+                            score += this.colors[m.type].weight;
+                        });
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = [t, n];
+                        }
+                    }
+                });
+            }
+        }
+
+        if (bestMove) {
+            this.time.delayedCall(300, () => {
+                this.swapTiles(bestMove[0], bestMove[1], false);
+                this.playerTurn = true;
+            });
+        } else {
+            console.log("🤖 MOB: no moves");
             this.playerTurn = true;
-        });
+        }
     }
 }
