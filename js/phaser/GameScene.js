@@ -1,5 +1,9 @@
 import { app } from "../core/app.js";
 
+/* ================= VERSION ================= */
+const VERSION = "1";
+
+/* ================= CONFIG ================= */
 const SIZE = 8;
 const TILE = 80;
 
@@ -21,8 +25,19 @@ export default class GameScene extends Phaser.Scene {
         this.turnOwner = "player"; // player | enemy
     }
 
+    /* ================= CREATE ================= */
+
     create() {
         console.log("🎮 GameScene create");
+        console.log("🧩 VERSION:", VERSION);
+
+        // версия на экране
+        this.add.text(10, 10, `v${VERSION}`, {
+            fontSize: "14px",
+            color: "#ffffff",
+            backgroundColor: "#000000",
+            padding: { x: 6, y: 4 }
+        }).setDepth(9999);
 
         for (let y = 0; y < SIZE; y++) {
             this.grid[y] = [];
@@ -55,6 +70,7 @@ export default class GameScene extends Phaser.Scene {
 
         const tile = { rect, type: t.key, x, y };
         rect.on("pointerdown", () => this.onClick(tile));
+
         return tile;
     }
 
@@ -102,6 +118,7 @@ export default class GameScene extends Phaser.Scene {
 
             const matches = this.findMatches();
             if (!matches.length) {
+                // откат
                 this.animateSwap(a, b, () => {
                     this.swapData(a, b);
                     this.locked = false;
@@ -183,6 +200,8 @@ export default class GameScene extends Phaser.Scene {
         const result = { damage:0, mana:0, heal:0, gold:0, curse:0 };
         matches.forEach(t => result[t.type]++);
 
+        console.log("🧮 TURN RESULT:", result);
+
         this.removeMatches(matches, () => {
             this.gravity(() => {
                 const again = this.findMatches();
@@ -194,28 +213,41 @@ export default class GameScene extends Phaser.Scene {
 
     applyTurnResult(result) {
         if (this.turnOwner === "player") {
-            app.mob.hp -= result.damage * 10;
-            console.log("⚔️ Player dmg:", result.damage * 10);
+            console.log("➡️ TURN: PLAYER → ENEMY");
+
+            const dmg = result.damage * 10;
+            app.mob.hp -= dmg;
+
+            console.log(`⚔️ Player deals ${dmg} dmg`);
+            console.log(`👹 Enemy HP: ${app.mob.hp}`);
+
             this.turnOwner = "enemy";
-            this.time.delayedCall(400, () => this.enemyMove());
+            this.time.delayedCall(600, () => this.enemyMove());
         } else {
             const dmg = result.damage * 8 + result.gold * 4;
             app.player.hp -= dmg;
-            console.log("👹 Enemy dmg:", dmg);
+
+            console.log(`👹 Enemy deals ${dmg} dmg`);
+            console.log(`❤️ Player HP: ${app.player.hp}`);
+
             this.turnOwner = "player";
             this.locked = false;
         }
     }
 
-    /* ================= ENEMY AI ================= */
+    /* ================= ENEMY ================= */
 
     enemyMove() {
+        console.log("👹 ENEMY MOVE STARTED (v" + VERSION + ")");
+
         const move = this.findEnemyMove();
         if (!move) {
+            console.log("👹 Enemy has no moves");
             this.turnOwner = "player";
             this.locked = false;
             return;
         }
+
         this.trySwap(move.a, move.b);
     }
 
@@ -242,25 +274,31 @@ export default class GameScene extends Phaser.Scene {
         return null;
     }
 
-    /* ================= REMOVE + GRAVITY ================= */
+    /* ================= REMOVE ================= */
 
     removeMatches(matches, done) {
         matches.forEach(t => {
             this.grid[t.y][t.x] = null;
             this.tiles[t.y][t.x] = null;
+
             this.tweens.add({
                 targets: t.rect,
                 scale: 0,
                 duration: 150,
+                ease: "Back.In",
                 onComplete: () => t.rect.destroy()
             });
         });
+
         this.time.delayedCall(180, done);
     }
+
+    /* ================= GRAVITY ================= */
 
     gravity(done) {
         for (let x = 0; x < SIZE; x++) {
             let writeY = SIZE - 1;
+
             for (let y = SIZE - 1; y >= 0; y--) {
                 const t = this.tiles[y][x];
                 if (t) {
@@ -269,6 +307,7 @@ export default class GameScene extends Phaser.Scene {
                         this.grid[writeY][x] = t.type;
                         this.tiles[y][x] = null;
                         this.grid[y][x] = null;
+
                         t.y = writeY;
                         this.tweens.add({
                             targets: t.rect,
@@ -280,11 +319,14 @@ export default class GameScene extends Phaser.Scene {
                     writeY--;
                 }
             }
+
             for (let y = writeY; y >= 0; y--) {
                 const t = this.spawnTile(x, y);
                 t.rect.y = -TILE;
+
                 this.tiles[y][x] = t;
                 this.grid[y][x] = t.type;
+
                 this.tweens.add({
                     targets: t.rect,
                     y: y * TILE + TILE / 2,
@@ -293,6 +335,7 @@ export default class GameScene extends Phaser.Scene {
                 });
             }
         }
+
         this.time.delayedCall(260, done);
     }
 }
