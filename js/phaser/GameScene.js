@@ -2,13 +2,14 @@ import { app } from "../core/app.js";
 
 const SIZE = 8;
 const TILE = 80;
+const SPEED = 150;
 
 const COLORS = [
-    { key: "damage", color: 0xff4444 }, // красный
-    { key: "mana",   color: 0x4488ff }, // синий
-    { key: "heal",   color: 0x44ff44 }, // зелёный
-    { key: "gold",   color: 0xffdd44 }, // жёлтый
-    { key: "curse",  color: 0xaa44ff }  // фиолетовый
+    { key: "damage", color: 0xff4444 },
+    { key: "mana",   color: 0x4488ff },
+    { key: "heal",   color: 0x44ff44 },
+    { key: "gold",   color: 0xffdd44 },
+    { key: "curse",  color: 0xaa44ff }
 ];
 
 export default class GameScene extends Phaser.Scene {
@@ -23,7 +24,7 @@ export default class GameScene extends Phaser.Scene {
         this.tiles = [];
         this.selected = null;
         this.locked = false;
-        this.turnResult = this.emptyTurn();
+        this.turn = this.emptyTurn();
 
         for (let y = 0; y < SIZE; y++) {
             this.grid[y] = [];
@@ -41,26 +42,30 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    /* =========================
-       UTILS
-    ========================= */
-
     emptyTurn() {
         return { damage: 0, mana: 0, heal: 0, gold: 0, curse: 0 };
     }
 
-    spawnTile(x, y) {
+    spawnTile(x, y, fromTop = false) {
         const t = Phaser.Utils.Array.GetRandom(COLORS);
 
         const rect = this.add.rectangle(
             x * TILE + TILE / 2,
-            y * TILE + TILE / 2,
-            TILE - 4,
-            TILE - 4,
+            fromTop ? -TILE : y * TILE + TILE / 2,
+            TILE - 6,
+            TILE - 6,
             t.color
         ).setInteractive();
 
-        rect.on("pointerdown", () => this.clickTile(x, y));
+        rect.on("pointerdown", () => this.click(x, y));
+
+        if (fromTop) {
+            this.tweens.add({
+                targets: rect,
+                y: y * TILE + TILE / 2,
+                duration: SPEED
+            });
+        }
 
         return { rect, type: t.key };
     }
@@ -76,13 +81,8 @@ export default class GameScene extends Phaser.Scene {
         );
     }
 
-    /* =========================
-       INPUT
-    ========================= */
-
-    clickTile(x, y) {
+    click(x, y) {
         if (this.locked) return;
-        if (!this.tiles[y][x]) return;
 
         if (!this.selected) {
             this.selected = { x, y };
@@ -92,138 +92,126 @@ export default class GameScene extends Phaser.Scene {
 
         const a = this.selected;
         const b = { x, y };
-
         this.tiles[a.y][a.x].rect.setStrokeStyle();
         this.selected = null;
 
-        const dx = Math.abs(a.x - b.x);
-        const dy = Math.abs(a.y - b.y);
+        if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) return;
 
-        if (dx + dy !== 1) return;
-
-        this.swap(a.x, a.y, b.x, b.y);
+        this.trySwap(a, b);
     }
 
-    /* =========================
-       SWAP
-    ========================= */
-
-    swap(ax, ay, bx, by) {
-        if (this.locked) return;
-        if (!this.tiles[ay][ax] || !this.tiles[by][bx]) return;
-
+    trySwap(a, b) {
         this.locked = true;
 
-        this.swapData(ax, ay, bx, by);
+        const A = this.tiles[a.y][a.x];
+        const B = this.tiles[b.y][b.x];
 
-        if (!this.hasMatches()) {
-            // ❌ пустой ход — вернуть назад
-            this.time.delayedCall(150, () => {
-                this.swapData(ax, ay, bx, by);
-                this.locked = false;
-            });
-            return;
-        }
+        this.animateSwap(A.rect, B.rect, () => {
+            this.swapData(a, b);
 
-        this.resolveMatches();
+            if (!this.hasMatches()) {
+                // ❌ НЕТ совпадения → откат
+                this.animateSwap(B.rect, A.rect, () => {
+                    this.swapData(a, b);
+                    this.locked = false;
+                });
+                return;
+            }
+
+            this.resolve();
+        });
     }
 
-    swapData(ax, ay, bx, by) {
-        const a = this.tiles[ay][ax];
-        const b = this.tiles[by][bx];
-        if (!a || !b) return;
-
-        [this.grid[ay][ax], this.grid[by][bx]] =
-        [this.grid[by][bx], this.grid[ay][ax]];
-
-        [this.tiles[ay][ax], this.tiles[by][bx]] =
-        [this.tiles[by][bx], this.tiles[ay][ax]];
-
-        a.rect.setPosition(bx * TILE + TILE / 2, by * TILE + TILE / 2);
-        b.rect.setPosition(ax * TILE + TILE / 2, ay * TILE + TILE / 2);
+    animateSwap(r1, r2, done) {
+        this.tweens.add({
+            targets: r1,
+            x: r2.x,
+            y: r2.y,
+            duration: SPEED
+        });
+        this.tweens.add({
+            targets: r2,
+            x: r1.x,
+            y: r1.y,
+            duration: SPEED,
+            onComplete: done
+        });
     }
 
-    /* =========================
-       MATCH LOGIC
-    ========================= */
+    swapData(a, b) {
+        [this.grid[a.y][a.x], this.grid[b.y][b.x]] =
+        [this.grid[b.y][b.x], this.grid[a.y][a.x]];
+
+        [this.tiles[a.y][a.x], this.tiles[b.y][b.x]] =
+        [this.tiles[b.y][b.x], this.tiles[a.y][a.x]];
+    }
 
     hasMatches() {
         return this.findMatches().length > 0;
     }
 
     findMatches() {
-        const matches = [];
-
+        const out = [];
         for (let y = 0; y < SIZE; y++) {
             for (let x = 0; x < SIZE; x++) {
                 const t = this.grid[y][x];
                 if (!t) continue;
 
-                if (
-                    x < SIZE - 2 &&
+                if (x < SIZE - 2 &&
                     t === this.grid[y][x + 1] &&
-                    t === this.grid[y][x + 2]
-                ) matches.push({ x, y, type: t });
+                    t === this.grid[y][x + 2]) out.push({ x, y, type: t });
 
-                if (
-                    y < SIZE - 2 &&
+                if (y < SIZE - 2 &&
                     t === this.grid[y + 1][x] &&
-                    t === this.grid[y + 2][x]
-                ) matches.push({ x, y, type: t });
+                    t === this.grid[y + 2][x]) out.push({ x, y, type: t });
             }
         }
-        return matches;
+        return out;
     }
 
-    resolveMatches() {
+    resolve() {
         const matches = this.findMatches();
-
         if (!matches.length) {
-            console.log("TURN RESULT:", this.turnResult);
-
-            // 🔥 пример применения (можно расширять)
-            if (app.player && app.mob) {
-                app.mob.hp -= this.turnResult.damage * 10;
-                app.player.mana += this.turnResult.mana * 5;
-                app.player.gold += this.turnResult.gold;
-                app.player.curse += this.turnResult.curse;
-            }
-
-            this.turnResult = this.emptyTurn();
+            console.log("TURN RESULT:", this.turn);
+            this.turn = this.emptyTurn();
             this.locked = false;
             return;
         }
 
-        matches.forEach(m => this.turnResult[m.type]++);
+        matches.forEach(m => this.turn[m.type]++);
 
         matches.forEach(m => {
-            const tile = this.tiles[m.y][m.x];
-            if (!tile) return;
-            tile.rect.destroy();
+            const t = this.tiles[m.y][m.x];
+            this.tweens.add({
+                targets: t.rect,
+                alpha: 0,
+                scale: 0.2,
+                duration: 120,
+                onComplete: () => t.rect.destroy()
+            });
             this.tiles[m.y][m.x] = null;
             this.grid[m.y][m.x] = null;
         });
 
-        this.time.delayedCall(200, () => this.dropTiles());
+        this.time.delayedCall(150, () => this.gravity());
     }
 
-    /* =========================
-       GRAVITY
-    ========================= */
-
-    dropTiles() {
+    gravity() {
         for (let x = 0; x < SIZE; x++) {
             for (let y = SIZE - 1; y >= 0; y--) {
-                if (this.grid[y][x] === null) {
+                if (!this.grid[y][x]) {
                     for (let yy = y - 1; yy >= 0; yy--) {
-                        if (this.grid[yy][x] !== null) {
+                        if (this.grid[yy][x]) {
                             this.grid[y][x] = this.grid[yy][x];
                             this.tiles[y][x] = this.tiles[yy][x];
                             this.grid[yy][x] = null;
                             this.tiles[yy][x] = null;
 
-                            this.tiles[y][x].rect.y =
-                                y * TILE + TILE / 2;
+                            this.tweens.add({
+                                targets: this.tiles[y][x].rect,
+                                y: y * TILE + TILE / 2,
+                                duration: SPEED
+                            });
                             break;
                         }
                     }
@@ -231,17 +219,16 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        // новые плитки сверху
         for (let x = 0; x < SIZE; x++) {
             for (let y = 0; y < SIZE; y++) {
-                if (this.grid[y][x] === null) {
-                    const tile = this.spawnTile(x, y);
-                    this.grid[y][x] = tile.type;
-                    this.tiles[y][x] = tile;
+                if (!this.grid[y][x]) {
+                    const t = this.spawnTile(x, y, true);
+                    this.grid[y][x] = t.type;
+                    this.tiles[y][x] = t;
                 }
             }
         }
 
-        this.time.delayedCall(200, () => this.resolveMatches());
+        this.time.delayedCall(200, () => this.resolve());
     }
 }
