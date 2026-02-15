@@ -10,13 +10,19 @@ export default class GameScene extends Phaser.Scene {
         this.selected = null;
         this.busy = false;
 
-        this.colors = [
-            0xff4444, // red
-            0x4488ff, // blue
-            0x44ff44, // green
-            0xffdd44, // yellow
-            0xaa44ff  // purple
-        ];
+        // 🎯 результат текущего хода
+        this.turnResult = this.emptyTurnResult();
+
+        // 🎨 цвета
+        this.colorMap = {
+            0xff4444: "damage",    // red
+            0x4488ff: "mana",      // blue
+            0x44ff44: "heal",      // green
+            0xffdd44: "gold",      // yellow
+            0xaa44ff: "curse"      // purple
+        };
+
+        this.colors = Object.keys(this.colorMap).map(c => Number(c));
 
         for (let r = 0; r < this.gridSize; r++) {
             this.tiles[r] = [];
@@ -26,6 +32,16 @@ export default class GameScene extends Phaser.Scene {
         }
 
         console.log("FIELD READY");
+    }
+
+    emptyTurnResult() {
+        return {
+            damage: 0,
+            mana: 0,
+            heal: 0,
+            gold: 0,
+            curse: 0
+        };
     }
 
     /* ---------- SPAWN ---------- */
@@ -124,14 +140,13 @@ export default class GameScene extends Phaser.Scene {
 
     async trySwap(a, b) {
         this.busy = true;
+        this.turnResult = this.emptyTurnResult(); // 🔄 новый ход
 
-        // 1️⃣ временный swap в данных
         this.swapData(a, b);
         const valid = this.findMatches().length > 0;
-        this.swapData(a, b); // откат данных
+        this.swapData(a, b);
 
         if (!valid) {
-            // ❌ невалидный ход — просто анимация туда-обратно
             await this.animateSwap(a, b);
             await this.animateSwap(a, b);
             this.clearSelect();
@@ -139,10 +154,12 @@ export default class GameScene extends Phaser.Scene {
             return;
         }
 
-        // ✅ валидный ход
         this.swapData(a, b);
         await this.animateSwap(a, b);
         await this.resolveMatches();
+
+        // 📊 итог хода
+        console.log("TURN RESULT:", this.turnResult);
 
         this.clearSelect();
         this.busy = false;
@@ -182,6 +199,12 @@ export default class GameScene extends Phaser.Scene {
     async resolveMatches() {
         const matches = this.findMatches();
         if (!matches.length) return;
+
+        // 🎯 считаем цвета
+        matches.forEach(tile => {
+            const type = this.colorMap[tile.colorValue];
+            if (type) this.turnResult[type]++;
+        });
 
         await this.remove(matches);
         await this.drop();
