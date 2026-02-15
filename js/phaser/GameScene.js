@@ -4,331 +4,255 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
-        console.log("🎮 GameScene V6 create");
+        console.log("GameScene create V6.1");
 
-        this.VERSION = "v6";
+        this.SIZE = 8;
+        this.TILE = 64;
+        this.OFFSET_X = 360;
+        this.OFFSET_Y = 80;
 
-        const { width, height } = this.scale;
+        this.colors = ["red", "blue", "green", "yellow", "purple"];
+        this.colorMap = {
+            red: 0xff4b4b,
+            blue: 0x4b8bff,
+            green: 0x4bff6a,
+            yellow: 0xffe04b,
+            purple: 0xb44bff
+        };
 
-        /* ===================== GRID ===================== */
-        this.rows = 8;
-        this.cols = 8;
+        this.grid = [];
+        this.tiles = [];
 
-        this.tileSize = Math.floor(
-            Math.min(height * 0.75 / this.rows, 80)
-        );
-
-        /* ===================== LAYOUT ===================== */
-        this.panelWidth = Math.floor(width * 0.18);
-        this.panelGap   = Math.floor(width * 0.05);
-
-        this.fieldWidth = this.cols * this.tileSize;
-
-        this.offsetX = Math.floor(
-            (width - this.fieldWidth) / 2
-        );
-
-        this.offsetY = Math.floor(
-            (height - this.rows * this.tileSize) / 2
-        );
-
-        /* ===================== COLORS ===================== */
-        this.colors = [
-            { key: "damage", color: 0xff4444, weight: 3 },
-            { key: "mana",   color: 0x4488ff, weight: 1 },
-            { key: "heal",   color: 0x44ff44, weight: 1 },
-            { key: "gold",   color: 0xffdd44, weight: 2 }, // weak damage for mob
-            { key: "curse",  color: 0xaa44ff, weight: 1 }
-        ];
-
-        this.board = [];
         this.selected = null;
-        this.isBusy = false;
-        this.playerTurn = true;
+        this.turn = "player";
+        this.inputLocked = false;
 
-        this.drawPanels(width, height);
-        this.drawVersion();
-        this.generateBoard();
-
-        this.input.on("gameobjectdown", this.onTileClick, this);
+        this.createGrid();
     }
 
-    /* ===================== UI ===================== */
-
-    drawPanels(w, h) {
-        // PLAYER PANEL
-        this.add.rectangle(
-            this.panelWidth / 2,
-            h / 2,
-            this.panelWidth - 10,
-            h - 40,
-            0x222222
-        ).setStrokeStyle(2, 0xffffff);
-
-        this.add.text(20, 30, "PLAYER", {
-            fontSize: "20px",
-            color: "#ffffff"
-        });
-
-        // MOB PANEL
-        this.add.rectangle(
-            w - this.panelWidth / 2,
-            h / 2,
-            this.panelWidth - 10,
-            h - 40,
-            0x222222
-        ).setStrokeStyle(2, 0xffffff);
-
-        this.add.text(
-            w - this.panelWidth + 20,
-            30,
-            "MOB",
-            { fontSize: "20px", color: "#ffffff" }
-        );
-    }
-
-    drawVersion() {
-        this.add.text(
-            this.offsetX,
-            this.offsetY - 28,
-            this.VERSION,
-            { fontSize: "14px", color: "#ffffff" }
-        );
-    }
-
-    /* ===================== BOARD ===================== */
-
-    generateBoard() {
-        for (let y = 0; y < this.rows; y++) {
-            this.board[y] = [];
-            for (let x = 0; x < this.cols; x++) {
-                let tile;
+    createGrid() {
+        for (let y = 0; y < this.SIZE; y++) {
+            this.grid[y] = [];
+            this.tiles[y] = [];
+            for (let x = 0; x < this.SIZE; x++) {
+                let color;
                 do {
-                    tile = this.createTile(x, y);
-                } while (this.causesMatch(x, y, tile.type));
-                this.board[y][x] = tile;
+                    color = Phaser.Utils.Array.GetRandom(this.colors);
+                } while (
+                    (x >= 2 &&
+                        this.grid[y][x - 1] === color &&
+                        this.grid[y][x - 2] === color) ||
+                    (y >= 2 &&
+                        this.grid[y - 1][x] === color &&
+                        this.grid[y - 2][x] === color)
+                );
+
+                this.grid[y][x] = color;
+                this.spawnTile(x, y, color);
             }
         }
     }
 
-    createTile(x, y) {
-        const type = Phaser.Math.Between(0, this.colors.length - 1);
-        const t = this.add.rectangle(
-            this.offsetX + x * this.tileSize,
-            this.offsetY + y * this.tileSize,
-            this.tileSize - 6,
-            this.tileSize - 6,
-            this.colors[type].color
-        ).setOrigin(0).setInteractive();
+    spawnTile(x, y, color) {
+        const rect = this.add.rectangle(
+            this.OFFSET_X + x * this.TILE,
+            this.OFFSET_Y + y * this.TILE,
+            this.TILE - 6,
+            this.TILE - 6,
+            this.colorMap[color]
+        );
 
-        t.gridX = x;
-        t.gridY = y;
-        t.type = type;
+        rect.setInteractive();
+        rect.on("pointerdown", () => this.clickTile(x, y));
 
-        return t;
+        rect.gridX = x;
+        rect.gridY = y;
+        rect.color = color;
+
+        this.tiles[y][x] = rect;
     }
 
-    /* ===================== INPUT ===================== */
-
-    onTileClick(pointer, tile) {
-        if (this.isBusy || !this.playerTurn) return;
+    clickTile(x, y) {
+        if (this.turn !== "player" || this.inputLocked) return;
 
         if (!this.selected) {
-            this.selectTile(tile);
+            this.selected = { x, y };
+            this.tiles[y][x].setStrokeStyle(3, 0xffffff);
             return;
         }
 
-        if (this.isNeighbor(this.selected, tile)) {
-            this.swapTiles(this.selected, tile, true);
-            this.selected = null;
-        } else {
-            this.clearSelection();
-            this.selectTile(tile);
-        }
-    }
-
-    selectTile(tile) {
+        const a = this.selected;
+        const b = { x, y };
         this.clearSelection();
-        this.selected = tile;
-        tile.setStrokeStyle(4, 0xffffff);
+
+        if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) return;
+
+        this.trySwap(a, b);
     }
 
     clearSelection() {
-        this.children.list.forEach(o => o.setStrokeStyle?.());
+        if (this.selected) {
+            const t = this.tiles[this.selected.y][this.selected.x];
+            t.setStrokeStyle();
+        }
         this.selected = null;
     }
 
-    isNeighbor(a, b) {
-        return Math.abs(a.gridX - b.gridX) + Math.abs(a.gridY - b.gridY) === 1;
-    }
-
-    /* ===================== SWAP ===================== */
-
-    swapTiles(a, b, check) {
-        this.isBusy = true;
+    trySwap(a, b) {
         this.swapData(a, b);
-        this.moveTile(a);
-        this.moveTile(b);
 
-        if (check && !this.hasAnyMatches()) {
-            this.time.delayedCall(200, () => {
-                this.swapData(a, b);
-                this.moveTile(a);
-                this.moveTile(b);
-                this.isBusy = false;
-            });
+        if (this.findMatches().length === 0) {
+            this.swapData(a, b);
             return;
         }
 
-        this.time.delayedCall(200, () => this.resolveBoard(true));
+        this.inputLocked = true;
+        this.resolveBoard(() => {
+            this.turn = "mob";
+            this.mobTurn();
+        });
     }
 
-    swapData(a, b) {
-        const ax = a.gridX, ay = a.gridY;
-        const bx = b.gridX, by = b.gridY;
+    mobTurn() {
+        console.log("MOB TURN");
 
-        this.board[ay][ax] = b;
-        this.board[by][bx] = a;
-
-        a.gridX = bx; a.gridY = by;
-        b.gridX = ax; b.gridY = ay;
-    }
-
-    moveTile(t) {
-        t.x = this.offsetX + t.gridX * this.tileSize;
-        t.y = this.offsetY + t.gridY * this.tileSize;
-    }
-
-    /* ===================== MATCH ===================== */
-
-    causesMatch(x, y, type) {
-        let h = 1, v = 1;
-        for (let i = 1; i <= 2; i++) {
-            if (this.board[y]?.[x - i]?.type === type) h++;
-            if (this.board[y]?.[x + i]?.type === type) h++;
-            if (this.board[y - i]?.[x]?.type === type) v++;
-            if (this.board[y + i]?.[x]?.type === type) v++;
+        const moves = this.findAllValidMoves();
+        if (moves.length === 0) {
+            this.turn = "player";
+            this.inputLocked = false;
+            return;
         }
-        return h >= 3 || v >= 3;
+
+        const move = Phaser.Utils.Array.GetRandom(moves);
+        this.swapData(move.a, move.b);
+
+        this.resolveBoard(() => {
+            this.turn = "player";
+            this.inputLocked = false;
+        });
     }
 
-    hasAnyMatches() {
-        return this.findMatches().length > 0;
-    }
-
-    findMatches() {
-        const out = [];
-        for (let y = 0; y < this.rows; y++) {
-            for (let x = 0; x < this.cols; x++) {
-                const t = this.board[y][x];
-                if (!t) continue;
-
-                if (
-                    this.board[y][x+1]?.type === t.type &&
-                    this.board[y][x+2]?.type === t.type
-                ) out.push(t, this.board[y][x+1], this.board[y][x+2]);
-
-                if (
-                    this.board[y+1]?.[x]?.type === t.type &&
-                    this.board[y+2]?.[x]?.type === t.type
-                ) out.push(t, this.board[y+1][x], this.board[y+2][x]);
-            }
-        }
-        return [...new Set(out)];
-    }
-
-    /* ===================== RESOLVE ===================== */
-
-    resolveBoard(player) {
+    resolveBoard(onComplete) {
         const matches = this.findMatches();
-        if (!matches.length) {
-            this.isBusy = false;
-            if (player) this.enemyTurn();
+        if (matches.length === 0) {
+            onComplete && onComplete();
             return;
         }
 
-        const result = { damage:0, mana:0, heal:0, gold:0, curse:0 };
-
-        matches.forEach(t => {
-            result[this.colors[t.type].key]++;
-            this.board[t.gridY][t.gridX] = null;
-            t.destroy();
+        matches.forEach(({ x, y }) => {
+            this.tiles[y][x].destroy();
+            this.tiles[y][x] = null;
+            this.grid[y][x] = null;
         });
 
-        console.log(player ? "PLAYER TURN:" : "ENEMY TURN:", result);
-
-        this.dropTiles();
-        this.time.delayedCall(200, () => this.resolveBoard(player));
+        this.time.delayedCall(200, () => {
+            this.dropTiles();
+            this.time.delayedCall(200, () => {
+                this.resolveBoard(onComplete);
+            });
+        });
     }
 
     dropTiles() {
-        for (let x = 0; x < this.cols; x++) {
-            let p = this.rows - 1;
-            for (let y = this.rows - 1; y >= 0; y--) {
-                const t = this.board[y][x];
-                if (t) {
-                    this.board[p][x] = t;
-                    t.gridY = p;
-                    this.moveTile(t);
-                    p--;
+        for (let x = 0; x < this.SIZE; x++) {
+            for (let y = this.SIZE - 1; y >= 0; y--) {
+                if (this.grid[y][x] === null) {
+                    for (let yy = y - 1; yy >= 0; yy--) {
+                        if (this.grid[yy][x]) {
+                            this.grid[y][x] = this.grid[yy][x];
+                            this.tiles[y][x] = this.tiles[yy][x];
+
+                            this.tiles[y][x].gridY = y;
+                            this.tweens.add({
+                                targets: this.tiles[y][x],
+                                y: this.OFFSET_Y + y * this.TILE,
+                                duration: 150
+                            });
+
+                            this.grid[yy][x] = null;
+                            this.tiles[yy][x] = null;
+                            break;
+                        }
+                    }
+
+                    if (!this.grid[y][x]) {
+                        const color = Phaser.Utils.Array.GetRandom(this.colors);
+                        this.grid[y][x] = color;
+                        this.spawnTile(x, y, color);
+                    }
                 }
-            }
-            for (let y = p; y >= 0; y--) {
-                this.board[y][x] = this.createTile(x, y);
             }
         }
     }
 
-    /* ===================== SMART MOB ===================== */
+    swapData(a, b) {
+        [this.grid[a.y][a.x], this.grid[b.y][b.x]] =
+            [this.grid[b.y][b.x], this.grid[a.y][a.x]];
 
-    enemyTurn() {
-        this.playerTurn = false;
-        console.log("🤖 MOB TURN");
+        [this.tiles[a.y][a.x], this.tiles[b.y][b.x]] =
+            [this.tiles[b.y][b.x], this.tiles[a.y][a.x]];
 
-        let bestMove = null;
-        let bestScore = -1;
+        this.updateTilePosition(this.tiles[a.y][a.x], a.x, a.y);
+        this.updateTilePosition(this.tiles[b.y][b.x], b.x, b.y);
+    }
 
-        for (let y = 0; y < this.rows; y++) {
-            for (let x = 0; x < this.cols; x++) {
-                const t = this.board[y][x];
-                if (!t) continue;
+    updateTilePosition(tile, x, y) {
+        tile.gridX = x;
+        tile.gridY = y;
+        this.tweens.add({
+            targets: tile,
+            x: this.OFFSET_X + x * this.TILE,
+            y: this.OFFSET_Y + y * this.TILE,
+            duration: 150
+        });
+    }
 
-                const neighbors = [
-                    this.board[y]?.[x+1],
-                    this.board[y]?.[x-1],
-                    this.board[y+1]?.[x],
-                    this.board[y-1]?.[x]
+    findMatches() {
+        const res = [];
+
+        for (let y = 0; y < this.SIZE; y++) {
+            for (let x = 0; x < this.SIZE - 2; x++) {
+                const c = this.grid[y][x];
+                if (c && c === this.grid[y][x + 1] && c === this.grid[y][x + 2]) {
+                    res.push({ x, y }, { x: x + 1, y }, { x: x + 2, y });
+                }
+            }
+        }
+
+        for (let x = 0; x < this.SIZE; x++) {
+            for (let y = 0; y < this.SIZE - 2; y++) {
+                const c = this.grid[y][x];
+                if (c && c === this.grid[y + 1][x] && c === this.grid[y + 2][x]) {
+                    res.push({ x, y }, { x, y: y + 1 }, { x, y: y + 2 });
+                }
+            }
+        }
+
+        return res;
+    }
+
+    findAllValidMoves() {
+        const moves = [];
+
+        for (let y = 0; y < this.SIZE; y++) {
+            for (let x = 0; x < this.SIZE; x++) {
+                const dirs = [
+                    { x: x + 1, y },
+                    { x, y: y + 1 }
                 ];
 
-                neighbors.forEach(n => {
-                    if (!n) return;
-
-                    this.swapData(t, n);
-                    const matches = this.findMatches();
-                    this.swapData(t, n);
-
-                    if (matches.length) {
-                        let score = 0;
-                        matches.forEach(m => {
-                            score += this.colors[m.type].weight;
-                        });
-                        if (score > bestScore) {
-                            bestScore = score;
-                            bestMove = [t, n];
+                dirs.forEach(d => {
+                    if (d.x < this.SIZE && d.y < this.SIZE) {
+                        this.swapData({ x, y }, d);
+                        if (this.findMatches().length > 0) {
+                            moves.push({ a: { x, y }, b: d });
                         }
+                        this.swapData({ x, y }, d);
                     }
                 });
             }
         }
 
-        if (bestMove) {
-            this.time.delayedCall(300, () => {
-                this.swapTiles(bestMove[0], bestMove[1], false);
-                this.playerTurn = true;
-            });
-        } else {
-            console.log("🤖 MOB: no moves");
-            this.playerTurn = true;
-        }
+        return moves;
     }
 }
