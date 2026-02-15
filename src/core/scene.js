@@ -1,207 +1,347 @@
-// ===================================================
-// TAVERNA WAR — MATCH-3 CORE SCENE
-// FILE: src/core/scene.js
-// ===================================================
+// =====================================================
+// CONFIG
+// =====================================================
+export const TILE_S = 85;          // шаг сетки
+export const TILE_P = 4;           // padding
+export const VISUAL_S = TILE_S - TILE_P * 2;
+export const GRID = 8;
 
+const TYPES = ['red', 'blue', 'green', 'purple', 'yellow'];
+
+const BG_COLORS = {
+  red: 0x3d0a0a,
+  blue: 0x0a1a2f,
+  green: 0x0a240a,
+  purple: 0x220a35,
+  yellow: 0x2d2405
+};
+
+const GLOW_COLORS = {
+  red: 0xff0000,
+  blue: 0x00aaff,
+  green: 0x00ff00,
+  purple: 0xaa00ff,
+  yellow: 0xffaa00
+};
+
+// =====================================================
+// SCENE
+// =====================================================
 export class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
+    this.grid = [];
+    this.sel = null;
+    this.isAnimating = false;
   }
 
   // ===================================================
-  // PRELOAD — ЗАГРУЗКА РЕСУРСОВ
+  // PRELOAD
   // ===================================================
   preload() {
-    this.load.image('bg', './assets/bg.jpg');
-
-    this.load.image('red', './assets/rune_red.png');
-    this.load.image('blue', './assets/rune_blue.png');
-    this.load.image('green', './assets/rune_green.png');
-    this.load.image('purple', './assets/rune_purple.png');
-    this.load.image('yellow', './assets/rune_yellow.png');
+    TYPES.forEach(t => {
+      this.load.image(`t_${t}`, `assets/rune_${t}.png`);
+    });
   }
 
   // ===================================================
-  // CREATE — ИНИЦИАЛИЗАЦИЯ СЦЕНЫ
+  // CREATE
   // ===================================================
   create() {
-    // ---------- CONFIG ----------
-    this.cols = 8;
-    this.rows = 8;
-    this.tileSize = 96;
-    this.innerSize = 76;
+    console.log('SCENE LOADED: STABLE MATCH-3');
 
-    this.types = ['red', 'blue', 'green', 'purple', 'yellow'];
     this.grid = [];
-    this.selected = null;
 
-    // ---------- BACKGROUND FULLSCREEN ----------
-    this.bg = this.add.image(
-      this.scale.width / 2,
-      this.scale.height / 2,
-      'bg'
-    );
-    this.bg.setDisplaySize(this.scale.width, this.scale.height);
-    this.bg.setDepth(-10);
-
-    // ---------- CENTER GRID ----------
-    this.gridWidth = this.cols * this.tileSize;
-    this.gridHeight = this.rows * this.tileSize;
-
-    this.offsetX = (this.scale.width - this.gridWidth) / 2;
-    this.offsetY = (this.scale.height - this.gridHeight) / 2;
-
-    // ---------- CREATE GRID ----------
-    for (let y = 0; y < this.rows; y++) {
-      this.grid[y] = [];
-      for (let x = 0; x < this.cols; x++) {
-        this.grid[y][x] = this.createTile(x, y);
+    for (let r = 0; r < GRID; r++) {
+      this.grid[r] = [];
+      for (let c = 0; c < GRID; c++) {
+        this.spawnTile(r, c);
       }
     }
   }
 
   // ===================================================
-  // TILE CREATION — ПЛИТКА С МАСКОЙ И РАМКОЙ
+  // TILE VISUAL
   // ===================================================
-  createTile(x, y) {
-    const type = Phaser.Utils.Array.GetRandom(this.types);
+  spawnTile(r, c, fromTop = false) {
+    const type = Phaser.Utils.Array.GetRandom(TYPES);
 
-    const px = this.offsetX + x * this.tileSize + this.tileSize / 2;
-    const py = this.offsetY + y * this.tileSize + this.tileSize / 2;
+    const x = c * TILE_S + TILE_S / 2;
+    const y = fromTop ? -TILE_S : r * TILE_S + TILE_S / 2;
 
-    // ---------- CONTAINER ----------
-    const container = this.add.container(px, py);
+    const container = this.add.container(x, y);
+    container.type = type;
+    container.gridR = r;
+    container.gridC = c;
 
-    // ---------- MASK (CUT WHITE BG) ----------
-    const maskShape = this.make.graphics();
-    maskShape.fillStyle(0xffffff);
-    maskShape.fillRect(
-      -this.innerSize / 2,
-      -this.innerSize / 2,
-      this.innerSize,
-      this.innerSize
+    // --- glow ---
+    const glow = this.add.graphics();
+    glow.fillStyle(GLOW_COLORS[type], 0.35);
+    glow.fillRoundedRect(
+      -VISUAL_S / 2 - 3,
+      -VISUAL_S / 2 - 3,
+      VISUAL_S + 6,
+      VISUAL_S + 6,
+      16
     );
-    const mask = maskShape.createGeometryMask();
 
-    // ---------- TILE IMAGE ----------
-    const img = this.add.image(0, 0, type);
-    img.setDisplaySize(this.innerSize * 1.25, this.innerSize * 1.25);
-    img.setMask(mask);
+    // --- bg ---
+    const bg = this.add.graphics();
+    bg.fillStyle(BG_COLORS[type], 1);
+    bg.fillRoundedRect(
+      -VISUAL_S / 2,
+      -VISUAL_S / 2,
+      VISUAL_S,
+      VISUAL_S,
+      14
+    );
 
-    // ---------- FRAME (SPIKES STYLE) ----------
+    // --- rune image ---
+    const img = this.add.image(0, 0, `t_${type}`);
+    img.setDisplaySize(VISUAL_S * 2.2, VISUAL_S * 2.2);
+
+    // --- mask (HIDES WHITE) ---
+    const maskG = this.make.graphics();
+    maskG.fillStyle(0xffffff);
+    maskG.fillRoundedRect(
+      x - VISUAL_S / 2,
+      y - VISUAL_S / 2,
+      VISUAL_S,
+      VISUAL_S,
+      14
+    );
+    img.setMask(maskG.createGeometryMask());
+
+    // --- frame (spikes feel) ---
     const frame = this.add.graphics();
-    frame.lineStyle(4, 0x1a1a1a);
-    frame.strokeRect(
-      -this.tileSize / 2 + 6,
-      -this.tileSize / 2 + 6,
-      this.tileSize - 12,
-      this.tileSize - 12
+    frame.lineStyle(6, 0x2b2b2b, 1);
+    frame.strokeRoundedRect(
+      -VISUAL_S / 2,
+      -VISUAL_S / 2,
+      VISUAL_S,
+      VISUAL_S,
+      12
+    );
+    frame.lineStyle(2, 0xbc962c, 0.8);
+    frame.strokeRoundedRect(
+      -VISUAL_S / 2 + 4,
+      -VISUAL_S / 2 + 4,
+      VISUAL_S - 8,
+      VISUAL_S - 8,
+      10
     );
 
-    frame.lineStyle(2, 0xffcc00);
-    frame.strokeRect(
-      -this.tileSize / 2 + 10,
-      -this.tileSize / 2 + 10,
-      this.tileSize - 20,
-      this.tileSize - 20
+    // --- hover ---
+    const hover = this.add.graphics();
+    hover.alpha = 0;
+    hover.lineStyle(4, 0xffffff, 0.8);
+    hover.strokeRoundedRect(
+      -VISUAL_S / 2 - 4,
+      -VISUAL_S / 2 - 4,
+      VISUAL_S + 8,
+      VISUAL_S + 8,
+      16
     );
 
-    container.add([img, frame]);
-    container.setSize(this.tileSize, this.tileSize);
-    container.setInteractive();
+    // --- ghost (selection) ---
+    const ghost = this.add.graphics();
+    ghost.alpha = 0;
+    ghost.lineStyle(6, 0xffffff, 0.6);
+    ghost.strokeRoundedRect(
+      -VISUAL_S / 2 - 2,
+      -VISUAL_S / 2 - 2,
+      VISUAL_S + 4,
+      VISUAL_S + 4,
+      14
+    );
 
-    const cell = { x, y, type, container, img };
+    container.add([glow, bg, img, frame, hover, ghost]);
+    container.maskShape = maskG;
+    container.hover = hover;
+    container.ghost = ghost;
 
-    container.on('pointerdown', () => this.onTileClick(cell));
+    // --- hit area ---
+    const hit = this.add.rectangle(0, 0, TILE_S, TILE_S, 0x000000, 0)
+      .setInteractive();
+    hit.container = container;
+    container.add(hit);
 
-    return cell;
+    hit.on('pointerdown', () => this.handlePointer(container));
+    hit.on('pointerover', () => this.setHover(container, true));
+    hit.on('pointerout', () => this.setHover(container, false));
+
+    // idle breathing
+    this.tweens.add({
+      targets: container,
+      scale: 1.04,
+      duration: 900 + Math.random() * 400,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    this.grid[r][c] = container;
+
+    if (fromTop) {
+      this.tweens.add({
+        targets: container,
+        y: r * TILE_S + TILE_S / 2,
+        duration: 300
+      });
+    }
   }
 
   // ===================================================
-  // INPUT — КЛИКИ ПО ПЛИТКАМ
+  // INPUT
   // ===================================================
-  onTileClick(cell) {
-    if (!this.selected) {
-      this.select(cell);
+  setHover(t, v) {
+    this.tweens.add({
+      targets: t.hover,
+      alpha: v ? 0.6 : 0,
+      duration: 150
+    });
+  }
+
+  async handlePointer(t) {
+    if (this.isAnimating) return;
+
+    if (!this.sel) {
+      this.sel = t;
+      t.ghost.alpha = 1;
       return;
     }
 
-    if (this.selected === cell) {
-      this.deselect();
+    if (this.sel === t) {
+      t.ghost.alpha = 0;
+      this.sel = null;
       return;
     }
 
-    if (this.isNeighbor(this.selected, cell)) {
-      this.swap(this.selected, cell);
-      this.deselect();
-      this.time.delayedCall(250, () => this.resolveMatches());
-    } else {
-      this.deselect();
-      this.select(cell);
+    const d =
+      Math.abs(this.sel.gridR - t.gridR) +
+      Math.abs(this.sel.gridC - t.gridC);
+
+    if (d === 1) {
+      await this.swap(this.sel, t);
+      await this.check();
     }
-  }
 
-  select(cell) {
-    this.selected = cell;
-    cell.container.setScale(1.1);
-  }
-
-  deselect() {
-    if (this.selected) {
-      this.selected.container.setScale(1);
-      this.selected = null;
-    }
-  }
-
-  isNeighbor(a, b) {
-    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1;
+    this.sel.ghost.alpha = 0;
+    this.sel = null;
   }
 
   // ===================================================
-  // SWAP — ОБМЕН ПЛИТОК
+  // MATCH LOGIC
   // ===================================================
-  swap(a, b) {
-    [this.grid[a.y][a.x], this.grid[b.y][b.x]] = [b, a];
-    [a.x, b.x] = [b.x, a.x];
-    [a.y, b.y] = [b.y, a.y];
+  async swap(a, b) {
+    this.isAnimating = true;
 
-    const ax = this.offsetX + a.x * this.tileSize + this.tileSize / 2;
-    const ay = this.offsetY + a.y * this.tileSize + this.tileSize / 2;
-    const bx = this.offsetX + b.x * this.tileSize + this.tileSize / 2;
-    const by = this.offsetY + b.y * this.tileSize + this.tileSize / 2;
+    const ar = a.gridR, ac = a.gridC;
+    const br = b.gridR, bc = b.gridC;
 
-    this.tweens.add({ targets: a.container, x: ax, y: ay, duration: 200 });
-    this.tweens.add({ targets: b.container, x: bx, y: by, duration: 200 });
+    this.grid[ar][ac] = b;
+    this.grid[br][bc] = a;
+
+    a.gridR = br; a.gridC = bc;
+    b.gridR = ar; b.gridC = ac;
+
+    return new Promise(res => {
+      this.tweens.add({ targets: a, x: bc * TILE_S + TILE_S / 2, y: br * TILE_S + TILE_S / 2, duration: 200 });
+      this.tweens.add({
+        targets: b,
+        x: ac * TILE_S + TILE_S / 2,
+        y: ar * TILE_S + TILE_S / 2,
+        duration: 200,
+        onComplete: () => { this.isAnimating = false; res(); }
+      });
+    });
   }
 
-  // ===================================================
-  // MATCH LOGIC — ПОИСК И УДАЛЕНИЕ
-  // ===================================================
-  resolveMatches() {
-    const matches = [];
+  findMatches() {
+    const out = [];
 
-    // horizontal
-    for (let y = 0; y < this.rows; y++) {
-      for (let x = 0; x < this.cols - 2; x++) {
-        const a = this.grid[y][x];
-        const b = this.grid[y][x + 1];
-        const c = this.grid[y][x + 2];
-        if (a.type === b.type && b.type === c.type) {
-          matches.push(a, b, c);
+    for (let r = 0; r < GRID; r++) {
+      for (let c = 0; c < GRID - 2; c++) {
+        const a = this.grid[r][c];
+        const b = this.grid[r][c + 1];
+        const d = this.grid[r][c + 2];
+        if (a && b && d && a.type === b.type && a.type === d.type) {
+          out.push(a, b, d);
         }
       }
     }
 
-    if (matches.length === 0) return;
+    for (let c = 0; c < GRID; c++) {
+      for (let r = 0; r < GRID - 2; r++) {
+        const a = this.grid[r][c];
+        const b = this.grid[r + 1][c];
+        const d = this.grid[r + 2][c];
+        if (a && b && d && a.type === b.type && a.type === d.type) {
+          out.push(a, b, d);
+        }
+      }
+    }
 
-    matches.forEach(cell => {
+    return [...new Set(out)];
+  }
+
+  async check() {
+    const m = this.findMatches();
+    if (m.length) {
+      await this.explode(m);
+      await this.refill();
+      await this.check();
+    }
+  }
+
+  // ===================================================
+  // EXPLOSION
+  // ===================================================
+  async explode(list) {
+    this.isAnimating = true;
+
+    return new Promise(res => {
       this.tweens.add({
-        targets: cell.container,
+        targets: list,
         scale: 0,
         alpha: 0,
         duration: 250,
-        onComplete: () => cell.container.destroy()
+        onComplete: () => {
+          list.forEach(t => {
+            this.grid[t.gridR][t.gridC] = null;
+            t.destroy();
+          });
+          this.isAnimating = false;
+          res();
+        }
       });
     });
+  }
+
+  // ===================================================
+  // GRAVITY / REFILL
+  // ===================================================
+  async refill() {
+    for (let c = 0; c < GRID; c++) {
+      let empty = 0;
+      for (let r = GRID - 1; r >= 0; r--) {
+        if (!this.grid[r][c]) empty++;
+        else if (empty) {
+          const t = this.grid[r][c];
+          this.grid[r + empty][c] = t;
+          this.grid[r][c] = null;
+          t.gridR += empty;
+          this.tweens.add({
+            targets: t,
+            y: t.gridR * TILE_S + TILE_S / 2,
+            duration: 250
+          });
+        }
+      }
+      for (let i = 0; i < empty; i++) {
+        this.spawnTile(i, c, true);
+      }
+    }
+    await new Promise(r => this.time.delayedCall(300, r));
   }
 }
