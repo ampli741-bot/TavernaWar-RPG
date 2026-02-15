@@ -4,22 +4,21 @@ export default class GameScene extends Phaser.Scene {
     }
 
     create() {
+        console.log("🎮 GameScene create");
+
         const size = 80;
         const offset = 20;
 
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                const color = Phaser.Display.Color.RandomRGB().color;
-                const rect = this.add.rectangle(
+                this.add.rectangle(
                     offset + c * size + size / 2,
                     offset + r * size + size / 2,
                     size - 4,
                     size - 4,
-                    color
+                    Phaser.Display.Color.RandomRGB().color
                 );
             }
         }
-
-        console.log("🎮 GameScene created");
     }
 }

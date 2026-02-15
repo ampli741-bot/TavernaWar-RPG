@@ -1,9 +1,11 @@
 import GameScene from "./GameScene.js";
 
-let game;
+let game = null;
 
 export function initPhaser() {
     if (game) return;
+
+    console.log("🚀 initPhaser");
 
     game = new Phaser.Game({
         type: Phaser.AUTO,

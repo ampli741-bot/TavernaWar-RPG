@@ -9,15 +9,23 @@ console.log("🔥 main.js FINAL loaded");
 window.startGame = function (key) {
     console.log("▶ startGame:", key);
 
-    document.getElementById("menu-overlay").style.display = "none";
+    // ❌ БОЛЬШЕ НИКАКИХ .style У DOM
+    const menu = document.getElementById("menu-overlay");
+    if (menu) {
+        menu.remove(); // 💥 просто удаляем меню
+    }
 
+    // === INIT GAME STATE ===
     app.player = createPlayer(key);
     app.mob = createMob(1);
 
-    const imgKey = key === "assassin" ? "assasin" : key;
-    document.getElementById("p-portrait").style.backgroundImage =
-        `url('assets/hero_${imgKey}.jpg')`;
-
+    // === START PHASER ===
     initPhaser();
-    refreshUi();
+
+    // === SAFE UI UPDATE ===
+    try {
+        refreshUi();
+    } catch (e) {
+        console.warn("UI not ready yet (ok)");
+    }
 };
