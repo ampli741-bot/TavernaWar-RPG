@@ -60,40 +60,50 @@ export class GameScene extends Phaser.Scene {
   }
 
   createCell(x, y) {
-    const type = Phaser.Utils.Array.GetRandom(this.types);
+  const type = Phaser.Utils.Array.GetRandom(this.types);
 
-    const cx = this.offsetX + x * this.tileSize + this.tileSize / 2;
-    const cy = this.offsetY + y * this.tileSize + this.tileSize / 2;
+  const worldX = this.offsetX + x * this.tileSize;
+  const worldY = this.offsetY + y * this.tileSize;
 
-    // контейнер = одна плитка
-    const container = this.add.container(cx, cy);
+  // КОНТЕЙНЕР = ОДНА ПЛИТКА
+  const container = this.add.container(worldX, worldY);
 
-    // рамка
-    const frame = this.add.image(0, 0, 'frame');
-    frame.setDisplaySize(this.tileSize, this.tileSize);
+  // фон плитки
+  const bg = this.add.image(0, 0, 'tile_bg');
+  bg.setOrigin(0);
+  bg.setDisplaySize(this.tileSize, this.tileSize);
 
-    // иконка
-    const icon = this.add.image(0, 0, type);
-    icon.setScale(this.iconScale);
+  // иконка
+  const icon = this.add.image(
+    this.tileSize / 2,
+    this.tileSize / 2,
+    `rune_${type}`
+  );
+  icon.setScale(0.75);
 
-    container.add([frame, icon]);
-    container.setSize(this.tileSize, this.tileSize);
-    container.setInteractive();
+  container.add([bg, icon]);
 
-    const cell = { x, y, type, container, icon, frame };
+  // 🔥 ВАЖНО: интерактив ТОЛЬКО НА КОНТЕЙНЕР
+  container.setSize(this.tileSize, this.tileSize);
+  container.setInteractive(
+    new Phaser.Geom.Rectangle(0, 0, this.tileSize, this.tileSize),
+    Phaser.Geom.Rectangle.Contains
+  );
 
-    container.on('pointerdown', () => this.handleClick(cell));
+  const cell = {
+    x,
+    y,
+    type,
+    container,
+    bg,
+    icon
+  };
 
-    container.on('pointerover', () => {
-      frame.setTint(0x00ff88);
-    });
+  container.on('pointerdown', () => this.handleClick(cell));
 
-    container.on('pointerout', () => {
-      if (this.selected !== cell) frame.clearTint();
-    });
+  return cell;
+}
 
-    return cell;
-  }
 
   /* ================= INPUT ================= */
 
