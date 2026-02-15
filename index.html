@@ -8,14 +8,60 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
 
-    <!-- Phaser НЕ module -->
+    <!-- Phaser -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
 </head>
-<body>
+<body style="margin:0; background:#111; overflow:hidden;">
 
-    <!-- ТУТ ТВОЙ HTML ИНТЕРФЕЙС (без <script>) -->
+    <!-- ===== MENU ===== -->
+    <div id="menu-overlay" style="
+        position:fixed;
+        inset:0;
+        background:#111;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        z-index:100;
+        color:#ffd700;
+        font-family:Cinzel;
+    ">
+        <h1 style="font-size:64px; margin-bottom:40px;">
+            TAVERNA WAR
+        </h1>
 
-    <!-- ТОЛЬКО ЭТО -->
+        <button onclick="startGame('warrior')">ВОИН</button>
+        <button onclick="startGame('mage')">МАГ</button>
+        <button onclick="startGame('archer')">ЛУЧНИК</button>
+        <button onclick="startGame('assassin')">УБИЙЦА</button>
+    </div>
+
+    <!-- ===== GAME ===== -->
+    <div id="game-container"
+         style="width:680px; height:680px; margin:0 auto;">
+    </div>
+
+    <!-- ===== UI (минимум, чтобы не падало) ===== -->
+    <div style="display:none">
+        <div id="p-hp-t"></div>
+        <div id="p-hp-f"></div>
+        <div id="p-mn-t"></div>
+        <div id="p-mn-f"></div>
+        <div id="p-arm-t"></div>
+        <div id="p-arm-f"></div>
+        <div id="stat-atk"></div>
+        <div id="stat-dodge"></div>
+        <div id="gold-val"></div>
+        <div id="inv-box"></div>
+
+        <div id="m-name"></div>
+        <div id="m-hp-t"></div>
+        <div id="m-hp-f"></div>
+        <div id="m-mn-t"></div>
+        <div id="m-mn-f"></div>
+    </div>
+
+    <!-- MAIN -->
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
