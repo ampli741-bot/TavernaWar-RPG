@@ -1,12 +1,5 @@
 console.log("🧨 MAIN VERSION CLEAN");
 
-import Player from "./core/player.js";
-import Mob from "./core/mob.js";
-
-window.player = new Player();
-window.mob = new Mob();
-
-
 import { app } from "./core/app.js";
 import { createPlayer } from "./core/player.js";
 import { createMob } from "./core/mob.js";
@@ -16,10 +9,10 @@ import refreshUi from "./ui/ui.js";
 window.startGame = function (key) {
     console.log("▶ startGame:", key);
 
-    // 🔥 БОЛЬШЕ НИКАКИХ style ВООБЩЕ
+    // убираем меню
     const menu = document.getElementById("menu-overlay");
     if (menu) {
-        menu.remove(); // безопасно, без .style
+        menu.remove();
     }
 
     // === INIT GAME STATE ===
@@ -29,7 +22,7 @@ window.startGame = function (key) {
     // === START PHASER ===
     initPhaser();
 
-    // === SAFE UI ===
+    // === UI (безопасно)
     try {
         refreshUi();
     } catch (e) {
