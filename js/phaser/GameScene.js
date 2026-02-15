@@ -31,7 +31,11 @@ export default class GameScene extends Phaser.Scene {
             this.tiles[y] = [];
 
             for (let x = 0; x < SIZE; x++) {
-                const tile = this.spawnTile(x, y);
+                let tile;
+                do {
+                    tile = this.spawnTile(x, y);
+                } while (this.createsMatch(x, y, tile.type));
+
                 this.grid[y][x] = tile.type;
                 this.tiles[y][x] = tile;
             }
@@ -42,28 +46,35 @@ export default class GameScene extends Phaser.Scene {
         return { damage: 0, mana: 0, heal: 0, gold: 0, curse: 0 };
     }
 
-    spawnTile(x, y) {
-        const type = Phaser.Utils.Array.GetRandom(COLORS);
+    spawnTile(x, y, type = null) {
+        const t = type ?? Phaser.Utils.Array.GetRandom(COLORS);
         const rect = this.add.rectangle(
             x * TILE + TILE / 2,
             y * TILE + TILE / 2,
             TILE - 4,
             TILE - 4,
-            type.color
+            t.color
         ).setInteractive();
 
-        rect.data = { x, y, type: type.key };
-
+        rect.data = { x, y, type: t.key };
         rect.on("pointerdown", () => this.clickTile(rect));
 
-        return { rect, type: type.key };
+        return { rect, type: t.key };
+    }
+
+    createsMatch(x, y, type) {
+        return (
+            (x >= 2 &&
+                this.grid[y][x - 1] === type &&
+                this.grid[y][x - 2] === type) ||
+            (y >= 2 &&
+                this.grid[y - 1][x] === type &&
+                this.grid[y - 2][x] === type)
+        );
     }
 
     clickTile(tile) {
         if (this.locked) return;
-
-        const { x, y } = tile.data;
-        console.log("CLICK", `[${x},${y}]`);
 
         if (!this.selected) {
             this.selected = tile;
@@ -71,70 +82,155 @@ export default class GameScene extends Phaser.Scene {
             return;
         }
 
-        const dx = Math.abs(tile.data.x - this.selected.data.x);
-        const dy = Math.abs(tile.data.y - this.selected.data.y);
+        const a = this.selected;
+        const b = tile;
 
-        this.selected.setStrokeStyle();
-
-        if (dx + dy === 1) {
-            this.swapTiles(this.selected, tile);
-        }
-
+        a.setStrokeStyle();
         this.selected = null;
+
+        const dx = Math.abs(a.data.x - b.data.x);
+        const dy = Math.abs(a.data.y - b.data.y);
+
+        if (dx + dy !== 1) return;
+
+        this.swap(a, b, true);
     }
 
-    swapTiles(a, b) {
-        console.log("SWAP");
+    swap(a, b, validate) {
         this.locked = true;
 
         const ax = a.data.x, ay = a.data.y;
         const bx = b.data.x, by = b.data.y;
 
+        this.swapData(ax, ay, bx, by);
+
+        if (validate && !this.hasMatches()) {
+            // ❌ нет совпадения → вернуть назад
+            this.time.delayedCall(150, () => {
+                this.swapData(ax, ay, bx, by);
+                this.locked = false;
+            });
+            return;
+        }
+
+        this.resolveMatches();
+    }
+
+    swapData(ax, ay, bx, by) {
         [this.grid[ay][ax], this.grid[by][bx]] =
         [this.grid[by][bx], this.grid[ay][ax]];
 
         [this.tiles[ay][ax], this.tiles[by][bx]] =
         [this.tiles[by][bx], this.tiles[ay][ax]];
 
-        a.data.x = bx; a.data.y = by;
-        b.data.x = ax; b.data.y = ay;
+        const a = this.tiles[ay][ax];
+        const b = this.tiles[by][bx];
 
-        this.resolveMatches();
+        a.data.x = ax; a.data.y = ay;
+        b.data.x = bx; b.data.y = by;
+
+        this.tweens.add({
+            targets: a.rect,
+            x: ax * TILE + TILE / 2,
+            y: ay * TILE + TILE / 2,
+            duration: 150
+        });
+
+        this.tweens.add({
+            targets: b.rect,
+            x: bx * TILE + TILE / 2,
+            y: by * TILE + TILE / 2,
+            duration: 150
+        });
     }
 
-    resolveMatches() {
+    hasMatches() {
+        return this.findMatches().length > 0;
+    }
+
+    findMatches() {
         const matches = [];
 
         for (let y = 0; y < SIZE; y++) {
             for (let x = 0; x < SIZE; x++) {
                 const t = this.grid[y][x];
+                if (!t) continue;
+
                 if (
                     x < SIZE - 2 &&
                     t === this.grid[y][x + 1] &&
                     t === this.grid[y][x + 2]
-                ) {
-                    matches.push({ x, y, type: t });
-                }
+                ) matches.push({ x, y, type: t });
+
+                if (
+                    y < SIZE - 2 &&
+                    t === this.grid[y + 1][x] &&
+                    t === this.grid[y + 2][x]
+                ) matches.push({ x, y, type: t });
             }
         }
+        return matches;
+    }
 
+    resolveMatches() {
+        const matches = this.findMatches();
         if (!matches.length) {
             console.log("TURN RESULT:", this.turnResult);
-
-            if (app.player && app.mob) {
-                app.mob.hp -= this.turnResult.damage * 10;
-                app.player.mana += this.turnResult.mana * 5;
-                app.player.gold += this.turnResult.gold;
-            }
-
             this.turnResult = this.emptyTurn();
             this.locked = false;
             return;
         }
 
+        matches.forEach(m => this.turnResult[m.type]++);
+
         matches.forEach(m => {
-            this.turnResult[m.type]++;
+            const tile = this.tiles[m.y][m.x];
+            if (!tile) return;
+
+            tile.rect.destroy();
+            this.tiles[m.y][m.x] = null;
+            this.grid[m.y][m.x] = null;
         });
+
+        this.time.delayedCall(200, () => this.dropTiles());
+    }
+
+    dropTiles() {
+        for (let x = 0; x < SIZE; x++) {
+            for (let y = SIZE - 1; y >= 0; y--) {
+                if (this.grid[y][x] === null) {
+                    for (let yy = y - 1; yy >= 0; yy--) {
+                        if (this.grid[yy][x] !== null) {
+                            this.grid[y][x] = this.grid[yy][x];
+                            this.tiles[y][x] = this.tiles[yy][x];
+                            this.grid[yy][x] = null;
+                            this.tiles[yy][x] = null;
+
+                            const tile = this.tiles[y][x];
+                            tile.data.y = y;
+
+                            this.tweens.add({
+                                targets: tile.rect,
+                                y: y * TILE + TILE / 2,
+                                duration: 150
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // новые плитки сверху
+        for (let x = 0; x < SIZE; x++) {
+            for (let y = 0; y < SIZE; y++) {
+                if (this.grid[y][x] === null) {
+                    const tile = this.spawnTile(x, y);
+                    this.grid[y][x] = tile.type;
+                    this.tiles[y][x] = tile;
+                }
+            }
+        }
 
         this.time.delayedCall(200, () => this.resolveMatches());
     }
