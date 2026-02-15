@@ -1,18 +1,28 @@
 import { app } from "../core/app.js";
 
 /* ================= VERSION ================= */
-const VERSION = "1";
+const VERSION = "2";
 
 /* ================= CONFIG ================= */
 const SIZE = 8;
 const TILE = 80;
 
+// размеры UI
+const PANEL_W = 220;
+const FIELD_W = SIZE * TILE;
+const SCREEN_W = PANEL_W * 2 + FIELD_W;
+const SCREEN_H = FIELD_W;
+
+// смещение поля
+const FIELD_X = PANEL_W;
+const FIELD_Y = 0;
+
 const TYPES = [
-    { key: "damage", color: 0xff4444 }, // красный
-    { key: "mana",   color: 0x4488ff }, // синий
-    { key: "heal",   color: 0x44ff44 }, // зелёный
-    { key: "gold",   color: 0xffdd44 }, // жёлтый
-    { key: "curse",  color: 0xaa44ff }  // фиолетовый
+    { key: "damage", color: 0xff4444, score: 5 }, // красный
+    { key: "mana",   color: 0x4488ff, score: 1 }, // синий
+    { key: "heal",   color: 0x44ff44, score: 1 }, // зелёный
+    { key: "gold",   color: 0xffdd44, score: 3 }, // жёлтый
+    { key: "curse",  color: 0xaa44ff, score: 2 }  // фиолетовый
 ];
 
 export default class GameScene extends Phaser.Scene {
@@ -22,7 +32,7 @@ export default class GameScene extends Phaser.Scene {
         this.tiles = [];
         this.selected = null;
         this.locked = false;
-        this.turnOwner = "player"; // player | enemy
+        this.turnOwner = "player";
     }
 
     /* ================= CREATE ================= */
@@ -31,13 +41,10 @@ export default class GameScene extends Phaser.Scene {
         console.log("🎮 GameScene create");
         console.log("🧩 VERSION:", VERSION);
 
-        // версия на экране
-        this.add.text(10, 10, `v${VERSION}`, {
-            fontSize: "14px",
-            color: "#ffffff",
-            backgroundColor: "#000000",
-            padding: { x: 6, y: 4 }
-        }).setDepth(9999);
+        this.cameras.main.setSize(SCREEN_W, SCREEN_H);
+
+        this.drawPanels();
+        this.drawVersion();
 
         for (let y = 0; y < SIZE; y++) {
             this.grid[y] = [];
@@ -55,14 +62,49 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    /* ================= UI ================= */
+
+    drawPanels() {
+        // левое окно игрока
+        this.add.rectangle(
+            PANEL_W / 2,
+            SCREEN_H / 2,
+            PANEL_W - 10,
+            SCREEN_H - 10,
+            0x1e1e1e
+        ).setStrokeStyle(2, 0xffffff);
+
+        // правое окно врага
+        this.add.rectangle(
+            SCREEN_W - PANEL_W / 2,
+            SCREEN_H / 2,
+            PANEL_W - 10,
+            SCREEN_H - 10,
+            0x1e1e1e
+        ).setStrokeStyle(2, 0xffffff);
+
+        // места под иконки
+        this.add.rectangle(PANEL_W / 2, 60, PANEL_W - 30, 80, 0x2a2a2a);
+        this.add.rectangle(SCREEN_W - PANEL_W / 2, 60, PANEL_W - 30, 80, 0x2a2a2a);
+    }
+
+    drawVersion() {
+        this.add.text(10, 10, `v${VERSION}`, {
+            fontSize: "14px",
+            color: "#ffffff",
+            backgroundColor: "#000000",
+            padding: { x: 6, y: 4 }
+        }).setDepth(9999);
+    }
+
     /* ================= TILE ================= */
 
     spawnTile(x, y) {
         const t = Phaser.Utils.Array.GetRandom(TYPES);
 
         const rect = this.add.rectangle(
-            x * TILE + TILE / 2,
-            y * TILE + TILE / 2,
+            FIELD_X + x * TILE + TILE / 2,
+            FIELD_Y + y * TILE + TILE / 2,
             TILE - 6,
             TILE - 6,
             t.color
@@ -70,7 +112,6 @@ export default class GameScene extends Phaser.Scene {
 
         const tile = { rect, type: t.key, x, y };
         rect.on("pointerdown", () => this.onClick(tile));
-
         return tile;
     }
 
@@ -118,7 +159,6 @@ export default class GameScene extends Phaser.Scene {
 
             const matches = this.findMatches();
             if (!matches.length) {
-                // откат
                 this.animateSwap(a, b, () => {
                     this.swapData(a, b);
                     this.locked = false;
@@ -200,8 +240,6 @@ export default class GameScene extends Phaser.Scene {
         const result = { damage:0, mana:0, heal:0, gold:0, curse:0 };
         matches.forEach(t => result[t.type]++);
 
-        console.log("🧮 TURN RESULT:", result);
-
         this.removeMatches(matches, () => {
             this.gravity(() => {
                 const again = this.findMatches();
@@ -213,45 +251,42 @@ export default class GameScene extends Phaser.Scene {
 
     applyTurnResult(result) {
         if (this.turnOwner === "player") {
-            console.log("➡️ TURN: PLAYER → ENEMY");
-
             const dmg = result.damage * 10;
             app.mob.hp -= dmg;
-
-            console.log(`⚔️ Player deals ${dmg} dmg`);
-            console.log(`👹 Enemy HP: ${app.mob.hp}`);
+            console.log("⚔️ Player dmg:", dmg);
 
             this.turnOwner = "enemy";
-            this.time.delayedCall(600, () => this.enemyMove());
+            this.time.delayedCall(500, () => this.enemyMove());
         } else {
             const dmg = result.damage * 8 + result.gold * 4;
             app.player.hp -= dmg;
-
-            console.log(`👹 Enemy deals ${dmg} dmg`);
-            console.log(`❤️ Player HP: ${app.player.hp}`);
+            console.log("👹 Enemy dmg:", dmg);
 
             this.turnOwner = "player";
             this.locked = false;
         }
     }
 
-    /* ================= ENEMY ================= */
+    /* ================= SMART ENEMY ================= */
 
     enemyMove() {
-        console.log("👹 ENEMY MOVE STARTED (v" + VERSION + ")");
+        console.log("👹 ENEMY MOVE v" + VERSION);
 
-        const move = this.findEnemyMove();
-        if (!move) {
+        const best = this.findBestEnemyMove();
+        if (!best) {
             console.log("👹 Enemy has no moves");
             this.turnOwner = "player";
             this.locked = false;
             return;
         }
 
-        this.trySwap(move.a, move.b);
+        console.log("👹 Enemy choose move score =", best.score, best.preview);
+        this.trySwap(best.a, best.b);
     }
 
-    findEnemyMove() {
+    findBestEnemyMove() {
+        let best = null;
+
         for (let y = 0; y < SIZE; y++) {
             for (let x = 0; x < SIZE; x++) {
                 const a = this.tiles[y][x];
@@ -264,14 +299,27 @@ export default class GameScene extends Phaser.Scene {
                     const b = this.tiles[ny][nx];
 
                     this.swapData(a,b);
-                    const ok = this.findMatches().length>0;
+                    const matches = this.findMatches();
                     this.swapData(a,b);
 
-                    if (ok) return { a, b };
+                    if (!matches.length) continue;
+
+                    const preview = { damage:0, mana:0, heal:0, gold:0, curse:0 };
+                    let score = 0;
+
+                    matches.forEach(t => {
+                        preview[t.type]++;
+                        const typeDef = TYPES.find(tt => tt.key === t.type);
+                        score += typeDef.score;
+                    });
+
+                    if (!best || score > best.score) {
+                        best = { a, b, score, preview };
+                    }
                 }
             }
         }
-        return null;
+        return best;
     }
 
     /* ================= REMOVE ================= */
@@ -311,7 +359,7 @@ export default class GameScene extends Phaser.Scene {
                         t.y = writeY;
                         this.tweens.add({
                             targets: t.rect,
-                            y: writeY * TILE + TILE / 2,
+                            y: FIELD_Y + writeY * TILE + TILE / 2,
                             duration: 200,
                             ease: "Bounce.Out"
                         });
@@ -329,7 +377,7 @@ export default class GameScene extends Phaser.Scene {
 
                 this.tweens.add({
                     targets: t.rect,
-                    y: y * TILE + TILE / 2,
+                    y: FIELD_Y + y * TILE + TILE / 2,
                     duration: 220,
                     ease: "Bounce.Out"
                 });
