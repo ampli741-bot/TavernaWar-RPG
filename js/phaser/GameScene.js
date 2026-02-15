@@ -1,13 +1,14 @@
+import { app } from "../core/app.js";
+
 const SIZE = 8;
 const TILE = 80;
-const OFFSET = 20;
 
 const TYPES = [
-    { key: "damage", color: 0xff4444 }, // красный
-    { key: "mana", color: 0x4488ff },   // синий
-    { key: "heal", color: 0x44ff44 },   // зелёный
-    { key: "gold", color: 0xffdd44 },   // жёлтый
-    { key: "curse", color: 0xaa44ff }   // фиолетовый
+    { key: "damage", color: 0xff4444 },
+    { key: "mana",   color: 0x4488ff },
+    { key: "heal",   color: 0x44ff44 },
+    { key: "gold",   color: 0xffdd44 },
+    { key: "curse",  color: 0xaa44ff }
 ];
 
 export default class GameScene extends Phaser.Scene {
@@ -21,12 +22,7 @@ export default class GameScene extends Phaser.Scene {
 
     create() {
         console.log("🎮 GameScene create");
-        this.createGrid();
-    }
 
-    /* ================= GRID ================= */
-
-    createGrid() {
         for (let y = 0; y < SIZE; y++) {
             this.grid[y] = [];
             this.tiles[y] = [];
@@ -43,24 +39,35 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    /* ================= TILE ================= */
+
     spawnTile(x, y) {
         const t = Phaser.Utils.Array.GetRandom(TYPES);
 
         const rect = this.add.rectangle(
-            OFFSET + x * TILE,
-            OFFSET + y * TILE,
+            x * TILE + TILE / 2,
+            y * TILE + TILE / 2,
             TILE - 6,
             TILE - 6,
             t.color
-        ).setOrigin(0);
-
-        rect.setInteractive();
+        ).setInteractive();
 
         const tile = { rect, type: t.key, x, y };
-
         rect.on("pointerdown", () => this.click(tile));
 
         return tile;
+    }
+
+    causesMatch(x, y, type) {
+        if (x >= 2 &&
+            this.grid[y][x - 1] === type &&
+            this.grid[y][x - 2] === type) return true;
+
+        if (y >= 2 &&
+            this.grid[y - 1][x] === type &&
+            this.grid[y - 2][x] === type) return true;
+
+        return false;
     }
 
     /* ================= INPUT ================= */
@@ -94,7 +101,8 @@ export default class GameScene extends Phaser.Scene {
             this.swapData(a, b);
 
             const matches = this.findMatches();
-            if (matches.length === 0) {
+            if (!matches.length) {
+                // ❌ откат
                 this.animateSwap(a, b, () => {
                     this.swapData(a, b);
                     this.locked = false;
@@ -103,17 +111,6 @@ export default class GameScene extends Phaser.Scene {
                 this.resolveTurn(matches);
             }
         });
-    }
-
-    swapData(a, b) {
-        [this.grid[a.y][a.x], this.grid[b.y][b.x]] =
-        [this.grid[b.y][b.x], this.grid[a.y][a.x]];
-
-        [this.tiles[a.y][a.x], this.tiles[b.y][b.x]] =
-        [this.tiles[b.y][b.x], this.tiles[a.y][a.x]];
-
-        [a.x, b.x] = [b.x, a.x];
-        [a.y, b.y] = [b.y, a.y];
     }
 
     animateSwap(a, b, done) {
@@ -133,6 +130,17 @@ export default class GameScene extends Phaser.Scene {
             ease: "Back.Out",
             onComplete: done
         });
+    }
+
+    swapData(a, b) {
+        [this.grid[a.y][a.x], this.grid[b.y][b.x]] =
+        [this.grid[b.y][b.x], this.grid[a.y][a.x]];
+
+        [this.tiles[a.y][a.x], this.tiles[b.y][b.x]] =
+        [this.tiles[b.y][b.x], this.tiles[a.y][a.x]];
+
+        [a.x, b.x] = [b.x, a.x];
+        [a.y, b.y] = [b.y, a.y];
     }
 
     /* ================= MATCH ================= */
@@ -179,18 +187,49 @@ export default class GameScene extends Phaser.Scene {
 
     resolveTurn(matches) {
         const result = { damage: 0, mana: 0, heal: 0, gold: 0, curse: 0 };
-
         matches.forEach(t => result[t.type]++);
 
-        console.log("TURN RESULT:", result);
+        console.log("🧮 TURN RESULT:", result);
 
         this.removeMatches(matches, () => {
             this.gravity(() => {
                 const again = this.findMatches();
-                if (again.length) this.resolveTurn(again);
-                else this.locked = false;
+                if (again.length) {
+                    this.resolveTurn(again);
+                } else {
+                    this.applyPlayerTurn(result);
+                }
             });
         });
+    }
+
+    applyPlayerTurn(result) {
+        const dmg = result.damage * 10;
+        app.mob.hp -= dmg;
+
+        console.log(`⚔️ Player hits enemy for ${dmg}`);
+        console.log(`👹 Enemy HP: ${app.mob.hp}`);
+
+        if (app.mob.hp <= 0) {
+            console.log("☠️ ENEMY DEFEATED");
+            this.locked = false;
+            return;
+        }
+
+        // ход врага
+        this.time.delayedCall(500, () => this.enemyTurn());
+    }
+
+    enemyTurn() {
+        console.log("👹 Enemy turn");
+
+        const dmg = 8;
+        app.player.hp -= dmg;
+
+        console.log(`💥 Enemy hits player for ${dmg}`);
+        console.log(`❤️ Player HP: ${app.player.hp}`);
+
+        this.locked = false;
     }
 
     /* ================= REMOVE ================= */
@@ -228,10 +267,9 @@ export default class GameScene extends Phaser.Scene {
                         this.grid[y][x] = null;
 
                         t.y = writeY;
-
                         this.tweens.add({
                             targets: t.rect,
-                            y: OFFSET + writeY * TILE,
+                            y: writeY * TILE + TILE / 2,
                             duration: 200,
                             ease: "Bounce.Out"
                         });
@@ -242,14 +280,14 @@ export default class GameScene extends Phaser.Scene {
 
             for (let y = writeY; y >= 0; y--) {
                 const t = this.spawnTile(x, y);
-                t.rect.y = OFFSET - TILE;
+                t.rect.y = -TILE;
 
                 this.tiles[y][x] = t;
                 this.grid[y][x] = t.type;
 
                 this.tweens.add({
                     targets: t.rect,
-                    y: OFFSET + y * TILE,
+                    y: y * TILE + TILE / 2,
                     duration: 220,
                     ease: "Bounce.Out"
                 });
@@ -257,19 +295,5 @@ export default class GameScene extends Phaser.Scene {
         }
 
         this.time.delayedCall(260, done);
-    }
-
-    /* ================= INIT SAFETY ================= */
-
-    causesMatch(x, y, type) {
-        if (x >= 2 &&
-            this.grid[y][x - 1] === type &&
-            this.grid[y][x - 2] === type) return true;
-
-        if (y >= 2 &&
-            this.grid[y - 1][x] === type &&
-            this.grid[y - 2][x] === type) return true;
-
-        return false;
     }
 }
