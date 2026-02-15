@@ -1,6 +1,3 @@
-// =====================================================
-// CONFIG
-// =====================================================
 export const TILE_S = 85;
 export const TILE_P = 4;
 export const VISUAL_S = TILE_S - TILE_P * 2;
@@ -24,9 +21,6 @@ const GLOW_COLORS = {
   yellow: 0xffaa00
 };
 
-// =====================================================
-// SCENE
-// =====================================================
 export class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -35,31 +29,20 @@ export class GameScene extends Phaser.Scene {
     this.isAnimating = false;
   }
 
-  // ===================================================
-  // PRELOAD — ИКОНКИ ЧИНИМ ЗДЕСЬ
-  // ===================================================
   preload() {
     this.load.image('bg', 'assets/bg.jpg');
-
     TYPES.forEach(t => {
       this.load.image(`t_${t}`, `assets/rune_${t}.png`);
     });
   }
 
-  // ===================================================
-  // CREATE
-  // ===================================================
   create() {
-    console.log('SCENE LOADED: FINAL FIX');
+    console.log('SCENE LOADED: FINAL');
 
-    // ---------- BACKGROUND ----------
     this.bg = this.add.image(0, 0, 'bg')
       .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(-100);
+      .setDepth(-10);
 
-    // ---------- GRID ----------
-    this.grid = [];
     this.recalcLayout();
 
     for (let r = 0; r < GRID; r++) {
@@ -69,29 +52,20 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // ---------- RESIZE ----------
     this.scale.on('resize', () => {
       this.recalcLayout();
       this.repositionAll();
     });
   }
 
-  // ===================================================
-  // LAYOUT
-  // ===================================================
   recalcLayout() {
     const w = this.scale.width;
     const h = this.scale.height;
 
-    // bg cover
-    const scale = Math.max(
-      w / this.bg.width,
-      h / this.bg.height
-    );
+    const scale = Math.max(w / this.bg.width, h / this.bg.height);
     this.bg.setScale(scale);
     this.bg.setPosition(w / 2, h / 2);
 
-    // grid center
     this.OFFSET_X = Math.floor((w - GRID * TILE_S) / 2);
     this.OFFSET_Y = Math.floor((h - GRID * TILE_S) / 2);
   }
@@ -107,9 +81,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ===================================================
-  // TILE
-  // ===================================================
   spawnTile(r, c, fromTop = false) {
     const type = Phaser.Utils.Array.GetRandom(TYPES);
 
@@ -123,30 +94,23 @@ export class GameScene extends Phaser.Scene {
     container.gridR = r;
     container.gridC = c;
 
-    // glow
     const glow = this.add.graphics();
     glow.fillStyle(GLOW_COLORS[type], 0.35);
     glow.fillRoundedRect(-VISUAL_S/2-3, -VISUAL_S/2-3, VISUAL_S+6, VISUAL_S+6, 14);
 
-    // bg
     const bg = this.add.graphics();
     bg.fillStyle(BG_COLORS[type], 1);
     bg.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
 
-    // icon (ГАРАНТИРОВАННО ГРУЗИТСЯ)
     const img = this.add.image(0, 0, `t_${type}`);
-    img.setDisplaySize(
-      VISUAL_S * (type === 'yellow' || type === 'green' ? 1.55 : 1.9),
-      VISUAL_S * (type === 'yellow' || type === 'green' ? 1.55 : 1.9)
-    );
+    const zoom = (type === 'yellow' || type === 'green') ? 1.5 : 1.85;
+    img.setDisplaySize(VISUAL_S * zoom, VISUAL_S * zoom);
 
-    // mask — ЛОКАЛЬНАЯ (иконки не пропадают)
-    const maskG = this.make.graphics();
-    maskG.fillStyle(0xffffff);
-    maskG.fillRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
-    img.setMask(maskG.createGeometryMask());
+    // ✅ БЕЗ GeometryMask — ИКОНКИ НЕ ПРОПАДАЮТ
+    const maskRect = this.add.rectangle(0, 0, VISUAL_S, VISUAL_S, 0xffffff);
+    img.setMask(maskRect.createBitmapMask());
+    container.add(maskRect);
 
-    // frame
     const frame = this.add.graphics();
     frame.lineStyle(5, 0x2b2b2b, 1);
     frame.strokeRoundedRect(-VISUAL_S/2, -VISUAL_S/2, VISUAL_S, VISUAL_S, 12);
@@ -155,8 +119,8 @@ export class GameScene extends Phaser.Scene {
 
     container.add([glow, bg, img, frame]);
 
-    // hit
-    const hit = this.add.rectangle(0, 0, TILE_S, TILE_S, 0, 0).setInteractive();
+    const hit = this.add.rectangle(0, 0, TILE_S, TILE_S, 0, 0)
+      .setInteractive();
     hit.on('pointerdown', () => this.handlePointer(container));
     container.add(hit);
 
@@ -171,10 +135,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ===================================================
-  // INPUT / MATCH / FALL
-  // (логика оставлена как у тебя — она рабочая)
-  // ===================================================
   async handlePointer(t) {
     if (this.isAnimating) return;
 
@@ -227,7 +187,11 @@ export class GameScene extends Phaser.Scene {
 
   async check() {
     const m=this.findMatches();
-    if(m.length){await this.explode(m);await this.refill();await this.check();}
+    if(m.length){
+      await this.explode(m);
+      await this.refill();
+      await this.check();
+    }
   }
 
   async explode(list) {
@@ -239,8 +203,12 @@ export class GameScene extends Phaser.Scene {
         alpha:0,
         duration:260,
         onComplete:()=>{
-          list.forEach(t=>{this.grid[t.gridR][t.gridC]=null;t.destroy();});
-          this.isAnimating=false;res();
+          list.forEach(t=>{
+            this.grid[t.gridR][t.gridC]=null;
+            t.destroy();
+          });
+          this.isAnimating=false;
+          res();
         }
       });
     });
@@ -256,10 +224,16 @@ export class GameScene extends Phaser.Scene {
           this.grid[r+empty][c]=t;
           this.grid[r][c]=null;
           t.gridR+=empty;
-          this.tweens.add({targets:t,y:this.OFFSET_Y+t.gridR*TILE_S+TILE_S/2,duration:260});
+          this.tweens.add({
+            targets:t,
+            y:this.OFFSET_Y+t.gridR*TILE_S+TILE_S/2,
+            duration:260
+          });
         }
       }
-      for(let i=0;i<empty;i++)this.spawnTile(i,c,true);
+      for(let i=0;i<empty;i++){
+        this.spawnTile(i,c,true);
+      }
     }
     await new Promise(r=>this.time.delayedCall(300,r));
   }
