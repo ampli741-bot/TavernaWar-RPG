@@ -4,44 +4,42 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // фон
-    this.load.image('bg', 'assets/bg.jpg');
-
-    // руны
-    this.load.image('rune_red', 'assets/rune_red.png');       // ATK
-    this.load.image('rune_blue', 'assets/rune_blue.png');     // MP
-    this.load.image('rune_green', 'assets/rune_green.png');   // HP
-    this.load.image('rune_purple', 'assets/rune_purple.png'); // CURSE
-    this.load.image('rune_yellow', 'assets/rune_yellow.png'); // GOLD
+    this.load.image('rune_red', 'assets/rune_red.png');
+    this.load.image('rune_blue', 'assets/rune_blue.png');
+    this.load.image('rune_green', 'assets/rune_green.png');
+    this.load.image('rune_purple', 'assets/rune_purple.png');
+    this.load.image('rune_yellow', 'assets/rune_yellow.png');
   }
 
   create() {
     this.cols = 8;
     this.rows = 8;
-    this.tileSize = 80;
+    this.tileSize = 90;
+    this.cellPadding = 12;
 
     this.types = ['red', 'blue', 'green', 'purple', 'yellow'];
 
     this.grid = [];
     this.selected = null;
+    this.locked = false;
 
     this.offsetX =
-      (this.sys.game.config.width - this.cols * this.tileSize) / 2;
+      (this.sys.game.config.width -
+        this.cols * (this.tileSize + this.cellPadding)) / 2;
     this.offsetY =
-      (this.sys.game.config.height - this.rows * this.tileSize) / 2;
+      (this.sys.game.config.height -
+        this.rows * (this.tileSize + this.cellPadding)) / 2;
 
-    // фон
-    this.add.image(
+    this.add.rectangle(
       this.sys.game.config.width / 2,
       this.sys.game.config.height / 2,
-      'bg'
-    ).setDisplaySize(
       this.sys.game.config.width,
-      this.sys.game.config.height
+      this.sys.game.config.height,
+      0x0f0f0f
     );
 
     this.createGrid();
-    console.log('Grid created');
+    this.resolveBoard();
   }
 
   /* ================= GRID ================= */
@@ -58,80 +56,78 @@ export class GameScene extends Phaser.Scene {
 
   createCell(x, y) {
     const type = Phaser.Utils.Array.GetRandom(this.types);
+    const richType = Math.random() < 0.08 ? 'double' : null;
 
-    // контейнер (ВАЖНО)
-    const container = this.add.container(
-      this.offsetX + x * this.tileSize + this.tileSize / 2,
-      this.offsetY + y * this.tileSize + this.tileSize / 2
-    );
+    const px =
+      this.offsetX +
+      x * (this.tileSize + this.cellPadding) +
+      this.tileSize / 2;
+    const py =
+      this.offsetY +
+      y * (this.tileSize + this.cellPadding) +
+      this.tileSize / 2;
 
-    // рамка
-    const frame = this.add.rectangle(
+    const container = this.add.container(px, py);
+
+    const bg = this.add.rectangle(
       0,
       0,
       this.tileSize,
       this.tileSize,
-      0x000000
+      0x1a1a1a
     );
-    frame.setStrokeStyle(2, 0x00ff00);
+    bg.setStrokeStyle(2, 0x000000);
+    container.add(bg);
 
-    // иконка
     const icon = this.add.image(0, 0, `rune_${type}`);
-    icon.setDisplaySize(this.tileSize * 0.75, this.tileSize * 0.75);
+    icon.setDisplaySize(this.tileSize * 0.65, this.tileSize * 0.65);
+    container.add(icon);
 
-    container.add([frame, icon]);
+    if (richType === 'double') {
+      const glow = this.add.rectangle(
+        0,
+        0,
+        this.tileSize + 6,
+        this.tileSize + 6
+      );
+      glow.setStrokeStyle(3, 0xffd700);
+      glow.setAlpha(0.9);
+      container.addAt(glow, 0);
+    }
 
-    // 🔒 интерактив ТОЛЬКО контейнеру
     container.setSize(this.tileSize, this.tileSize);
-    container.setInteractive(
-      new Phaser.Geom.Rectangle(
-        -this.tileSize / 2,
-        -this.tileSize / 2,
-        this.tileSize,
-        this.tileSize
-      ),
-      Phaser.Geom.Rectangle.Contains
-    );
+    container.setInteractive();
 
-    // ❌ запрещаем интерактив детям
-    frame.disableInteractive?.();
-    icon.disableInteractive?.();
-
-    // hover (ФИКС!)
     container.on('pointerover', () => {
+      if (this.locked) return;
       this.tweens.killTweensOf(container);
-      container.setScale(1);
-
       this.tweens.add({
         targets: container,
-        scale: 1.12,
-        duration: 120,
-        ease: 'Quad.out'
+        scale: 1.08,
+        duration: 120
       });
     });
 
     container.on('pointerout', () => {
       this.tweens.killTweensOf(container);
-
       this.tweens.add({
         targets: container,
         scale: 1,
-        duration: 120,
-        ease: 'Quad.out'
+        duration: 120
       });
     });
 
-    container.on('pointerdown', () => {
-      this.handleClick(cell);
-    });
+    const cell = { x, y, type, richType, container };
 
-    const cell = { x, y, type, container, icon, frame };
+    container.on('pointerdown', () => this.handleClick(cell));
     return cell;
   }
 
   /* ================= INPUT ================= */
 
   handleClick(cell) {
+    if (this.locked) return;
+
     if (!this.selected) {
       this.select(cell);
       return;
@@ -143,9 +139,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.areNeighbors(this.selected, cell)) {
-      this.swap(this.selected, cell);
-      this.clearSelection();
-      this.resolveBoard();
+      this.locked = true;
+      this.swap(this.selected, cell, () => {
+        this.clearSelection();
+        this.resolveBoard();
+      });
     } else {
       this.clearSelection();
       this.select(cell);
@@ -154,12 +152,12 @@ export class GameScene extends Phaser.Scene {
 
   select(cell) {
     this.selected = cell;
-    cell.frame.setStrokeStyle(3, 0xffffff);
+    cell.container.setScale(1.12);
   }
 
   clearSelection() {
     if (this.selected) {
-      this.selected.frame.setStrokeStyle(2, 0x00ff00);
+      this.selected.container.setScale(1);
       this.selected = null;
     }
   }
@@ -170,7 +168,7 @@ export class GameScene extends Phaser.Scene {
 
   /* ================= SWAP ================= */
 
-  swap(a, b) {
+  swap(a, b, onComplete) {
     const ax = a.container.x;
     const ay = a.container.y;
     const bx = b.container.x;
@@ -178,19 +176,33 @@ export class GameScene extends Phaser.Scene {
 
     this.grid[a.y][a.x] = b;
     this.grid[b.y][b.x] = a;
-
     [a.x, b.x] = [b.x, a.x];
     [a.y, b.y] = [b.y, a.y];
 
-    this.tweens.add({ targets: a.container, x: bx, y: by, duration: 200 });
-    this.tweens.add({ targets: b.container, x: ax, y: ay, duration: 200 });
+    this.tweens.add({
+      targets: a.container,
+      x: bx,
+      y: by,
+      duration: 200
+    });
+
+    this.tweens.add({
+      targets: b.container,
+      x: ax,
+      y: ay,
+      duration: 200,
+      onComplete
+    });
   }
 
   /* ================= MATCH ================= */
 
   resolveBoard() {
     const matches = this.findMatches();
-    if (matches.length === 0) return;
+    if (!matches.length) {
+      this.locked = false;
+      return;
+    }
 
     this.removeMatches(matches);
 
@@ -198,58 +210,55 @@ export class GameScene extends Phaser.Scene {
       this.applyGravity();
       this.time.delayedCall(250, () => {
         this.fillEmpty();
-        this.time.delayedCall(250, () => this.resolveBoard());
+        this.time.delayedCall(200, () => this.resolveBoard());
       });
     });
   }
 
   findMatches() {
-    const matches = [];
+    const result = [];
 
-    // горизонталь
     for (let y = 0; y < this.rows; y++) {
       let run = [this.grid[y][0]];
       for (let x = 1; x < this.cols; x++) {
         const c = this.grid[y][x];
         if (c.type === run[0].type) run.push(c);
         else {
-          if (run.length >= 3) matches.push(...run);
+          if (run.length >= 3) result.push(...run);
           run = [c];
         }
       }
-      if (run.length >= 3) matches.push(...run);
+      if (run.length >= 3) result.push(...run);
     }
 
-    // вертикаль
     for (let x = 0; x < this.cols; x++) {
       let run = [this.grid[0][x]];
       for (let y = 1; y < this.rows; y++) {
         const c = this.grid[y][x];
         if (c.type === run[0].type) run.push(c);
         else {
-          if (run.length >= 3) matches.push(...run);
+          if (run.length >= 3) result.push(...run);
           run = [c];
         }
       }
-      if (run.length >= 3) matches.push(...run);
+      if (run.length >= 3) result.push(...run);
     }
 
-    return [...new Set(matches)];
+    return [...new Set(result)];
   }
 
-  /* ================= REMOVE / GRAVITY ================= */
+  /* ================= REMOVE / FALL ================= */
 
   removeMatches(matches) {
-    matches.forEach(cell => {
+    matches.forEach(c => {
       this.tweens.add({
-        targets: cell.container,
+        targets: c.container,
         scale: 0,
         alpha: 0,
         duration: 200,
-        onComplete: () => cell.container.destroy()
+        onComplete: () => c.container.destroy()
       });
-
-      this.grid[cell.y][cell.x] = null;
+      this.grid[c.y][c.x] = null;
     });
   }
 
@@ -259,15 +268,18 @@ export class GameScene extends Phaser.Scene {
         if (!this.grid[y][x]) {
           for (let yy = y - 1; yy >= 0; yy--) {
             if (this.grid[yy][x]) {
-              const cell = this.grid[yy][x];
-              this.grid[y][x] = cell;
+              const c = this.grid[yy][x];
+              this.grid[y][x] = c;
               this.grid[yy][x] = null;
-              cell.y = y;
+              c.y = y;
 
               this.tweens.add({
-                targets: cell.container,
-                y: this.offsetY + y * this.tileSize + this.tileSize / 2,
-                duration: 200
+                targets: c.container,
+                y:
+                  this.offsetY +
+                  y * (this.tileSize + this.cellPadding) +
+                  this.tileSize / 2,
+                duration: 220
               });
               break;
             }
@@ -281,16 +293,18 @@ export class GameScene extends Phaser.Scene {
     for (let x = 0; x < this.cols; x++) {
       for (let y = 0; y < this.rows; y++) {
         if (!this.grid[y][x]) {
-          const cell = this.createCell(x, y);
-          cell.container.y = this.offsetY - this.tileSize;
+          const c = this.createCell(x, y);
+          c.container.y = this.offsetY - this.tileSize;
+          this.grid[y][x] = c;
 
           this.tweens.add({
-            targets: cell.container,
-            y: this.offsetY + y * this.tileSize + this.tileSize / 2,
+            targets: c.container,
+            y:
+              this.offsetY +
+              y * (this.tileSize + this.cellPadding) +
+              this.tileSize / 2,
             duration: 300
           });
-
-          this.grid[y][x] = cell;
         }
       }
     }
