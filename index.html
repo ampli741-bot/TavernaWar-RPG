@@ -1,67 +1,94 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Taverna War</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+        }
 
-    <!-- Phaser -->
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser-arcade-physics.min.js"></script>
+        #ui-root {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            font-family: serif;
+        }
+
+        .panel {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 260px;
+            height: 80%;
+            border: 2px solid #fff;
+            background: rgba(0,0,0,0.6);
+            box-sizing: border-box;
+            padding-top: 20px;
+        }
+
+        #player-panel { left: 20px; }
+        #mob-panel { right: 20px; }
+
+        .portrait {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            margin: 0 auto 20px;
+            border: 3px solid gold;
+        }
+
+        .portrait img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #version {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            opacity: 0.7;
+        }
+
+        #game-container {
+            position: fixed;
+            inset: 0;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
-<body style="margin:0; background:#111; overflow:hidden;">
+<body>
 
-    <!-- ===== MENU ===== -->
-    <div id="menu-overlay" style="
-        position:fixed;
-        inset:0;
-        background:#111;
-        display:flex;
-        flex-direction:column;
-        justify-content:center;
-        align-items:center;
-        z-index:100;
-        color:#ffd700;
-        font-family:Cinzel;
-    ">
-        <h1 style="font-size:64px; margin-bottom:40px;">
-            TAVERNA WAR
-        </h1>
+<div id="game-container"></div>
 
-        <button onclick="startGame('warrior')">ВОИН</button>
-        <button onclick="startGame('mage')">МАГ</button>
-        <button onclick="startGame('archer')">ЛУЧНИК</button>
-        <button onclick="startGame('assassin')">УБИЙЦА</button>
+<div id="ui-root">
+    <div id="version">v7.3</div>
+
+    <div id="player-panel" class="panel">
+        <div class="portrait">
+            <img src="assets/hero_warrior.jpg" />
+        </div>
     </div>
 
-    <!-- ===== GAME ===== -->
-    <div id="game-container"
-         style="width:680px; height:680px; margin:0 auto;">
+    <div id="mob-panel" class="panel">
+        <div class="portrait">
+            <img src="assets/hero_assassin.jpg" />
+        </div>
     </div>
+</div>
 
-    <!-- ===== UI (минимум, чтобы не падало) ===== -->
-    <div style="display:none">
-        <div id="p-hp-t"></div>
-        <div id="p-hp-f"></div>
-        <div id="p-mn-t"></div>
-        <div id="p-mn-f"></div>
-        <div id="p-arm-t"></div>
-        <div id="p-arm-f"></div>
-        <div id="stat-atk"></div>
-        <div id="stat-dodge"></div>
-        <div id="gold-val"></div>
-        <div id="inv-box"></div>
-
-        <div id="m-name"></div>
-        <div id="m-hp-t"></div>
-        <div id="m-hp-f"></div>
-        <div id="m-mn-t"></div>
-        <div id="m-mn-f"></div>
-    </div>
-
-    <!-- MAIN -->
-    <script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>
