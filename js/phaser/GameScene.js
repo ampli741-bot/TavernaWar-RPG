@@ -25,10 +25,10 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        console.log("✅ Field generated without matches");
+        console.log("✅ Field ready");
     }
 
-    /* ---------------- FIELD GENERATION ---------------- */
+    /* ---------------- SPAWN ---------------- */
 
     spawnTileSafe(row, col, fromTop = false) {
         let color;
@@ -40,14 +40,12 @@ export default class GameScene extends Phaser.Scene {
     }
 
     createsMatch(row, col, color) {
-        // horizontal
         if (
             col >= 2 &&
             this.tiles[row][col - 1]?.colorValue === color &&
             this.tiles[row][col - 2]?.colorValue === color
         ) return true;
 
-        // vertical
         if (
             row >= 2 &&
             this.tiles[row - 1]?.[col]?.colorValue === color &&
@@ -62,8 +60,7 @@ export default class GameScene extends Phaser.Scene {
         const y = fromTop ? -this.tileSize : row * this.tileSize + this.tileSize / 2;
 
         const tile = this.add.rectangle(
-            x,
-            y,
+            x, y,
             this.tileSize - 6,
             this.tileSize - 6,
             color
@@ -104,7 +101,7 @@ export default class GameScene extends Phaser.Scene {
         }
 
         if (this.isNeighbor(this.selected, tile)) {
-            this.trySwap(this.selected, tile);
+            this.handleSwap(this.selected, tile);
         } else {
             this.selectTile(tile);
         }
@@ -127,34 +124,47 @@ export default class GameScene extends Phaser.Scene {
         return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
     }
 
-    /* ---------------- SWAP LOGIC ---------------- */
+    /* ---------------- SWAP ---------------- */
 
-    async trySwap(a, b) {
+    async handleSwap(a, b) {
         this.isAnimating = true;
-        await this.swapTiles(a, b);
 
-        const matches = this.findMatches();
-        if (matches.length === 0) {
-            // ❌ invalid move → swap back
-            await this.swapTiles(a, b);
-        } else {
-            await this.resolveMatches();
+        // 🔍 ПРЕДВАРИТЕЛЬНЫЙ swap (без анимации)
+        this.swapData(a, b);
+        const hasMatch = this.findMatches().length > 0;
+        this.swapData(a, b); // откат данных
+
+        if (!hasMatch) {
+            // ❌ невалидный ход → анимация туда-обратно
+            await this.animateSwap(a, b);
+            await this.animateSwap(a, b);
+            this.clearSelection();
+            this.isAnimating = false;
+            return;
         }
+
+        // ✅ валидный ход
+        await this.animateSwap(a, b);
+        await this.resolveMatches();
 
         this.clearSelection();
         this.isAnimating = false;
     }
 
-    swapTiles(a, b) {
+    swapData(a, b) {
+        const ar = a.row, ac = a.col;
+        const br = b.row, bc = b.col;
+
+        this.tiles[ar][ac] = b;
+        this.tiles[br][bc] = a;
+
+        a.row = br; a.col = bc;
+        b.row = ar; b.col = ac;
+    }
+
+    animateSwap(a, b) {
         return new Promise(resolve => {
-            const aRow = a.row, aCol = a.col;
-            const bRow = b.row, bCol = b.col;
-
-            this.tiles[aRow][aCol] = b;
-            this.tiles[bRow][bCol] = a;
-
-            a.row = bRow; a.col = bCol;
-            b.row = aRow; b.col = aCol;
+            this.swapData(a, b);
 
             this.tweens.add({
                 targets: a,
