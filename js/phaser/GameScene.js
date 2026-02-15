@@ -8,7 +8,7 @@ export default class GameScene extends Phaser.Scene {
         this.gridSize = 8;
         this.tiles = [];
         this.selected = null;
-        this.isAnimating = false;
+        this.busy = false;
 
         this.colors = [
             0xff4444, // red
@@ -25,39 +25,35 @@ export default class GameScene extends Phaser.Scene {
             }
         }
 
-        console.log("✅ Field ready");
+        console.log("FIELD READY");
     }
 
-    /* ---------------- SPAWN ---------------- */
+    /* ---------- SPAWN ---------- */
 
-    spawnTileSafe(row, col, fromTop = false) {
+    spawnTileSafe(r, c, fromTop = false) {
         let color;
         do {
             color = Phaser.Utils.Array.GetRandom(this.colors);
-        } while (this.createsMatch(row, col, color));
+        } while (this.createsMatch(r, c, color));
 
-        this.spawnTile(row, col, color, fromTop);
+        this.spawnTile(r, c, color, fromTop);
     }
 
-    createsMatch(row, col, color) {
-        if (
-            col >= 2 &&
-            this.tiles[row][col - 1]?.colorValue === color &&
-            this.tiles[row][col - 2]?.colorValue === color
-        ) return true;
+    createsMatch(r, c, color) {
+        if (c >= 2 &&
+            this.tiles[r][c - 1]?.colorValue === color &&
+            this.tiles[r][c - 2]?.colorValue === color) return true;
 
-        if (
-            row >= 2 &&
-            this.tiles[row - 1]?.[col]?.colorValue === color &&
-            this.tiles[row - 2]?.[col]?.colorValue === color
-        ) return true;
+        if (r >= 2 &&
+            this.tiles[r - 1]?.[c]?.colorValue === color &&
+            this.tiles[r - 2]?.[c]?.colorValue === color) return true;
 
         return false;
     }
 
-    spawnTile(row, col, color, fromTop = false) {
-        const x = col * this.tileSize + this.tileSize / 2;
-        const y = fromTop ? -this.tileSize : row * this.tileSize + this.tileSize / 2;
+    spawnTile(r, c, color, fromTop = false) {
+        const x = c * this.tileSize + this.tileSize / 2;
+        const y = fromTop ? -this.tileSize : r * this.tileSize + this.tileSize / 2;
 
         const tile = this.add.rectangle(
             x, y,
@@ -66,54 +62,54 @@ export default class GameScene extends Phaser.Scene {
             color
         );
 
-        tile.setStrokeStyle(2, 0x000000);
         tile.setInteractive();
+        tile.setStrokeStyle(2, 0x000000);
 
-        tile.row = row;
-        tile.col = col;
+        tile.row = r;
+        tile.col = c;
         tile.colorValue = color;
 
-        tile.on("pointerdown", () => this.onTileClick(tile));
-        this.tiles[row][col] = tile;
+        tile.on("pointerdown", () => this.onClick(tile));
+        this.tiles[r][c] = tile;
 
         if (fromTop) {
             this.tweens.add({
                 targets: tile,
-                y: row * this.tileSize + this.tileSize / 2,
+                y: r * this.tileSize + this.tileSize / 2,
                 duration: 250
             });
         }
     }
 
-    /* ---------------- INPUT ---------------- */
+    /* ---------- INPUT ---------- */
 
-    onTileClick(tile) {
-        if (this.isAnimating) return;
+    onClick(tile) {
+        if (this.busy) return;
 
         if (!this.selected) {
-            this.selectTile(tile);
+            this.select(tile);
             return;
         }
 
-        if (this.selected === tile) {
-            this.clearSelection();
+        if (tile === this.selected) {
+            this.clearSelect();
             return;
         }
 
-        if (this.isNeighbor(this.selected, tile)) {
-            this.handleSwap(this.selected, tile);
+        if (this.isNeighbor(tile, this.selected)) {
+            this.trySwap(tile, this.selected);
         } else {
-            this.selectTile(tile);
+            this.select(tile);
         }
     }
 
-    selectTile(tile) {
-        this.clearSelection();
+    select(tile) {
+        this.clearSelect();
         this.selected = tile;
         tile.setStrokeStyle(6, 0xffffff);
     }
 
-    clearSelection() {
+    clearSelect() {
         if (this.selected) {
             this.selected.setStrokeStyle(2, 0x000000);
             this.selected = null;
@@ -124,31 +120,32 @@ export default class GameScene extends Phaser.Scene {
         return Math.abs(a.row - b.row) + Math.abs(a.col - b.col) === 1;
     }
 
-    /* ---------------- SWAP ---------------- */
+    /* ---------- SWAP ---------- */
 
-    async handleSwap(a, b) {
-        this.isAnimating = true;
+    async trySwap(a, b) {
+        this.busy = true;
 
-        // 🔍 ПРЕДВАРИТЕЛЬНЫЙ swap (без анимации)
+        // 1️⃣ временный swap в данных
         this.swapData(a, b);
-        const hasMatch = this.findMatches().length > 0;
+        const valid = this.findMatches().length > 0;
         this.swapData(a, b); // откат данных
 
-        if (!hasMatch) {
-            // ❌ невалидный ход → анимация туда-обратно
+        if (!valid) {
+            // ❌ невалидный ход — просто анимация туда-обратно
             await this.animateSwap(a, b);
             await this.animateSwap(a, b);
-            this.clearSelection();
-            this.isAnimating = false;
+            this.clearSelect();
+            this.busy = false;
             return;
         }
 
         // ✅ валидный ход
+        this.swapData(a, b);
         await this.animateSwap(a, b);
         await this.resolveMatches();
 
-        this.clearSelection();
-        this.isAnimating = false;
+        this.clearSelect();
+        this.busy = false;
     }
 
     swapData(a, b) {
@@ -163,75 +160,72 @@ export default class GameScene extends Phaser.Scene {
     }
 
     animateSwap(a, b) {
-        return new Promise(resolve => {
-            this.swapData(a, b);
-
+        return new Promise(res => {
             this.tweens.add({
                 targets: a,
                 x: a.col * this.tileSize + this.tileSize / 2,
                 y: a.row * this.tileSize + this.tileSize / 2,
                 duration: 150
             });
-
             this.tweens.add({
                 targets: b,
                 x: b.col * this.tileSize + this.tileSize / 2,
                 y: b.row * this.tileSize + this.tileSize / 2,
                 duration: 150,
-                onComplete: resolve
+                onComplete: res
             });
         });
     }
 
-    /* ---------------- MATCH / FALL ---------------- */
+    /* ---------- MATCH ---------- */
 
     async resolveMatches() {
         const matches = this.findMatches();
-        if (matches.length === 0) return;
+        if (!matches.length) return;
 
-        await this.removeMatches(matches);
-        await this.dropTiles();
+        await this.remove(matches);
+        await this.drop();
         await this.resolveMatches();
     }
 
     findMatches() {
-        const result = new Set();
+        const set = new Set();
 
-        for (let r = 0; r < this.gridSize; r++) {
-            let count = 1;
-            for (let c = 1; c <= this.gridSize; c++) {
-                const curr = this.tiles[r][c];
+        for (let r = 0; r < 8; r++) {
+            let cnt = 1;
+            for (let c = 1; c <= 8; c++) {
+                const cur = this.tiles[r][c];
                 const prev = this.tiles[r][c - 1];
-                if (curr && prev && curr.colorValue === prev.colorValue) count++;
+                if (cur && prev && cur.colorValue === prev.colorValue) cnt++;
                 else {
-                    if (count >= 3)
-                        for (let k = 0; k < count; k++)
-                            result.add(this.tiles[r][c - 1 - k]);
-                    count = 1;
+                    if (cnt >= 3)
+                        for (let k = 0; k < cnt; k++)
+                            set.add(this.tiles[r][c - 1 - k]);
+                    cnt = 1;
                 }
             }
         }
 
-        for (let c = 0; c < this.gridSize; c++) {
-            let count = 1;
-            for (let r = 1; r <= this.gridSize; r++) {
-                const curr = this.tiles[r]?.[c];
+        for (let c = 0; c < 8; c++) {
+            let cnt = 1;
+            for (let r = 1; r <= 8; r++) {
+                const cur = this.tiles[r]?.[c];
                 const prev = this.tiles[r - 1]?.[c];
-                if (curr && prev && curr.colorValue === prev.colorValue) count++;
+                if (cur && prev && cur.colorValue === prev.colorValue) cnt++;
                 else {
-                    if (count >= 3)
-                        for (let k = 0; k < count; k++)
-                            result.add(this.tiles[r - 1 - k][c]);
-                    count = 1;
+                    if (cnt >= 3)
+                        for (let k = 0; k < cnt; k++)
+                            set.add(this.tiles[r - 1 - k][c]);
+                    cnt = 1;
                 }
             }
         }
 
-        return [...result];
+        return [...set];
     }
 
-    async removeMatches(matches) {
-        return new Promise(resolve => {
+    async remove(matches) {
+        return new Promise(res => {
             this.tweens.add({
                 targets: matches,
                 scale: 0,
@@ -242,25 +236,25 @@ export default class GameScene extends Phaser.Scene {
                         this.tiles[t.row][t.col] = null;
                         t.destroy();
                     });
-                    resolve();
+                    res();
                 }
             });
         });
     }
 
-    async dropTiles() {
-        for (let c = 0; c < this.gridSize; c++) {
+    async drop() {
+        for (let c = 0; c < 8; c++) {
             let empty = 0;
-            for (let r = this.gridSize - 1; r >= 0; r--) {
-                const tile = this.tiles[r][c];
-                if (!tile) empty++;
-                else if (empty > 0) {
-                    this.tiles[r + empty][c] = tile;
+            for (let r = 7; r >= 0; r--) {
+                const t = this.tiles[r][c];
+                if (!t) empty++;
+                else if (empty) {
+                    this.tiles[r + empty][c] = t;
                     this.tiles[r][c] = null;
-                    tile.row = r + empty;
+                    t.row = r + empty;
                     this.tweens.add({
-                        targets: tile,
-                        y: tile.row * this.tileSize + this.tileSize / 2,
+                        targets: t,
+                        y: t.row * this.tileSize + this.tileSize / 2,
                         duration: 200
                     });
                 }
