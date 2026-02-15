@@ -1,4 +1,4 @@
-console.log("🧨 MAIN VERSION 999");
+console.log("🧨 MAIN VERSION CLEAN");
 
 import { app } from "./core/app.js";
 import { createPlayer } from "./core/player.js";
@@ -6,15 +6,13 @@ import { createMob } from "./core/mob.js";
 import { initPhaser } from "./phaser/game.js";
 import refreshUi from "./ui/ui.js";
 
-console.log("🔥 main.js FINAL loaded");
-
 window.startGame = function (key) {
     console.log("▶ startGame:", key);
 
-    // ❌ БОЛЬШЕ НИКАКИХ .style У DOM
+    // 🔥 БОЛЬШЕ НИКАКИХ style ВООБЩЕ
     const menu = document.getElementById("menu-overlay");
     if (menu) {
-        menu.remove(); // 💥 просто удаляем меню
+        menu.remove(); // безопасно, без .style
     }
 
     // === INIT GAME STATE ===
@@ -24,7 +22,7 @@ window.startGame = function (key) {
     // === START PHASER ===
     initPhaser();
 
-    // === SAFE UI UPDATE ===
+    // === SAFE UI ===
     try {
         refreshUi();
     } catch (e) {
