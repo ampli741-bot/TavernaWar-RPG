@@ -6,8 +6,9 @@ export const app = {
 
     log(msg, type = 'sys') {
         const log = document.getElementById('battle-log');
-        const e = document.createElement('div');
+        if (!log) return;
 
+        const e = document.createElement('div');
         e.style.color =
             type === 'p' ? '#4f4' :
             type === 'm' ? '#f44' :
@@ -19,4 +20,5 @@ export const app = {
     }
 };
 
-window.app = app; // чтобы Phaser видел
+// ❗ ОБЯЗАТЕЛЬНО
+window.app = app;
