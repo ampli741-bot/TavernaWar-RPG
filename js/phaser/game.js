@@ -1,12 +1,16 @@
 import GameScene from "./GameScene.js";
 
+let game;
+
 export function initPhaser() {
-    return new Phaser.Game({
+    if (game) return;
+
+    game = new Phaser.Game({
         type: Phaser.AUTO,
-        parent: 'game-container',
         width: 680,
         height: 680,
-        scene: GameScene,
-        transparent: true
+        parent: "game-container",
+        backgroundColor: "#000",
+        scene: GameScene
     });
 }
