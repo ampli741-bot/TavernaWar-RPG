@@ -1,0 +1,281 @@
+/* =========================
+   GLOBAL
+========================= */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Cinzel', serif;
+    background: black;
+    overflow-x: hidden;
+}
+
+/* =========================
+   BACKGROUND
+========================= */
+
+.game-bg {
+    position: fixed;
+    inset: 0;
+    background: url("../bg.jpg") center center / cover no-repeat;
+    z-index: 0;
+}
+
+/* =========================
+   GAME WRAPPER
+========================= */
+
+.game-wrapper {
+    position: relative;
+    z-index: 2;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    gap: 80px;
+    width: 100%;
+    min-height: 100vh;
+}
+
+/* =========================
+   GAME FIELD
+========================= */
+
+#game-container {
+    width: 680px;
+    height: 680px;
+}
+
+/* =========================
+   UI PANELS
+========================= */
+
+#ui-left,
+#ui-right {
+    position: fixed;
+    top: 40px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+
+    z-index: 3;
+}
+
+/* Левый почти в угол */
+#ui-left {
+    left: 120px;
+}
+
+/* Правый почти в угол */
+#ui-right {
+    right: 120px;
+}
+
+/* =========================
+   PORTRAIT
+========================= */
+
+.portrait {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    border: 6px solid gold;
+    box-shadow: 0 0 35px gold;
+
+    background-size: cover;
+    background-position: center;
+    background-color: black;
+}
+
+/* =========================
+   BARS
+========================= */
+
+.bar {
+    width: 180px;
+    height: 24px;
+    border-radius: 20px;
+    position: relative;
+    border: 2px solid gold;
+    overflow: hidden;
+}
+
+.bar span {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    left: 0;
+    top: 0;
+}
+
+.bar-label {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+    line-height: 22px;
+    color: gold;
+}
+
+.bar.hp span {
+    background: linear-gradient(to right, #ff0000, #ff5555);
+}
+
+.bar.mana span {
+    background: linear-gradient(to right, #0066ff, #00aaff);
+}
+
+.bar.armor span {
+    background: linear-gradient(to right, #888, #ddd);
+}
+
+/* =========================
+   COLUMNS (FULL HEIGHT)
+========================= */
+
+.column {
+    position: fixed;
+    top: 73px;              /* ← опускаем ниже (можешь 50–80px если нужно) */
+    width: 340px;
+    height: calc(100vh - 40px); /* чтобы низ остался у экрана */
+
+    background: url("../column_spiked.png") center bottom no-repeat;
+    background-size: auto 103%;
+
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Расположение оставляем как было */
+.column-left {
+    left: calc(50% - 680px/2 - 320px);
+}
+
+.column-right {
+    right: calc(50% - 680px/2 - 320px);
+}
+
+/* =========================
+   HERO SELECT (КАК РАНЬШЕ)
+========================= */
+
+#menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: url("../bg.jpg") center center / cover no-repeat;
+    z-index: 10;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.game-title {
+    font-size: 64px;
+    color: gold;
+    margin-bottom: 60px;
+    text-shadow: 0 0 20px gold;
+}
+
+.hero-cards {
+    display: flex;
+    gap: 60px;
+}
+
+.hero-card {
+    width: 230px;
+    height: 230px;
+    border-radius: 50%;
+    border: 6px solid gold;
+    background-size: cover;
+    background-position: center;
+    cursor: pointer;
+    position: relative;
+    transition: 0.3s;
+}
+
+.hero-card:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 40px gold;
+}
+
+.hero-card .info {
+    position: absolute;
+    bottom: -70px;
+    width: 100%;
+    text-align: center;
+    color: gold;
+}
+
+/* =========================
+   BREATHING EFFECT
+========================= */
+
+@keyframes breathing {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.breathing {
+    animation: breathing 3s ease-in-out infinite;
+}
+
+/* =========================
+   COMBAT LOG (RIGHT SIDE)
+========================= */
+
+#ui-right {
+    height: 100vh;
+}
+
+
+/* =========================
+   BATTLE LOG WINDOW
+========================= */
+
+#battle-log {
+    width: 220px;
+    height: calc(100vh - 420px);
+
+    margin-top: 20px;
+
+    background: rgba(0, 0, 0, 0.9);
+    border: 2px solid gold;
+    border-radius: 8px;
+
+    padding: 10px;
+
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.4;
+
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+}
+
+/* строки лога */
+.log-entry {
+    margin-bottom: 6px;
+}
+
+/* цвета */
+.log-damage { color: #ff4444; }
+.log-curse  { color: #aa44ff; }
+.log-heal   { color: #44ff44; }
+.log-mana   { color: #44aaff; }
+.log-gold   { color: #ffcc44; }
+
+

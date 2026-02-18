@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Taverna War</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+
+<body>
+
+<!-- ФОН -->
+<div class="game-bg"></div>
+
+<!-- ===============================
+     HERO SELECT SCREEN
+=============================== -->
+<div id="menu-overlay">
+    <h1 class="game-title">TAVERNA WAR</h1>
+
+    <div class="hero-cards">
+
+        <div class="hero-card"
+             data-hero="warrior"
+             style="background-image:url('assets/hero_warrior.jpg')"
+             onclick="startGame('warrior')">
+            <div class="info">
+                <h3>ВОИН</h3>
+                <p>Ульта: Красные + Зелёные</p>
+            </div>
+        </div>
+
+        <div class="hero-card"
+             data-hero="mage"
+             style="background-image:url('assets/hero_mage.jpg')"
+             onclick="startGame('mage')">
+            <div class="info">
+                <h3>МАГ</h3>
+                <p>Ульта: Фиол + Жёлтые</p>
+            </div>
+        </div>
+
+        <div class="hero-card"
+             data-hero="archer"
+             style="background-image:url('assets/hero_archer.jpg')"
+             onclick="startGame('archer')">
+            <div class="info">
+                <h3>ЛУЧНИК</h3>
+                <p>Ульта: 4 линии</p>
+            </div>
+        </div>
+
+        <div class="hero-card"
+             data-hero="assassin"
+             style="background-image:url('assets/hero_assasin.jpg')"
+             onclick="startGame('assassin')">
+            <div class="info">
+                <h3>АССАСИН</h3>
+                <p>Ульта: 30% поля</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ===============================
+     GAME WRAPPER
+=============================== -->
+
+<div class="game-wrapper">
+
+    <!-- LEFT UI -->
+    <div id="ui-left">
+        <div id="hero-portrait" class="portrait"></div>
+
+        <div class="bar hp">
+            <span></span>
+            <div class="bar-label">HP</div>
+        </div>
+
+        <div class="bar mana">
+            <span></span>
+            <div class="bar-label">MANA</div>
+        </div>
+
+        <div class="bar armor">
+            <span></span>
+            <div class="bar-label">ARMOR</div>
+        </div>
+    </div>
+
+    <!-- LEFT COLUMN -->
+    <div class="column column-left"></div>
+
+    <!-- GAME FIELD -->
+    <div id="game-container"></div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="column column-right"></div>
+
+    <!-- RIGHT UI -->
+    <div id="ui-right">
+    <div id="mob-portrait"
+         class="portrait"
+         style="background-image:url('assets/hero_assasin.jpg')">
+    </div>
+
+    <div class="bar hp"><span></span><div class="bar-label">HP</div></div>
+    <div class="bar mana"><span></span><div class="bar-label">MANA</div></div>
+    <div class="bar armor"><span></span><div class="bar-label">ARMOR</div></div>
+
+    <!-- БОЕВОЙ ЛОГ -->
+    <div id="battle-log"></div>
+
+</div>
+
+
+<div id="loot-overlay"></div>
+
+<script src="assets/js/main.js"></script>
+
+</body>
+</html>
